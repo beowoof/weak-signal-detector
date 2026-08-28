@@ -1,0 +1,8 @@
+status: draft
+policy: Claims must have been public by the packet cutoff and require a citation before interpretation runs.
+actors:
+  DEU: {claims: []}
+  USA: {claims: []}
+  GRC: {claims: []}
+  RUS: {claims: []}
+

@@ -1,0 +1,23 @@
+[
+  {
+    "version_id": "visible-v1",
+    "series_id": "fixture.series",
+    "period_id": "fixture-period",
+    "event_time": "2021-01-01T00:00:00Z",
+    "available_at": "2021-01-01T12:00:00Z",
+    "retrieved_at": "2026-08-28T00:00:00Z",
+    "value": 10.0,
+    "quality": "ok"
+  },
+  {
+    "version_id": "future-v2",
+    "series_id": "fixture.series",
+    "period_id": "fixture-period",
+    "event_time": "2021-01-01T00:00:00Z",
+    "available_at": "2021-01-02T00:00:00Z",
+    "retrieved_at": "2026-08-28T00:00:00Z",
+    "value": 99.0,
+    "quality": "ok"
+  }
+]
+

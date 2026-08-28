@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "weak-signal-fusion"
+version = "0.1.0"
+description = "A cutoff-aware PoC for correlating weak public signals and testing intent-triage evidence packets."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+  "pydantic>=2.11,<3",
+  "pyyaml>=6,<7",
+  "typer>=0.16,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8,<9",
+  "ruff>=0.12,<1",
+]
+
+[project.scripts]
+wsd = "wsf.cli:app"
+wsf = "wsf.cli:app"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wsf"]
+
+[tool.pytest.ini_options]
+addopts = "-ra"
+testpaths = ["tests"]
+markers = [
+  "live: accesses a remote source and is never selected by default",
+  "model: invokes Ollama and is never selected by default",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

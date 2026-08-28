@@ -1,0 +1,23 @@
+protocol_id: intent_triage_v0
+provider: ollama
+model: qwen3.8:27b-mlx
+endpoint_env: OLLAMA_BASE_URL
+temperature: 0
+seed: 42
+think: false
+keep_alive: -1
+max_output_tokens: 768
+repeats: 5
+conditions: [base_rate, prior_only, signals_only_masked, prior_plus_signals]
+hypotheses:
+  - routine_variation
+  - exercise_or_demonstration
+  - defensive_readiness
+  - reversible_mobilisation
+  - preparation_for_overt_action
+  - collection_or_measurement_artifact
+output_schema: intent_triage_v0
+unsupported_claim_policy: exclude_from_grounding_score
+enabled: false
+notes: Codex builds and tests this contract with mocks but never invokes the model.
+

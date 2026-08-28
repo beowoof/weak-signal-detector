@@ -1,0 +1,81 @@
+- id: tempo.viirs_aoi
+  family: facility_tempo
+  hypothesis: Night-time activity rises at focal government and logistics AOIs during preparation.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: viirs_c2
+  connector: viirs
+  series_id: tempo.viirs_aoi
+  notes: Retrospectively reconstructed Collection 2 under an assumed-latency regime.
+- id: press.gdelt_gap
+  family: coverage_asymmetry
+  hypothesis: Unconstrained coverage rises while a declared constrained baseline does not.
+  status: uninstantiated
+  cost_class: info
+  in_basket: false
+  uninstantiated_reason: Events SOURCEURL is not a coverage meter; Mentions/GKG plus translingual dedup is required.
+- id: talk.gdelt_cameo
+  family: cheap_talk_vs_costly_motion
+  hypothesis: Frozen CAMEO talk activity becomes unusually elevated.
+  status: instantiated
+  cost_class: soft
+  polarity: high_unusual
+  in_basket: true
+  source_system: gdelt_events
+  connector: gdelt
+  series_id: talk.gdelt_cameo
+- id: talk_vs_motion.residual
+  family: cheap_talk_vs_costly_motion
+  hypothesis: Costly motion diverges from cheap talk.
+  status: derived
+  cost_class: info
+  polarity: high_unusual
+  in_basket: false
+  series_id: talk_vs_motion.residual
+  computed_from: [tempo.viirs_aoi, talk.gdelt_cameo]
+- id: fusion.domain_covar
+  family: cross_domain_covariance
+  hypothesis: Normally weakly related domains begin to co-move.
+  status: derived
+  cost_class: info
+  polarity: high_unusual
+  in_basket: false
+  series_id: fusion.domain_covar
+  computed_from: [tempo.viirs_aoi, talk.gdelt_cameo, attn.wiki_pageviews]
+- id: dyad.fx
+  family: dyadic_counterpart
+  hypothesis: Counterpart-recognition market movement becomes unusual.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: true
+  source_system: alfred
+  connector: fred
+  series_id: dyad.fx
+- id: official.gazette
+  family: official_residue
+  hypothesis: Official administrative residue rises during preparation.
+  status: uninstantiated
+  cost_class: info
+  in_basket: false
+  uninstantiated_reason: No frozen cross-actor daily public feed in v0.
+- id: attn.wiki_pageviews
+  family: attention_without_admission
+  hypothesis: Attention to frozen actor and institution titles becomes unusual.
+  status: instantiated
+  cost_class: soft
+  polarity: high_unusual
+  in_basket: true
+  source_system: wikipedia
+  connector: wikipedia
+  series_id: attn.wiki_pageviews
+- id: absence.declared_expected_event
+  family: absence_as_absence
+  hypothesis: A specifically expected public event is absent while its source remains healthy.
+  status: uninstantiated
+  cost_class: info
+  in_basket: false
+  uninstantiated_reason: expected_baselines.yaml is empty in v0.
+

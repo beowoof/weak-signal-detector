@@ -1,0 +1,29 @@
+unconstrained_domains: [nytimes.com, washingtonpost.com, bbc.co.uk, theguardian.com, reuters.com, apnews.com]
+cameo_talk_root_codes: ["01", "02", "04", "13"]
+periods:
+  DEU-2018-quiet:
+    cluster_fips: [GM]
+    talk_actor1: DEU
+    wiki_titles: [Bundesministerium der Verteidigung, Berlin, Bundeswehr]
+    fred_series: DEXUSEU
+  USA-CHN-2018-trade:
+    cluster_fips: [US, CH]
+    talk_actor1: USA
+    wiki_titles: [United States Department of Defense, The Pentagon, "Ministry of National Defense of the People's Republic of China"]
+    fred_series: DEXCHUS
+  GRC-TUR-2020:
+    cluster_fips: [GR, TU]
+    talk_actor1: GRC
+    wiki_titles: [Hellenic Ministry of National Defence, Athens, Turkish Armed Forces]
+    fred_series: DEXUSEU
+  RUS-2021-apr:
+    cluster_fips: [RS, UP]
+    talk_actor1: RUS
+    wiki_titles: [Ministry of Defence (Russia), Moscow, Kremlin, Ukraine, Kyiv]
+    fred_series:
+  RUS-2022:
+    cluster_fips: [RS, UP]
+    talk_actor1: RUS
+    wiki_titles: [Ministry of Defence (Russia), Moscow, Kremlin, Ukraine, Kyiv]
+    fred_series:
+
