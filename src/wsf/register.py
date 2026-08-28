@@ -6,7 +6,7 @@ from typing import Any
 from pydantic import TypeAdapter
 
 from wsf.protocol import SCIENTIFIC_CONFIG_FILES, load_yaml, scientific_config_hashes
-from wsf.types import Family, IndicatorSpec, IndicatorStatus, PeriodWindow
+from wsf.types import CausalDomain, Family, IndicatorSpec, IndicatorStatus, PeriodWindow
 
 
 def _require_mapping(value: Any, name: str) -> dict[str, Any]:
@@ -30,6 +30,11 @@ def validate_configuration(config_dir: Path) -> dict[str, Any]:
     if missing_families:
         missing = ", ".join(sorted(family.value for family in missing_families))
         raise ValueError(f"indicator register is missing families: {missing}")
+    present_domains = {item.causal_domain for item in indicators if item.causal_domain}
+    missing_domains = set(CausalDomain) - present_domains
+    if missing_domains:
+        missing = ", ".join(sorted(domain.value for domain in missing_domains))
+        raise ValueError(f"indicator register is missing causal domains: {missing}")
 
     expected_baselines = load_yaml(config_dir / "expected_baselines.yaml") or []
     if not isinstance(expected_baselines, list):
@@ -70,6 +75,10 @@ def validate_configuration(config_dir: Path) -> dict[str, Any]:
         raise ValueError("covar_short_min_n cannot exceed covar_short_days")
     if protocol.get("viirs_availability_regime") != "reconstructed_assumed_latency":
         raise ValueError("v0 requires the declared VIIRS reconstruction regime")
+    if protocol.get("k_distinct_causal_domains") is not True:
+        raise ValueError("v1 requires coincidence across causal domains")
+    if int(protocol.get("k_domains") or 0) < int(protocol.get("k") or 0):
+        raise ValueError("k_domains must be at least k")
 
     interpretation = _require_mapping(
         load_yaml(config_dir / "interpretation_protocol.yaml"), "interpretation_protocol"

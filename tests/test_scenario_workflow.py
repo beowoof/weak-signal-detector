@@ -83,7 +83,7 @@ def test_no_go_missing_file_can_drive_focused_recollection(tmp_path: Path) -> No
     )
     manifest_path = collection_dir / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    manifest["items"][0]["coverage"] = 0.25
+    manifest["items"][0]["provenance_complete"] = False
     manifest_path.write_text(
         json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
@@ -111,6 +111,25 @@ def test_no_go_missing_file_can_drive_focused_recollection(tmp_path: Path) -> No
     assert second_review["decision"] == "go_candidate_rehearsal"
     history = (scenario_dir / "history.jsonl").read_text(encoding="utf-8")
     assert history.count("corpus_collected") == 2
+
+
+def test_coverage_holes_are_warnings_not_no_go(tmp_path: Path) -> None:
+    _complete_scenario(tmp_path)
+    collection_dir, _ = collect_corpus(tmp_path, "ukraine2022", mock=True)
+    manifest_path = collection_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for item in manifest["items"]:
+        if item["source"] == "viirs":
+            item["coverage"] = 0.25
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    _, review = review_corpus(tmp_path, "ukraine2022", mock_model=True)
+    assert review["decision"] == "go_candidate_rehearsal"
+    warnings = review["deterministic"]["warning_gaps"]
+    assert any(item["gap_id"].startswith("coverage_below_threshold:viirs") for item in warnings)
+    assert review["deterministic"]["critical_gaps"] == []
 
 
 def test_review_refuses_scenario_changed_after_collection(tmp_path: Path) -> None:

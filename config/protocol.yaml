@@ -5,8 +5,10 @@ z_threshold: 2.5
 z_sigma_ddof: 0
 k: 3
 k_costly: 1
-k_distinct_families: true
+k_distinct_families: false
 k_distinct_source_systems: true
+k_distinct_causal_domains: true
+k_domains: 3
 detection_horizon_days: 30
 persistence_days: 3
 logistic: false
@@ -25,8 +27,12 @@ aggregation:
   viirs: mean_of_aoi_means
   viirs_min_valid_aois: 2
   gdelt: daily_row_count
+  sar: mean_of_aoi_mean_vv_db
+  sar_orbit_direction: ASCENDING
+  sar_acquisition_mode: IW
 freshness:
   gdelt: {cadence: daily, expected_lag_days: 0, max_age_days: 0}
   wikipedia: {cadence: daily, expected_lag_days: 1, max_age_days: 0}
   viirs: {cadence: daily, expected_lag_days: 3, max_age_days: 0}
   fred: {cadence: fed_h10_print_days, expected_lag_days: 0, max_age_days: 0}
+  sar: {cadence: sentinel1_revisit, expected_lag_days: 1, max_age_days: 0}

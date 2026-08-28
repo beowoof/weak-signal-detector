@@ -1,15 +1,17 @@
 {
   "actors": {
-    "counterparts": [],
-    "focal": null
+    "counterparts": [
+      "UKR"
+    ],
+    "focal": "RUS"
   },
   "controls": [
     {
-      "end": null,
+      "end": "2021-02-24",
       "id": "same-period-prior-year",
       "lookback_days": 120,
-      "selection_reason": "",
-      "start": null,
+      "selection_reason": "Same seasonal 21-day window in the prior year without the target event.",
+      "start": "2021-02-04",
       "target_end": null,
       "target_start": null
     }
@@ -26,13 +28,13 @@
     "require_complete_provenance": true
   },
   "incident": {
-    "end": null,
+    "end": "2022-02-23",
     "id": "incident",
     "lookback_days": 120,
-    "selection_reason": "",
-    "start": null,
-    "target_end": null,
-    "target_start": null
+    "selection_reason": "Twenty-one days immediately before the declared target event.",
+    "start": "2022-02-03",
+    "target_end": "2022-03-02",
+    "target_start": "2022-02-24"
   },
   "interpretation": {
     "enabled": true,
@@ -41,16 +43,20 @@
   },
   "purpose": "development_showcase",
   "queries": {
-    "cameo_actor": null,
+    "cameo_actor": "RUS",
     "cameo_root_codes": [
       "01",
       "02",
       "04",
       "13"
     ],
-    "facility_actor": null,
+    "facility_actor": "RUS",
     "fred_series": null,
-    "wiki_titles": []
+    "wiki_titles": [
+      "Russia",
+      "Ukraine",
+      "Russian Armed Forces"
+    ]
   },
   "research_question": "Do correlated weak public signals add information to strategic-intent triage?",
   "scenario_id": "ukraine2022",
@@ -59,11 +65,41 @@
     "alfred": {
       "enabled": true
     },
+    "brent": {
+      "enabled": false
+    },
+    "ct": {
+      "enabled": true
+    },
+    "firms": {
+      "enabled": true
+    },
     "gdelt": {
       "enabled": true
     },
+    "icews": {
+      "enabled": true
+    },
+    "moex": {
+      "enabled": true
+    },
+    "official": {
+      "enabled": true
+    },
+    "osm": {
+      "enabled": false
+    },
+    "ripe": {
+      "enabled": true
+    },
+    "sar": {
+      "enabled": false
+    },
     "viirs": {
       "enabled": true
+    },
+    "wiki_edits": {
+      "enabled": false
     },
     "wikipedia": {
       "enabled": true

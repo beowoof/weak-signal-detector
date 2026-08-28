@@ -19,6 +19,11 @@ dev = [
   "pytest>=8,<9",
   "ruff>=0.12,<1",
 ]
+viirs = [
+  "earthaccess>=0.11,<1",
+  "h5py>=3.11,<4",
+  "numpy>=2,<3",
+]
 
 [project.scripts]
 wsd = "wsf.cli:app"

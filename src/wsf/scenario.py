@@ -111,7 +111,25 @@ def create_scenario(project_root: Path, scenario_id: str) -> Path:
         actors=ActorConfig(),
         incident=WindowConfig(id="incident"),
         controls=[WindowConfig(id="same-period-prior-year")],
-        sources={source: SourceConfig() for source in ("gdelt", "wikipedia", "alfred", "viirs")},
+        sources={
+            source: SourceConfig(enabled=source not in {"wiki_edits", "osm", "brent", "sar"})
+            for source in (
+                "gdelt",
+                "wikipedia",
+                "alfred",
+                "viirs",
+                "moex",
+                "firms",
+                "ripe",
+                "official",
+                "ct",
+                "icews",
+                "sar",
+                "wiki_edits",
+                "osm",
+                "brent",
+            )
+        },
         queries=QueryConfig(),
         corpus_gates=CorpusGates(
             forbidden_outcome_terms=["full-scale invasion", "2022 russian invasion of ukraine"]

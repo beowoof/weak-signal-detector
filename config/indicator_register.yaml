@@ -1,6 +1,6 @@
 - id: tempo.viirs_aoi
   family: facility_tempo
-  hypothesis: Night-time activity rises at focal government and logistics AOIs during preparation.
+  hypothesis: Night-time lights at frozen AOIs become unusual relative to their own history.
   status: instantiated
   cost_class: costly
   polarity: high_unusual
@@ -8,7 +8,24 @@
   source_system: viirs_c2
   connector: viirs
   series_id: tempo.viirs_aoi
-  notes: Retrospectively reconstructed Collection 2 under an assumed-latency regime.
+  causal_domain: physical_activity
+  collector: NASA satellite
+  subject_controls_signal: "no"
+  notes: Retrospectively reconstructed Collection 2. Asks whether the place is unusually bright, not what is there.
+- id: tempo.s1_backscatter
+  family: facility_tempo
+  hypothesis: Sentinel-1 IW VV backscatter at frozen AOIs becomes unusual relative to comparable historical passes.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: copernicus_s1
+  connector: sar
+  series_id: tempo.s1_backscatter
+  causal_domain: physical_activity
+  collector: ESA satellite
+  subject_controls_signal: "no"
+  notes: Mean AOI backscatter (dB) on frozen ascending IW passes via the CDSE Statistical API. Not equipment detection.
 - id: press.gdelt_gap
   family: coverage_asymmetry
   hypothesis: Unconstrained coverage rises while a declared constrained baseline does not.
@@ -26,6 +43,10 @@
   source_system: gdelt_events
   connector: gdelt
   series_id: talk.gdelt_cameo
+  causal_domain: information
+  collector: global media
+  subject_controls_signal: partly
+  notes: Shares the public-reporting substrate with ICEWS; independent coding, not an independent causal domain.
 - id: talk_vs_motion.residual
   family: cheap_talk_vs_costly_motion
   hypothesis: Costly motion diverges from cheap talk.
@@ -34,16 +55,25 @@
   polarity: high_unusual
   in_basket: false
   series_id: talk_vs_motion.residual
-  computed_from: [tempo.viirs_aoi, talk.gdelt_cameo]
+  computed_from: [tempo.viirs_aoi, tempo.s1_backscatter, talk.gdelt_cameo]
 - id: fusion.domain_covar
   family: cross_domain_covariance
-  hypothesis: Normally weakly related domains begin to co-move.
+  hypothesis: Normally weakly related causal domains begin to co-move.
   status: derived
   cost_class: info
   polarity: high_unusual
   in_basket: false
   series_id: fusion.domain_covar
-  computed_from: [tempo.viirs_aoi, talk.gdelt_cameo, attn.wiki_pageviews]
+  computed_from:
+    - tempo.viirs_aoi
+    - tempo.s1_backscatter
+    - tempo.firms_thermal
+    - talk.gdelt_cameo
+    - attn.wiki_pageviews
+    - official.gazette
+    - official.ct_certs
+    - net.ripe_prefixes
+    - dyad.moex_usdrub
 - id: dyad.fx
   family: dyadic_counterpart
   hypothesis: Counterpart-recognition market movement becomes unusual.
@@ -54,13 +84,134 @@
   source_system: alfred
   connector: fred
   series_id: dyad.fx
+  causal_domain: market
+  collector: market participants
+  subject_controls_signal: partly
+- id: dyad.moex_usdrub
+  family: dyadic_counterpart
+  hypothesis: MOEX USD/RUB close becomes unusual.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: true
+  source_system: moex
+  connector: moex
+  series_id: dyad.moex_usdrub
+  causal_domain: market
+  collector: market participants
+  subject_controls_signal: partly
+- id: tempo.firms_thermal
+  family: facility_tempo
+  hypothesis: Thermal detections at frozen AOIs become unusual relative to their own baseline.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: nasa_firms
+  connector: firms
+  series_id: tempo.firms_thermal
+  causal_domain: physical_activity
+  collector: NASA satellite
+  subject_controls_signal: "no"
+  notes: NOAA-20 VIIRS SP AOI anomaly count, not a military-thermal classifier. SNPP FIRMS ceases 2026-11-01; NOAA-21 is too new for 2022 windows. Agriculture, industry, wildfire, and seasonal heating remain in the noise.
 - id: official.gazette
   family: official_residue
-  hypothesis: Official administrative residue rises during preparation.
-  status: uninstantiated
+  hypothesis: Official publication cadence on frozen hosts becomes unusual.
+  status: instantiated
   cost_class: info
+  polarity: high_unusual
+  in_basket: true
+  source_system: internet_archive
+  connector: official
+  series_id: official.gazette
+  causal_domain: bureaucratic
+  collector: focal state
+  subject_controls_signal: "yes"
+  notes: Bureaucratic tempo (capture count), not document semantics. Timing-distribution features are later.
+- id: official.ct_certs
+  family: official_residue
+  hypothesis: New TLS certificates on a frozen ex-ante domain list become unusual relative to trailing baseline.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: true
+  source_system: certificate_transparency
+  connector: ct
+  series_id: official.ct_certs
+  causal_domain: digital_infrastructure
+  collector: global CT
+  subject_controls_signal: partly
+  notes: Count on frozen domains. Do not inspect names retrospectively and decide which look military.
+- id: net.ripe_prefixes
+  family: official_residue
+  hypothesis: Announced prefix counts for frozen ASNs become unusual relative to the actor's own routing history.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: true
+  source_system: ripe_ris
+  connector: ripe
+  series_id: net.ripe_prefixes
+  causal_domain: digital_infrastructure
+  collector: routing system
+  subject_controls_signal: partly
+  notes: Unusualness versus own history, not an inference of cyber operations.
+- id: attn.wiki_edits
+  family: attention_without_admission
+  hypothesis: Editor activity on frozen titles becomes unusual.
+  status: instantiated
+  cost_class: soft
+  polarity: high_unusual
   in_basket: false
-  uninstantiated_reason: No frozen cross-actor daily public feed in v0.
+  source_system: wikipedia
+  connector: wiki_edits
+  series_id: attn.wiki_edits
+  causal_domain: public_attention
+  collector: public
+  subject_controls_signal: "no"
+  notes: Demoted from the v1 basket; largely a second Wikipedia attention channel.
+- id: attn.osm_changesets
+  family: attention_without_admission
+  hypothesis: OSM changeset volume in focal AOIs becomes unusual.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: false
+  source_system: osm
+  connector: osm
+  series_id: attn.osm_changesets
+  causal_domain: public_attention
+  collector: public
+  subject_controls_signal: "no"
+  notes: Public attention, not physical activity. Conflict itself causes map editing. Out of v1 unless nearly free later.
+- id: talk.icews_cameo
+  family: cheap_talk_vs_costly_motion
+  hypothesis: ICEWS coded talk by the focal actor becomes unusually elevated.
+  status: instantiated
+  cost_class: soft
+  polarity: high_unusual
+  in_basket: true
+  source_system: icews
+  connector: icews
+  series_id: talk.icews_cameo
+  causal_domain: information
+  collector: media-derived
+  subject_controls_signal: partly
+  notes: Independent measurement of overlapping public reporting with GDELT. Useful robustness; must not double-vote the information domain.
+- id: info.brent
+  family: dyadic_counterpart
+  hypothesis: Brent crude becomes unusual as a global confounder.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: false
+  source_system: alfred
+  connector: brent
+  series_id: info.brent
+  causal_domain: market
+  collector: market participants
+  subject_controls_signal: partly
+  notes: Optional confounder, not a v1 panel vote. Availability varies; do not treat as an actor-specific mechanism.
 - id: attn.wiki_pageviews
   family: attention_without_admission
   hypothesis: Attention to frozen actor and institution titles becomes unusual.
@@ -71,6 +222,20 @@
   source_system: wikipedia
   connector: wikipedia
   series_id: attn.wiki_pageviews
+  causal_domain: public_attention
+  collector: public
+  subject_controls_signal: "no"
+- id: mobility.opensky
+  family: facility_tempo
+  hypothesis: Nighttime aviation activity around frozen AOIs becomes unusual relative to itself.
+  status: uninstantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: false
+  causal_domain: mobility
+  collector: distributed ADS-B
+  subject_controls_signal: partly
+  uninstantiated_reason: OpenSky full history is free through Trino to university-affiliated researchers after application. KCL MA access is being pursued in parallel. Do not scrape the public API for bulk history, and do not classify military airlift.
 - id: absence.declared_expected_event
   family: absence_as_absence
   hypothesis: A specifically expected public event is absent while its source remains healthy.
@@ -78,4 +243,3 @@
   cost_class: info
   in_basket: false
   uninstantiated_reason: expected_baselines.yaml is empty in v0.
-

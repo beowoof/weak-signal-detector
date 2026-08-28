@@ -32,6 +32,22 @@ class CostClass(StrEnum):
     info = "info"
 
 
+class CausalDomain(StrEnum):
+    physical_activity = "physical_activity"
+    mobility = "mobility"
+    bureaucratic = "bureaucratic"
+    information = "information"
+    public_attention = "public_attention"
+    market = "market"
+    digital_infrastructure = "digital_infrastructure"
+
+
+class SubjectControl(StrEnum):
+    no = "no"
+    partly = "partly"
+    yes = "yes"
+
+
 class Polarity(StrEnum):
     high_unusual = "high_unusual"
     low_unusual = "low_unusual"
@@ -52,6 +68,9 @@ class IndicatorSpec(BaseModel):
     computed_from: list[str] = Field(default_factory=list)
     uninstantiated_reason: str | None = None
     expected_baseline_id: str | None = None
+    causal_domain: CausalDomain | None = None
+    collector: str | None = None
+    subject_controls_signal: SubjectControl | None = None
     notes: str = ""
 
     @model_validator(mode="after")
@@ -61,6 +80,12 @@ class IndicatorSpec(BaseModel):
                 raise ValueError(
                     f"{self.id}: instantiated requires connector, series_id, source_system"
                 )
+            if self.causal_domain is None or not self.collector:
+                raise ValueError(
+                    f"{self.id}: instantiated requires causal_domain and collector"
+                )
+            if self.subject_controls_signal is None:
+                raise ValueError(f"{self.id}: instantiated requires subject_controls_signal")
             if self.family is Family.absence_as_absence and not self.expected_baseline_id:
                 raise ValueError(f"{self.id}: absence requires expected_baseline_id")
         elif self.status is IndicatorStatus.derived:
@@ -148,4 +173,5 @@ class Alert(BaseModel):
     n_costly_flagged: int
     contributing_families: list[str]
     contributing_source_systems: list[str]
+    contributing_causal_domains: list[str] = Field(default_factory=list)
     contributing_series: list[str]

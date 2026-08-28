@@ -50,6 +50,28 @@ def test_current_is_excluded_from_population_baseline() -> None:
     assert feature.flagged is True
 
 
+def test_missing_quality_is_unknown_not_normal_or_silent() -> None:
+    rows, current_day = baseline_and_current()
+    cloudy = observation(current_day, 0.0)
+    cloudy.quality = "missing"
+    cloudy.value = None
+    rows[-1] = cloudy
+    feature = build_feature(
+        rows,
+        period_id="fixture-period",
+        series_id="fixture.series",
+        cutoff_day=current_day,
+        expected_lag_days=0,
+        window_days=90,
+        n_min=20,
+        threshold=2.5,
+    )
+    assert feature.missing is True
+    assert feature.silence is False
+    assert feature.flagged is False
+    assert feature.z is None
+
+
 def test_insufficient_baseline_is_missing_and_never_flags() -> None:
     rows, current_day = baseline_and_current()
     feature = build_feature(

@@ -8,7 +8,9 @@ from typing import Any
 
 import typer
 
-from wsf.corpus import collect_corpus
+from wsf.corpus import collect_corpus, connector_readiness
+from wsf.measure import measure_scenario
+from wsf.progress import Progress
 from wsf.register import validate_configuration
 from wsf.review import review_corpus
 from wsf.run import ensure_manifest
@@ -48,7 +50,9 @@ def _operator_errors() -> Iterator[None]:
 @app.command()
 def doctor() -> None:
     """Validate offline configuration contracts without network or model calls."""
-    _echo(validate_configuration(_root() / "config"))
+    result = validate_configuration(_root() / "config")
+    result["connectors"] = connector_readiness(_root())
+    _echo(result)
 
 
 @app.command("init-run")
@@ -122,12 +126,24 @@ def corpus_collect(
     mock: bool = typer.Option(
         False, help="Create synthetic engineering data; never scientific evidence."
     ),
+    only: str | None = typer.Option(
+        None,
+        help="Comma-separated source ids to collect (wikipedia,gdelt,alfred,viirs).",
+    ),
     run_id: str | None = typer.Option(None, help="Explicit collection run id."),
+    quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
 ) -> None:
     """Collect a new corpus revision, optionally focused on declared gaps."""
+    selected = [item.strip() for item in only.split(",")] if only else None
     with _operator_errors():
         directory, manifest = collect_corpus(
-            _root(), scenario, focus_path=focus, mock=mock, run_id=run_id
+            _root(),
+            scenario,
+            focus_path=focus,
+            mock=mock,
+            run_id=run_id,
+            only=selected,
+            progress=Progress(enabled=not quiet),
         )
     _echo(
         {
@@ -146,10 +162,17 @@ def corpus_review(
         False, help="Create a fake semantic response for rehearsal; does not call Ollama."
     ),
     run_id: str | None = typer.Option(None, help="Explicit review run id."),
+    quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
 ) -> None:
     """Run deterministic gates and prepare or mock the semantic balance review."""
     with _operator_errors():
-        directory, result = review_corpus(_root(), scenario, mock_model=mock_model, run_id=run_id)
+        directory, result = review_corpus(
+            _root(),
+            scenario,
+            mock_model=mock_model,
+            run_id=run_id,
+            progress=Progress(enabled=not quiet),
+        )
     _echo(
         {
             "scenario": scenario,
@@ -157,6 +180,32 @@ def corpus_review(
             "decision": result["decision"],
             "directory": str(directory),
             "missing": str(directory / "missing.json"),
+        }
+    )
+
+
+@app.command()
+def measure(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    run_id: str | None = typer.Option(None, help="Explicit measurement run id."),
+    quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
+) -> None:
+    """Score the active live harvest. Missing nights are unknown, not quiet."""
+    with _operator_errors():
+        directory, summary = measure_scenario(
+            _root(),
+            scenario,
+            run_id=run_id,
+            progress=Progress(enabled=not quiet),
+        )
+    _echo(
+        {
+            "scenario": scenario,
+            "measure_id": summary["measure_id"],
+            "directory": str(directory),
+            "protocol_alerts": len(summary["protocol_alerts"]),
+            "exploratory_alerts": len(summary["exploratory_alerts"]),
+            "verdict_counts": summary["verdict_counts"],
         }
     )
 
