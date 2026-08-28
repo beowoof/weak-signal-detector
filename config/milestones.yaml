@@ -1,0 +1,13 @@
+RUS-2021-apr:
+  target_start: 2021-03-25
+  target_end: 2021-04-08
+  provenance:
+    - citation: ISW Russia Team, April 2021 assessments of the spring buildup
+      url: https://www.understandingwar.org
+RUS-2022:
+  target_start: 2022-02-10
+  target_end: 2022-02-24
+  provenance:
+    - citation: UN Security Council public record of the 24 February 2022 invasion
+      url: https://press.un.org/en/2022/sc14803.doc.htm
+

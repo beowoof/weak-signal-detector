@@ -1,0 +1,29 @@
+generation:
+  rule: capital + large_airport + mod_hq
+  max_aois_per_focal: 3
+actors:
+  DEU:
+    timezone: Europe/Berlin
+    aois:
+      - {id: DEU-capital, kind: capital, bbox: [13.35, 52.50, 13.45, 52.53]}
+      - {id: DEU-airport, kind: civil_airport, icao: EDDB, bbox: [13.48, 52.35, 13.55, 52.39]}
+      - {id: DEU-mod, kind: mod_hq, bbox: [7.10, 50.698, 7.155, 50.735]}
+  USA:
+    timezone: America/New_York
+    aois:
+      - {id: USA-capital, kind: capital, bbox: [-77.06, 38.87, -77.00, 38.90]}
+      - {id: USA-airport, kind: civil_airport, icao: KDCA, bbox: [-77.06, 38.84, -77.03, 38.86]}
+      - {id: USA-mod, kind: mod_hq, bbox: [-77.07, 38.86, -77.04, 38.88]}
+  GRC:
+    timezone: Europe/Athens
+    aois:
+      - {id: GRC-capital, kind: capital, bbox: [23.73, 37.97, 23.74, 37.98]}
+      - {id: GRC-airport, kind: civil_airport, icao: LGAV, bbox: [23.92, 37.92, 23.97, 37.95]}
+      - {id: GRC-mod, kind: mod_hq, bbox: [23.78, 37.99, 23.81, 38.01]}
+  RUS:
+    timezone: Europe/Moscow
+    aois:
+      - {id: RUS-capital, kind: capital, bbox: [37.60, 55.74, 37.63, 55.76]}
+      - {id: RUS-airport, kind: civil_airport, icao: UUEE, bbox: [37.39, 55.96, 37.44, 55.99]}
+      - {id: RUS-mod, kind: mod_hq, bbox: [37.58, 55.73, 37.60, 55.74]}
+

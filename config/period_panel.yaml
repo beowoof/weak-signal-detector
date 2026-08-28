@@ -1,0 +1,50 @@
+- id: DEU-2018-quiet
+  focal_actor: DEU
+  period_class: quiet
+  split: development
+  start: 2018-01-01
+  end: 2018-12-31
+  lookback_start: 2017-09-03
+  query_id: DEU-2018-quiet
+  notes: Long quiet baseline.
+- id: USA-CHN-2018-trade
+  focal_actor: USA
+  counterpart_actor: CHN
+  period_class: high_tension_non_mobilisation
+  split: development
+  start: 2018-03-01
+  end: 2018-12-31
+  lookback_start: 2017-11-01
+  query_id: USA-CHN-2018-trade
+  notes: Loud cheap-talk development hard negative.
+- id: RUS-2021-apr
+  focal_actor: RUS
+  counterpart_actor: UKR
+  period_class: mobilisation_reversed
+  split: development
+  start: 2021-03-01
+  end: 2021-05-31
+  lookback_start: 2020-11-01
+  query_id: RUS-2021-apr
+  notes: Development mobilisation-positive window.
+- id: GRC-TUR-2020
+  focal_actor: GRC
+  counterpart_actor: TUR
+  period_class: high_tension_non_mobilisation
+  split: held_out
+  start: 2020-07-01
+  end: 2020-09-30
+  lookback_start: 2020-03-03
+  query_id: GRC-TUR-2020
+  notes: Held-out hard negative.
+- id: RUS-2022
+  focal_actor: RUS
+  counterpart_actor: UKR
+  period_class: overt_action
+  split: held_out
+  start: 2021-10-01
+  end: 2022-02-24
+  lookback_start: 2021-06-03
+  query_id: RUS-2022
+  notes: Held-out positive; score once after freeze.
+

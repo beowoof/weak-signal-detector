@@ -1,0 +1,15 @@
+status: draft
+purpose: Record accepted and rejected corpus candidates, provenance, split assignment, and AI assistance before outcome-bearing signal plots.
+selection_policy:
+  target: mobilisation_or_costly_activation
+  split_before_signal_inspection: true
+  known_historical_outcome_allowed_for_labels: true
+  observed_indicator_behaviour_allowed_for_selection: false
+periods:
+  - {id: DEU-2018-quiet, decision: accepted, split: development}
+  - {id: USA-CHN-2018-trade, decision: accepted, split: development}
+  - {id: RUS-2021-apr, decision: accepted, split: development}
+  - {id: GRC-TUR-2020, decision: accepted, split: held_out}
+  - {id: RUS-2022, decision: accepted, split: held_out}
+provenance_status: incomplete_until_pr0
+
