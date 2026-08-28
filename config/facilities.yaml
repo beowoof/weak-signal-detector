@@ -23,7 +23,9 @@ actors:
   RUS:
     timezone: Europe/Moscow
     aois:
-      - {id: RUS-capital, kind: capital, bbox: [37.60, 55.74, 37.63, 55.76]}
-      - {id: RUS-airport, kind: civil_airport, icao: UUEE, bbox: [37.39, 55.96, 37.44, 55.99]}
-      - {id: RUS-mod, kind: mod_hq, bbox: [37.58, 55.73, 37.60, 55.74]}
+      # Kitay-gorod / Kremlin east; kept disjoint from MoD.
+      - {id: RUS-capital, kind: capital, bbox: [37.61, 55.745, 37.68, 55.78]}
+      - {id: RUS-airport, kind: civil_airport, icao: UUEE, bbox: [37.35, 55.94, 37.48, 56.02]}
+      # Znamenka / Arbat west-south of the Kremlin; not a single-block postage stamp.
+      - {id: RUS-mod, kind: mod_hq, bbox: [37.54, 55.715, 37.60, 55.745]}
 

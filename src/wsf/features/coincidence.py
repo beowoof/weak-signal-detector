@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import date, timedelta
 
-from wsf.types import Alert, CostClass, Family
+from wsf.types import Alert, CausalDomain, CostClass, Family
 
 
 @dataclass(frozen=True)
@@ -15,6 +15,7 @@ class FlaggedSeries:
     family: Family
     source_system: str
     cost_class: CostClass
+    causal_domain: CausalDomain
 
 
 @dataclass(frozen=True)
@@ -29,6 +30,9 @@ def basket_day(
     *,
     k: int,
     k_costly: int,
+    k_domains: int | None = None,
+    require_distinct_families: bool = False,
+    require_distinct_sources: bool = True,
 ) -> BasketDay | None:
     unique = {flag.series_id: flag for flag in flags}
     values = tuple(sorted(unique.values(), key=lambda item: item.series_id))
@@ -40,9 +44,12 @@ def basket_day(
         raise ValueError("basket_day requires flags from one period and date")
     if len(values) < k:
         return None
-    if len({item.family for item in values}) < k:
+    domain_k = k if k_domains is None else k_domains
+    if len({item.causal_domain for item in values}) < domain_k:
         return None
-    if len({item.source_system for item in values}) < k:
+    if require_distinct_families and len({item.family for item in values}) < k:
+        return None
+    if require_distinct_sources and len({item.source_system for item in values}) < k:
         return None
     if sum(item.cost_class is CostClass.costly for item in values) < k_costly:
         return None
@@ -89,6 +96,9 @@ def alerts_from_basket_days(
                 ),
                 contributing_families=sorted({flag.family.value for flag in flags.values()}),
                 contributing_source_systems=sorted({flag.source_system for flag in flags.values()}),
+                contributing_causal_domains=sorted(
+                    {flag.causal_domain.value for flag in flags.values()}
+                ),
                 contributing_series=sorted(flags),
             )
         )

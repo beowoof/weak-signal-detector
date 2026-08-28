@@ -4,13 +4,15 @@ Weak Signal Fusion is an evidence-first proof of concept for a narrow question:
 
 > When several individually weak public indicators become unusual together, do they provide useful incremental information for strategic-intent triage?
 
+The phenomenon under test is closer to **strategic coupling**: during costly state preparation, normally weakly coupled physical, bureaucratic, informational, economic, and infrastructural systems become temporarily more statistically dependent. That is why the panel is organised by *causal domain*, not by how many OSINT feeds we can collect. Three correlated newspaper-derived series are worse than six rubbish thermometers from different mechanisms. The interesting coincidence is not "VIIRS, SAR, and FIRMS all saw physical activity"; it is "physical activity, bureaucratic tempo, and digital infrastructure became unusual together."
+
 Strategic intent is not directly observable. The first layer therefore measures unusual mobilisation or costly activation with deterministic time-series rules. A later, separately scored interpretation layer will compare an explicit historical prior with the same prior plus cutoff-safe signal evidence.
 
 The intended output is initially headless: a reproducible alert episode, its contributing indicators, source health, provenance, and an evidence packet suitable for analyst review. A dashboard is contingent on the headless PoC passing its investment gate.
 
 ## Current status
 
-This repository is at the offline scenario-harness checkpoint. It contains:
+This repository is at the live-connector checkpoint. It contains:
 
 - a reduced five-window development/holdout panel;
 - nine versioned scientific configuration objects;
@@ -18,13 +20,14 @@ This repository is at the offline scenario-harness checkpoint. It contains:
 - canonical configuration hashing and immutable run manifests;
 - exact-event-date cutoff selection that cannot carry stale anomalies forward;
 - population-standard-deviation trailing z-scores with explicit polarity;
-- cross-family, cross-source, costly-gated coincidence and persistence episodes;
+- coincidence across causal domains and source systems, with a costly-signal gate and persistence;
 - synthetic fixtures and offline invariant tests;
 - a JSON scenario lifecycle: create, validate, collect, review, focused recollect, and freeze;
 - deterministic corpus gates and an explicit semantic-review queue;
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
-- no live connectors, full-panel build/evaluation/report pipeline, or model invocation yet.
+- live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, and Brent are implemented but out of the v1 basket; Sentinel-1 is implemented but disabled on `ukraine2022`; OpenSky credentials may be present but the Trino connector is not built; default tests remain offline;
+- `wsd measure` scores a live harvest (missing/cloudy = unknown threat); no full-panel evaluation/report pipeline or model invocation yet.
 
 The detailed design record is in `weak-signal-fusion-spec.md`. The literal operator workflow is in [`HOWTO.md`](HOWTO.md). This README is the operational source of truth and will be kept current as implementation proceeds.
 
@@ -47,10 +50,29 @@ ChromaDB is deferred. It becomes relevant only if the cited prior corpus grows l
 
 The project keeps two outputs separate:
 
-1. **Deterministic measurement:** trailing anomalies, cross-family/cross-source coincidence, a costly-signal gate, and persistence.
+1. **Deterministic measurement:** trailing anomalies, cross-domain coincidence, a costly-signal gate, and persistence.
 2. **AI interpretation:** four paired packet conditions—base-rate, prior-only, masked signals-only, and prior-plus-signals.
 
 The Ollama model never creates an observation, changes a feature, or changes an alert. Actor masking is an ablation, not the primary task. Historical behaviour remains available through explicit cutoff-safe, cited prior packets.
+
+v1 coincidence requires three distinct **causal domains** and three source systems, plus one costly series. GDELT and ICEWS are independent coders of overlapping public reporting; they cannot double-vote. VIIRS, Sentinel-1, and FIRMS are independent sensors of physical activity; they also cannot triple-vote.
+
+| Series | Domain | In v1 basket? |
+|---|---|---|
+| VIIRS NTL | physical activity | yes |
+| Sentinel-1 backscatter | physical activity | register yes; **off** on `ukraine2022` |
+| FIRMS thermal (NOAA-20) | physical activity | yes |
+| OpenSky ADS-B | mobility | no (credentials optional; connector not built) |
+| Official publication cadence | bureaucratic | yes |
+| GDELT CAMEO | information | yes |
+| ICEWS | information | yes (robustness, not a second domain) |
+| Wikipedia pageviews | public attention | yes |
+| OSM edits | public attention | no |
+| Wikipedia edits | public attention | no |
+| MOEX FX | market | yes |
+| Brent | market | no |
+| Certificate Transparency | digital infrastructure | yes |
+| RIPEstat BGP prefixes | digital infrastructure | yes |
 
 `qwen3.8:27b-mlx` is local and token-costless but relatively slow. The planned harness therefore uses bounded output, warm serial batches, five repeated runs, native Ollama timing counters, checkpointing, and resume. Codex will implement and test that harness with mocks but will not invoke the model.
 
@@ -83,8 +105,15 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 
 | Variable | Purpose | Required now? |
 |---|---|---|
-| `FRED_API_KEY` | Live FRED/ALFRED vintages | Later, for PR0 live qualification |
-| `EARTHDATA_TOKEN` | Live NASA VIIRS granules | Later, for PR0 live qualification |
+| `FRED_API_KEY` | Live FRED/ALFRED vintages | Yes, when `fred_series` is not null |
+| `EARTHDATA_TOKEN` | Live NASA VIIRS granules | Yes, for live VIIRS collection |
+| `FIRMS_MAP_KEY` | NASA FIRMS area API (quota 5000 txn / 10 min) | Yes, for live FIRMS |
+| `FIRMS_SENSOR` | FIRMS product id, default `VIIRS_NOAA20_SP` | No; SNPP ceases 2026-11-01 |
+| `COPERNICUS_CLIENT_ID` | Copernicus Data Space OAuth client | No unless Sentinel-1 is enabled |
+| `COPERNICUS_CLIENT_SECRET` | Copernicus Data Space OAuth secret | No unless Sentinel-1 is enabled |
+| `OPENSKY_TRINO_USER` | OpenSky website username | No; connector not built |
+| `OPENSKY_TRINO_PASSWORD` | OpenSky website password | No; connector not built |
+| `ICEWS_EVENTS_PATH` | Dataverse zip, directory, or `.tab` | Yes; `data/raw/icews/dataverse_files.zip` |
 | `GOOGLE_CLOUD_PROJECT` | Optional bounded GDELT BigQuery path | No; bulk GDELT is qualified first |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Optional path to Google ADC credentials | No |
 | `OLLAMA_BASE_URL` | Local Ollama API, default `http://localhost:11434` | Only for owner-run interpretation |
@@ -94,12 +123,14 @@ Google Cloud will not be configured or used without an explicit decision after t
 
 ## Scenario workflow
 
+Corpus review separates **broken collection** from **incomplete nights**. Provenance failures, post-cutoff material, outcome-encoded queries, and a source that never arrived are hard NO-GOs. Coverage holes (cloud, holidays, one-AOI nights) are warnings. The measurement layer already treats missing days as not flagged; a learning / covariance system should keep ingesting every source that is up, including future X, OSINT, and news metrics.
+
 The workflow is intentionally gated:
 
 ```text
-draft -> collected -> reviewed -> frozen -> measurement (future)
-             ^           |
-             +-- focused recollection after NO-GO
+draft -> collected -> reviewed -> frozen
+             ^           |            \
+             +-- focused recollection  +-> wsd measure (live harvest; not a scientific freeze)
 ```
 
 Create an incomplete scenario template, fill it in, and validate it:
@@ -109,14 +140,21 @@ Create an incomplete scenario template, fill it in, and validate it:
 .venv/bin/wsd scenario validate --scenario ukraine2022
 ```
 
-The current engineering-only path uses synthetic collection and a mocked semantic response:
+Rehearsal:
 
 ```bash
-.venv/bin/wsd corpus collect --scenario ukraine2022 --mock
-.venv/bin/wsd corpus review --scenario ukraine2022 --mock-model
+wsd corpus collect --scenario ukraine2022 --mock
+wsd corpus review --scenario ukraine2022 --mock-model
 ```
 
-Mocked output is always labelled rehearsal and cannot be frozen as real evidence. See [`HOWTO.md`](HOWTO.md) before operating the workflow.
+Live harvest of the declared scenario windows (no Ollama, no Google Cloud):
+
+```bash
+wsd corpus collect --scenario ukraine2022 --only wikipedia,alfred
+wsd corpus collect --scenario ukraine2022
+```
+
+VIIRS live harvest also needs `uv sync --extra viirs`. Mocked output is always labelled rehearsal and cannot be frozen as real evidence. Live harvests are still not frozen scientific results until deterministic gates and the owner-run semantic review both pass. See [`HOWTO.md`](HOWTO.md).
 
 ## Running a scenario experiment
 
@@ -133,7 +171,7 @@ It:
 3. writes `experiment_summary.json` and `experiment_summary.md` to `artifacts/<run-id>/`;
 4. prints the run ID and artifact directory for feedback.
 
-The current harness requires `--mock`; a live experiment path has not been implemented. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point.
+`--mock` remains the default rehearsal. Omit it for live collection. Live review still does not call Ollama; it stops at `model_pending` unless `--mock-model` is also set. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point.
 
 ## Running engineering tests
 
@@ -214,15 +252,18 @@ VIIRS Collection 2 is explicitly retrospectively reconstructed. v0 uses an assum
 
 ## Planned source qualification
 
-PR0 uses only development windows and checks:
+The current development harvest (`ukraine2022`) checks:
 
 - GDELT bulk acquisition cost and completeness before considering BigQuery;
 - Wikimedia complete-title aggregation;
-- ALFRED as-of levels and build-time returns;
+- ALFRED as-of levels (no-call dud for daily ruble);
 - VIIRS two-AOI minimum, cloud/quality/geometry artefacts, and coverage;
+- FIRMS NOAA-20 AOI thermal counts;
+- ICEWS talk counts from the local Dataverse zip;
+- MOEX, official-host cadence, CT, and RIPEstat as additional domain channels;
 - immutable provenance and reproducibility.
 
-No held-out source data is pulled before the measurement and interpretation protocols are frozen.
+`ukraine2022` is a development showcase, not held-out evidence. No held-out source data is scored as a scientific result before the measurement and interpretation protocols are frozen.
 
 ## Investment gate
 
@@ -251,7 +292,7 @@ A positive result justifies further human investment. It does not validate auton
 - Retrospective research only; no current operational alerting or targeting.
 - No live web search inside historical interpretation packets.
 - No LLM-generated observation or deterministic alert score.
-- No missingness interpreted as meaningful silence without a declared baseline.
+- No missingness interpreted as meaningful silence without a declared baseline. A cloudy VIIRS night is missing, not a reason to stop watching other sources.
 - No stale daily carry, post-hoc threshold tuning, AOI splitting into extra votes, or hidden source substitution.
 - No synthetic fixture reported as a scientific result.
 - No dashboard before the headless investment gate.
@@ -259,11 +300,11 @@ A positive result justifies further human investment. It does not validate auton
 ## Roadmap
 
 1. Offline contracts, run identity, fixtures, z-scores, and coincidence — complete.
-2. Scenario lifecycle, mocked corpus gates, review queue, and operator HOWTO — current checkpoint.
-3. Live source qualification and immutable corpus assembly on development scenarios.
+2. Scenario lifecycle, mocked corpus gates, review queue, and operator HOWTO — complete.
+3. Live connectors across causal domains (Wikipedia, GDELT, ICEWS zip, MOEX, VIIRS, FIRMS NOAA-20, official cadence, CT, RIPEstat) plus `wsd measure` — current checkpoint.
 4. Owner-run Ollama corpus-review worker with bounded, resumable batches.
-5. Full measurement, interpretation, and report pipeline.
+5. Lookback harvest, synchrony/permutation test, interpretation, and report pipeline.
 6. Frozen held-out measurement and interpretation.
-7. Broader corpus and analyst dashboard only after a positive investment decision.
+7. Broader corpus and analyst dashboard only after a positive investment decision. OpenSky Trino and Sentinel-1 stay out until explicitly opted in.
 
 See `CHANGELOG.md` for the enhancement history.

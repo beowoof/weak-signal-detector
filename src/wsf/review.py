@@ -6,6 +6,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from wsf.progress import SILENT, Progress
 from wsf.run import new_run_id, validate_run_id
 from wsf.scenario import (
     append_history,
@@ -23,7 +24,10 @@ def review_corpus(
     *,
     mock_model: bool = False,
     run_id: str | None = None,
+    progress: Progress | None = None,
 ) -> tuple[Path, dict[str, Any]]:
+    log = progress or SILENT
+    log.line(f"review {scenario_id} start")
     scenario = load_scenario(project_root, scenario_id)
     status = load_status(project_root, scenario_id)
     if status["phase"] == "frozen":
@@ -40,14 +44,19 @@ def review_corpus(
     review_id = validate_run_id(run_id or new_run_id("review"))
     directory = scenario_dir / "reviews" / review_id
     directory.mkdir(parents=True, exist_ok=False)
+    log.line(f"review {scenario_id} collection={collection_id} deterministic gates")
     gaps = _deterministic_gaps(scenario, collection)
+    critical = [item for item in gaps if item["severity"] == "critical"]
+    warnings = [item for item in gaps if item["severity"] != "critical"]
     deterministic = {
         "review_id": review_id,
         "scenario_id": scenario_id,
         "collection_id": collection_id,
         "created_at": datetime.now(UTC).isoformat(),
-        "hard_gate_pass": not gaps,
+        "hard_gate_pass": not critical,
         "gaps": gaps,
+        "critical_gaps": critical,
+        "warning_gaps": warnings,
     }
     _write_json(directory / "deterministic_review.json", deterministic)
 
@@ -66,9 +75,9 @@ def review_corpus(
     }
     _write_jsonl(directory / "model_queue.jsonl", [queue_item])
 
-    if gaps:
+    if critical:
         decision = "no_go"
-        semantic = {"status": "not_run_due_to_hard_gate", "critical_gaps": []}
+        semantic = {"status": "not_run_due_to_hard_gate", "critical_gaps": critical}
     elif mock_model:
         decision = "go_candidate_rehearsal"
         semantic = {
@@ -87,7 +96,8 @@ def review_corpus(
         "scenario_id": scenario_id,
         "collection_id": collection_id,
         "decision": decision,
-        "critical_gaps": gaps,
+        "critical_gaps": critical,
+        "warning_gaps": warnings,
     }
     result = {
         "review_id": review_id,
@@ -109,14 +119,46 @@ def review_corpus(
         "corpus_reviewed",
         {"review_id": review_id, "collection_id": collection_id, "decision": decision},
     )
+    log.line(
+        f"review {scenario_id} {review_id} decision={decision} "
+        f"critical={len(critical)} warnings={len(warnings)}"
+    )
     return directory, result
 
 
 def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[str, Any]]:
     gaps: list[dict[str, Any]] = []
     by_source: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    selected = set(collection.get("selected_sources") or [])
+    for source, config in scenario.sources.items():
+        if config.enabled and source not in selected and source not in {
+            item["source"] for item in collection["items"]
+        }:
+            gaps.append(
+                _gap(
+                    "missing_source",
+                    source,
+                    "all",
+                    f"enabled source {source} was not collected",
+                    "collect_enabled_source",
+                )
+            )
     for item in collection["items"]:
         by_source[item["source"]].append(item)
+        if item.get("not_applicable"):
+            continue
+        n_expected = item.get("n_expected") or 0
+        n_down = item.get("n_source_down") or 0
+        if n_expected and n_down >= n_expected:
+            gaps.append(
+                _gap(
+                    "source_unavailable",
+                    item["source"],
+                    item["window_id"],
+                    f"{item['source']} returned source_down for every expected day",
+                    "repair_connector_or_credentials",
+                )
+            )
         threshold = (
             scenario.corpus_gates.minimum_valid_viirs_fraction
             if item["source"] == "viirs"
@@ -128,8 +170,10 @@ def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[
                     "coverage_below_threshold",
                     item["source"],
                     item["window_id"],
-                    f"coverage {item['coverage']:.3f} is below {threshold:.3f}",
-                    "retry_missing_dates",
+                    f"coverage {item['coverage']:.3f} is below {threshold:.3f}; "
+                    "treat as missing nights, not a stop",
+                    "continue_with_available_sources",
+                    severity="warning",
                 )
             )
         if scenario.corpus_gates.require_complete_provenance and not item["provenance_complete"]:
@@ -170,8 +214,10 @@ def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[
                             "incident_control_coverage_imbalance",
                             source,
                             control["window_id"],
-                            f"coverage differs from incident by {difference:.3f} (> {maximum:.3f})",
-                            "balance_window_coverage",
+                            f"coverage differs from incident by {difference:.3f} "
+                            f"(> {maximum:.3f}); recorded, not blocking",
+                            "continue_with_available_sources",
+                            severity="warning",
                         )
                     )
 
@@ -196,10 +242,12 @@ def _gap(
     window_id: str,
     reason: str,
     requested_action: str,
+    *,
+    severity: str = "critical",
 ) -> dict[str, Any]:
     return {
         "gap_id": f"{gap_type}:{source}:{window_id}",
-        "severity": "critical",
+        "severity": severity,
         "source": source,
         "window_id": window_id,
         "reason": reason,
@@ -208,17 +256,23 @@ def _gap(
 
 
 def _review_markdown(result: dict[str, Any]) -> str:
-    gaps = result["deterministic"]["gaps"]
-    gap_lines = "\n".join(f"- {item['gap_id']}: {item['reason']}" for item in gaps)
-    if not gap_lines:
-        gap_lines = "- None"
+    deterministic = result["deterministic"]
+    critical = deterministic.get("critical_gaps") or []
+    warnings = deterministic.get("warning_gaps") or []
     return (
         f"# Corpus review {result['review_id']}\n\n"
         f"- Scenario: `{result['scenario_id']}`\n"
         f"- Collection: `{result['collection_id']}`\n"
         f"- Decision: **{result['decision']}**\n\n"
-        f"## Critical gaps\n\n{gap_lines}\n"
+        f"## Critical gaps\n\n{_bullet(critical)}\n\n"
+        f"## Warnings (missingness is not a stop)\n\n{_bullet(warnings)}\n"
     )
+
+
+def _bullet(gaps: list[dict[str, Any]]) -> str:
+    if not gaps:
+        return "- None"
+    return "\n".join(f"- {item['gap_id']}: {item['reason']}" for item in gaps)
 
 
 def _write_json(path: Path, value: Any) -> None:

@@ -8,3 +8,13 @@ __pycache__/
 *.py[cod]
 artifacts/
 data/raw/
+
+# Scenario contracts (scenario.json) are tracked. Harvest products are not.
+scenarios/*/corpus/
+scenarios/*/reviews/
+scenarios/*/measurement/
+scenarios/*/interpretation/
+scenarios/*/reports/
+scenarios/*/status.json
+scenarios/*/history.jsonl
+scenarios/*/freeze.json

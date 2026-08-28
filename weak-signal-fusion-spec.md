@@ -9,7 +9,7 @@
 | **Proposed repo name** | `weak-signal-fusion` |
 | **Audience** | Senior engineers implementing the first version; later readers auditing whether the test was fair |
 
-This document is the initial README-grade spec of a new repository. It is **not** a redesign of `~/source/signal-detector`. That package is a failed-as-instrument historical PoC (Falklands 1982). Methodological residue is imported below as constraints. Architecture, storage, models, and case machinery are not.
+This document is the initial design record. **Operational truth is [`README.md`](README.md) and [`HOWTO.md`](HOWTO.md).** Those files describe the current causal-domain panel, NOAA-20 FIRMS, ICEWS zip ingest, disabled Sentinel-1, and `wsd measure`. This spec still describes the v0 measurement/interpretation freeze and must not be treated as the live connector list.
 
 ---
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Run a scenario experiment rehearsal and assign one parent experiment run ID.
 
-The current harness supports synthetic collection and a mocked semantic review only.
-It never invokes Ollama or a live source API.
+Default `--mock` is a synthetic rehearsal. Without `--mock`, collection uses live
+connectors. The harness never invokes Ollama.
 """
 
 from __future__ import annotations
@@ -23,6 +23,7 @@ if __name__ == "__main__" and Path(sys.prefix).resolve() != (PROJECT_ROOT / ".ve
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]])
 
 from wsf.corpus import collect_corpus  # noqa: E402
+from wsf.progress import SILENT, Progress  # noqa: E402
 from wsf.review import review_corpus  # noqa: E402
 from wsf.run import new_run_id, validate_run_id  # noqa: E402
 from wsf.scenario import freeze_scenario  # noqa: E402
@@ -41,12 +42,17 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--mock",
         action="store_true",
-        help="Required for now: synthetic collection and fake semantic review.",
+        help="Synthetic collection and fake semantic review. Never scientific evidence.",
     )
     parser.add_argument(
         "--focus",
         type=Path,
         help="Optional missing.json to drive a focused collection revision.",
+    )
+    parser.add_argument(
+        "--quiet",
+        action="store_true",
+        help="Suppress stderr progress lines.",
     )
     return parser.parse_args()
 
@@ -59,20 +65,16 @@ def run_experiment(
     mock: bool,
     focus: Path | None = None,
     project_root: Path = PROJECT_ROOT,
+    progress: Progress | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     validate_run_id(run_id)
-    if not mock:
-        raise ValueError(
-            "live experiment execution is not implemented; "
-            "rerun with --mock for a workflow rehearsal"
-        )
     run_dir = project_root / "artifacts" / run_id
     run_dir.mkdir(parents=True, exist_ok=False)
     summary: dict[str, Any] = {
         "run_id": run_id,
         "scenario_id": scenario_id,
         "through": through,
-        "mode": "synthetic_rehearsal",
+        "mode": "synthetic_rehearsal" if mock else "live_harvest",
         "started_at": datetime.now(UTC).isoformat(),
         "scientific_result": False,
     }
@@ -81,8 +83,9 @@ def run_experiment(
             project_root,
             scenario_id,
             focus_path=focus,
-            mock=True,
+            mock=mock,
             run_id=f"{run_id}-collection",
+            progress=progress or SILENT,
         )
         summary["collection"] = {
             "id": collection["collection_id"],
@@ -92,8 +95,9 @@ def run_experiment(
             review_dir, review = review_corpus(
                 project_root,
                 scenario_id,
-                mock_model=True,
+                mock_model=mock,
                 run_id=f"{run_id}-review",
+                progress=progress or SILENT,
             )
             summary["review"] = {
                 "id": review["review_id"],
@@ -102,7 +106,7 @@ def run_experiment(
             }
         if through == "freeze":
             summary["freeze"] = str(
-                freeze_scenario(project_root, scenario_id, allow_rehearsal=True)
+                freeze_scenario(project_root, scenario_id, allow_rehearsal=mock)
             )
         summary["status"] = "completed"
         return run_dir, summary
@@ -144,6 +148,7 @@ def main() -> int:
             run_id=run_id,
             mock=args.mock,
             focus=args.focus,
+            progress=SILENT if args.quiet else Progress(enabled=True),
         )
     except Exception as error:
         print(f"run_id={run_id}")
