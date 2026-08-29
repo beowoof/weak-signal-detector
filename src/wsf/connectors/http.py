@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from http.client import IncompleteRead
 from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
@@ -60,6 +61,10 @@ def _request(
         body = error.read() if error.fp is not None else b""
         status = int(error.code)
         raw_headers = dict(error.headers.items()) if error.headers else {}
+    except IncompleteRead as error:
+        raise TimeoutError(
+            f"request failed: {url}: incomplete read ({len(error.partial)} bytes)"
+        ) from error
     except URLError as error:
         raise TimeoutError(f"request failed: {url}: {error.reason}") from error
     headers_out = {key.lower(): value for key, value in raw_headers.items()}

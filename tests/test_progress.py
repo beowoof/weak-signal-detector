@@ -12,8 +12,8 @@ def test_progress_writes_status_then_line() -> None:
     progress.line("gdelt incident 2022-02-03 [1/21] ok count=12")
     text = stream.getvalue()
     assert "downloading 8/96" in text
-    assert "ok count=12\n" in text
-    assert text.endswith("ok count=12\n")
+    assert "ok count=12" in text
+    assert text.endswith("ok count=12\033[K\n")
 
 
 def test_silent_progress_writes_nothing() -> None:

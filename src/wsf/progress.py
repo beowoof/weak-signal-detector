@@ -24,7 +24,9 @@ class Progress:
         if not self.enabled:
             return
         with self._lock:
-            self.stream.write("\r" + message + "\n")
+            # Erase the rest of the status line so leftovers like "TOM" / dates
+            # do not stick to the shorter summary.
+            self.stream.write("\r" + message + "\033[K\n")
             self.stream.flush()
 
 

@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import io
 import json
+import time
 import zipfile
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -11,6 +12,7 @@ import pytest
 
 from run_test import run_experiment
 from wsf.connectors.base import PullRequest
+from wsf.connectors.daily import daily_count_result
 from wsf.connectors.fred import FredConnector
 from wsf.connectors.gdelt import GdeltConnector, count_talk_events
 from wsf.connectors.http import HttpResponse, redact_url
@@ -24,7 +26,7 @@ from wsf.connectors.viirs import (
     zonal_mean,
 )
 from wsf.connectors.wikipedia import WikipediaConnector
-from wsf.corpus import collect_corpus
+from wsf.corpus import collect_corpus, harvest_span
 from wsf.review import review_corpus
 from wsf.scenario import create_scenario, load_scenario, require_collection_ready
 from wsf.time import date_range
@@ -369,6 +371,70 @@ def test_live_collect_writes_observation_files(
     assert (directory / wiki_items[0]["observations"]).is_file()
     alfred = [item for item in manifest["items"] if item["source"] == "alfred"]
     assert alfred[0]["not_applicable"] is True
+
+
+def test_harvest_span_includes_lookback_before_scored_window() -> None:
+    window = SimpleNamespace(
+        id="incident",
+        start=date(2022, 2, 3),
+        end=date(2022, 2, 23),
+        lookback_days=120,
+    )
+    start, end = harvest_span(window)
+    assert start == date(2021, 10, 6)
+    assert end == date(2022, 2, 23)
+
+
+def test_live_collect_overlaps_independent_sources(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("EARTHDATA_TOKEN", raising=False)
+    _complete_scenario(tmp_path)
+    path = tmp_path / "scenarios" / "ukraine2022" / "scenario.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    for source in value["sources"]:
+        value["sources"][source]["enabled"] = source in {"wikipedia", "gdelt"}
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    marks: dict[str, list[tuple[str, float]]] = {}
+
+    class SlowConnector:
+        def __init__(self, name: str) -> None:
+            self.source = name
+
+        def pull(self, request: PullRequest):
+            marks.setdefault(self.source, []).append(("start", time.monotonic()))
+            time.sleep(0.3)
+            marks[self.source].append(("end", time.monotonic()))
+            days = date_range(request.start, request.end)
+            return daily_count_result(
+                request,
+                days,
+                {days[0]: 1.0},
+                retrieved_at=request.retrieved_at or datetime.now(UTC),
+                requests=[],
+            )
+
+    started = time.monotonic()
+    collect_corpus(
+        tmp_path,
+        "ukraine2022",
+        mock=False,
+        connectors={
+            "wikipedia": SlowConnector("wikipedia"),
+            "gdelt": SlowConnector("gdelt"),
+        },
+        source_workers=2,
+    )
+    elapsed = time.monotonic() - started
+    # Two sources × two windows × 0.3s = 1.2s if serial; ~0.6s if sources overlap.
+    assert elapsed < 1.0
+    wiki_start = marks["wikipedia"][0][1]
+    gdelt_start = marks["gdelt"][0][1]
+    wiki_end = marks["wikipedia"][1][1]
+    gdelt_end = marks["gdelt"][1][1]
+    assert wiki_start < gdelt_end
+    assert gdelt_start < wiki_end
 
 
 def test_partial_source_selection_is_a_review_no_go(tmp_path: Path) -> None:

@@ -73,6 +73,11 @@ All notable enhancements to this project are recorded here. The project follows 
 - Free extra sources: MOEX USD/RUB, FIRMS thermal, Wikipedia edits, OSM changesets, RIPEstat prefixes, Internet Archive official-host captures, crt.sh certs, ICEWS local dump, ALFRED Brent. No paid APIs.
 - v1 panel reorganised around causal-domain independence; Sentinel-1 added then disabled on `ukraine2022`; OSM/wiki-edits/Brent demoted.
 - OpenSky Trino credentials are optional placeholders; the mobility connector is not built.
+- HTTP retries truncated Internet Archive CDX bodies (`IncompleteRead`); official cadence isolates per-host failures instead of marking the whole window source_down.
+- RIPEstat isolates per-ASN timeouts, caches daily prefix JSON, and records a timed-out day as missing rather than failing the whole window.
+- RIPEstat uses the prefix-count endpoint (one small JSON per ASN per window) instead of downloading announced-prefixes lists. AS12389 timed out for hours on the full list.
+- Live collect runs independent sources in parallel (default 4). Retries/backoff remain inside each connector; the same source still processes windows one at a time.
+- Collect harvests `lookback_days` before each scored window (default 120). Measure still scores only `start`–`end`; z-baselines can now reach protocol `n_min`. Coincidence thresholds are unchanged.
 - README, HOWTO, and fixture notes aligned to the live panel (NOAA-20 FIRMS, ICEWS zip, Sentinel-1 off, `wsd measure`). The design spec defers to those files for connector state.
 
 ### Security
