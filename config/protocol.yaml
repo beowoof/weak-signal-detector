@@ -11,6 +11,7 @@ k_distinct_causal_domains: true
 k_domains: 3
 detection_horizon_days: 30
 persistence_days: 3
+permutation_n: 1000
 logistic: false
 covar_short_days: 14
 covar_short_min_n: 10
