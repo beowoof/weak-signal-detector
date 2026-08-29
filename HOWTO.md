@@ -1,5 +1,30 @@
 # Operator HOWTO: Scenario to Frozen Corpus
 
+## Current experiment (read this first)
+
+`ukraine2022` is a **development showcase**, not held-out evidence. One live path:
+
+```text
+1. wsd corpus collect --scenario ukraine2022
+      Harvest each window plus 120-day lookback. Sources run in parallel.
+      Inspect collection_summary.md (zeros and cloud are OK; source_down is not).
+
+2. wsd corpus review --scenario ukraine2022
+      critical=0 → continue (warnings are cloud/weekends).
+      no_go → focused recollect from the printed missing.json, then review again.
+
+3. wsd measure --scenario ukraine2022
+      Three scores, same frozen coincidence rule (k=3 domains, costly gate, 3-day persistence):
+        a. Trailing z — novelty vs the last 90 days of this window (can hide a long plan).
+        b. Rhythm z — overlay vs the control lookback (known winter-quiet).
+        c. Permutation — shuffle each series' flag days; is the chorus rarer than chance?
+      Read measurement.md in the printed measure directory. That is the result.
+```
+
+Do **not** change `z_threshold`, `k`, or persistence after seeing February 2022. Do **not** add another media feed. Ollama is not part of this path.
+
+---
+
 This is the bouncing-ball procedure for the current proof of concept. Follow it from top to bottom. Each command says what the system does, what the operator must inspect, and what permits the next step.
 
 `--mock` creates synthetic corpus metadata and `--mock-model` creates a fake semantic-review response. Neither is evidence and neither calls Ollama. Live collection has real connectors for Wikipedia, GDELT, ALFRED, VIIRS, FIRMS (NOAA-20), MOEX, official cadence, CT, RIPEstat, and ICEWS. Sentinel-1 is implemented but disabled on the default panel. The owner-run Ollama review worker is still not connected.
@@ -186,7 +211,7 @@ Operator expectations:
 - Google Cloud is not used.
 - Codex/automation must not run this full harvest.
 
-Inspect `collection_summary.md` for coverage, missing days, and source-down days. Then continue to review. Lookback harvest for measurement is a later step.
+Inspect `collection_summary.md` for coverage, missing days, and source-down days. Then continue to review.
 
 ## 5. Review the corpus
 
@@ -259,7 +284,7 @@ This writes `scenarios/ukraine2022/measurement/measure-.../`:
 - `measurement.md`: readable table
 - `summary.json`
 
-A missing or cloudy night is **unknown threat**, not a normal activity level. Soft flags (Wikipedia/GDELT) with VIIRS unknown are `soft_flags_costly_unknown`. Exploratory z-scores use in-window history (`n≥7`) and are not `coincidence_v0`. Protocol coincidence still requires `n_baseline ≥ 20`, a costly gate, and **three distinct causal domains**. VIIRS+SAR+FIRMS in the same domain do not triple-vote. GDELT and ICEWS share the information domain.
+A missing or cloudy night is **unknown threat**, not a normal activity level. Soft flags (Wikipedia/GDELT) with VIIRS unknown are `soft_flags_costly_unknown`. Trailing z uses lookback in the same window. **Rhythm** scores the same days against the control lookback (quiet/seasonal prior) with the same z threshold and chorus rule; it does not retune coincidence_v0. **Permutation** (in the same `summary.json` / `measurement.md`) asks whether that chorus is unusual if each kitchen flags on its own calendar. Protocol coincidence still requires `n_baseline ≥ 20`, a costly gate, and **three distinct causal domains**. VIIRS+SAR+FIRMS in the same domain do not triple-vote. GDELT and ICEWS share the information domain.
 
 ## 7. Run the whole mocked test harness
 

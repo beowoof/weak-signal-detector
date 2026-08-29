@@ -9,6 +9,8 @@ from pydantic import TypeAdapter
 
 from wsf.features.coincidence import FlaggedSeries, alerts_from_basket_days, basket_day
 from wsf.features.cutoff import select_expected_row
+from wsf.features.permutation import permute_independence, seed_for
+from wsf.features.rhythm import QuietPrior, build_quiet_priors, score_against_prior
 from wsf.features.zscore import build_feature
 from wsf.progress import SILENT, Progress
 from wsf.protocol import load_yaml
@@ -82,6 +84,17 @@ def measure_scenario(
     ]
     observations = _load_observations(collection_dir, manifest)
     windows = [scenario.incident, *scenario.controls]
+    control = scenario.controls[0] if scenario.controls else None
+    quiet_priors = (
+        build_quiet_priors(
+            observations,
+            series_ids=[item.series_id or item.id for item in basket],
+            control_period_id=control.id,
+            prior_end=control.start,
+        )
+        if control is not None and control.start is not None
+        else {}
+    )
     measure_id = validate_run_id(run_id or new_run_id("measure"))
     out_dir = scenario_dir / "measurement" / measure_id
     out_dir.mkdir(parents=True, exist_ok=False)
@@ -91,13 +104,15 @@ def measure_scenario(
     day_verdicts: list[dict[str, Any]] = []
     protocol_flags: list[FlaggedSeries] = []
     exploratory_flags: list[FlaggedSeries] = []
+    rhythm_protocol_flags: list[FlaggedSeries] = []
+    rhythm_exploratory_flags: list[FlaggedSeries] = []
 
     for window in windows:
         assert window.start is not None and window.end is not None
         days = date_range(window.start, window.end)
         for day in days:
             states: dict[str, str] = {}
-            details: dict[str, dict[str, Any]] = {}
+            rhythm_states: dict[str, str] = {}
             for indicator in basket:
                 scored = _score_series(
                     observations,
@@ -105,28 +120,51 @@ def measure_scenario(
                     window_id=window.id,
                     event_day=day,
                     protocol=protocol,
+                    quiet_prior=quiet_priors.get(indicator.series_id or indicator.id),
                 )
                 rows.append(scored)
-                states[indicator.series_id or indicator.id] = scored["state"]
-                details[indicator.series_id or indicator.id] = scored
+                series_id = indicator.series_id or indicator.id
+                states[series_id] = scored["state"]
+                rhythm_states[series_id] = str(scored.get("rhythm_state") or "unknown")
                 flag = _as_flag(indicator, window.id, day, scored)
                 if flag and scored["protocol_eligible"]:
                     protocol_flags.append(flag)
                 if flag:
                     exploratory_flags.append(flag)
+                rhythm_flag = _as_flag(
+                    indicator, window.id, day, {**scored, "state": scored.get("rhythm_state")}
+                )
+                if rhythm_flag and scored.get("rhythm_protocol_eligible"):
+                    rhythm_protocol_flags.append(rhythm_flag)
+                if rhythm_flag:
+                    rhythm_exploratory_flags.append(rhythm_flag)
             verdict = _day_verdict(states, basket)
+            rhythm_verdict = _day_verdict(rhythm_states, basket)
             day_verdicts.append(
                 {
                     "window_id": window.id,
                     "day": day.isoformat(),
                     "states": states,
                     "verdict": verdict,
+                    "rhythm_states": rhythm_states,
+                    "rhythm_verdict": rhythm_verdict,
                 }
             )
-            log.status(f"measure {window.id} {day.isoformat()} {verdict}")
+            log.status(f"measure {window.id} {day.isoformat()} {verdict}/{rhythm_verdict}")
 
     protocol_alerts = _alerts_for(protocol_flags, protocol)
     exploratory_alerts = _alerts_for(exploratory_flags, protocol)
+    rhythm_alerts = _alerts_for(rhythm_protocol_flags, protocol)
+    rhythm_exploratory_alerts = _alerts_for(rhythm_exploratory_flags, protocol)
+    log.status("permute trailing and rhythm flag calendars")
+    permutation = {
+        "trailing": _permute_windows(
+            protocol_flags, day_verdicts, protocol, collection_id, "trailing"
+        ),
+        "rhythm": _permute_windows(
+            rhythm_protocol_flags, day_verdicts, protocol, collection_id, "rhythm"
+        ),
+    }
     summary = {
         "measure_id": measure_id,
         "scenario_id": scenario_id,
@@ -136,16 +174,29 @@ def measure_scenario(
         "exploratory_n_min": EXPLORATORY_N_MIN,
         "protocol_n_min": protocol.get("n_min"),
         "scientific_result": False,
+        "quiet_prior_period": control.id if control is not None else None,
+        "quiet_prior_end": control.start.isoformat() if control and control.start else None,
+        "quiet_priors": {key: prior.summary() for key, prior in quiet_priors.items()},
         "notes": [
             "A missing or cloudy observation is unknown threat, not normal activity.",
-            "Exploratory z-scores use trailing history in the collection (including lookback).",
-            "Protocol flags require n_baseline >= protocol n_min (window_days in protocol.yaml).",
+            "Trailing z uses lookback in the same window (novelty vs recent history).",
+            "Rhythm z uses the control lookback as a frozen quiet/seasonal prior.",
+            "coincidence_v0 thresholds are unchanged. Rhythm is a parallel overlay.",
             "Coincidence is across causal domains, not merely source families.",
+            "Permutation shuffles each series' flag days independently (marginals fixed).",
         ],
         "n_feature_rows": len(rows),
         "protocol_alerts": [item.model_dump(mode="json") for item in protocol_alerts],
         "exploratory_alerts": [item.model_dump(mode="json") for item in exploratory_alerts],
+        "rhythm_alerts": [item.model_dump(mode="json") for item in rhythm_alerts],
+        "rhythm_exploratory_alerts": [
+            item.model_dump(mode="json") for item in rhythm_exploratory_alerts
+        ],
         "verdict_counts": _count_verdicts(day_verdicts),
+        "rhythm_verdict_counts": _count_verdicts(
+            [{"verdict": row["rhythm_verdict"]} for row in day_verdicts]
+        ),
+        "permutation": permutation,
     }
     _write_json(out_dir / "summary.json", summary)
     _write_jsonl(out_dir / "features.jsonl", rows)
@@ -162,7 +213,10 @@ def measure_scenario(
     )
     log.line(
         f"measure {scenario_id} finished {measure_id} "
-        f"protocol_alerts={len(protocol_alerts)} exploratory_alerts={len(exploratory_alerts)}"
+        f"protocol_alerts={len(protocol_alerts)} exploratory_alerts={len(exploratory_alerts)} "
+        f"rhythm_alerts={len(rhythm_alerts)} "
+        f"permute_incident_rhythm_p_basket="
+        f"{(permutation.get('rhythm') or {}).get('incident', {}).get('p_basket_days')}"
     )
     return out_dir, summary
 
@@ -174,6 +228,7 @@ def _score_series(
     window_id: str,
     event_day: date,
     protocol: dict[str, Any],
+    quiet_prior: QuietPrior | None = None,
 ) -> dict[str, Any]:
     series_id = indicator.series_id or indicator.id
     lag = SOURCE_LAG.get(indicator.connector or "", 0)
@@ -198,6 +253,11 @@ def _score_series(
         "n_baseline": 0,
         "raw": None,
         "quality": None,
+        "rhythm_state": "unknown",
+        "rhythm_z": None,
+        "rhythm_quantile": None,
+        "rhythm_n": 0,
+        "rhythm_protocol_eligible": False,
     }
     if observed is None:
         payload.update(
@@ -236,6 +296,17 @@ def _score_series(
     payload["protocol_eligible"] = (
         not feature.missing and feature.n_baseline >= int(protocol.get("n_min", 20))
     )
+    if quiet_prior is not None:
+        payload.update(
+            score_against_prior(
+                float(observed.value),
+                quiet_prior,
+                threshold=float(protocol.get("z_threshold", 2.5)),
+                polarity=indicator.polarity or Polarity.high_unusual,
+                n_min=EXPLORATORY_N_MIN,
+                protocol_n_min=int(protocol.get("n_min", 20)),
+            )
+        )
     if feature.missing:
         payload.update(
             {
@@ -301,6 +372,30 @@ def _day_verdict(states: dict[str, str], basket: list[IndicatorSpec]) -> str:
     return "quiet"
 
 
+def _permute_windows(
+    flags: list[FlaggedSeries],
+    days: list[dict[str, Any]],
+    protocol: dict[str, Any],
+    collection_id: str,
+    kind: str,
+) -> dict[str, Any]:
+    n_perm = int(protocol.get("permutation_n", 1000))
+    by_window: dict[str, list[date]] = {}
+    for row in days:
+        by_window.setdefault(row["window_id"], []).append(date.fromisoformat(row["day"]))
+    result: dict[str, Any] = {}
+    for window_id, window_days in by_window.items():
+        window_flags = [flag for flag in flags if flag.period_id == window_id]
+        result[window_id] = permute_independence(
+            window_flags,
+            window_days,
+            protocol=protocol,
+            n_perm=n_perm,
+            seed=seed_for(collection_id, kind, window_id),
+        )
+    return result
+
+
 def _alerts_for(flags: list[FlaggedSeries], protocol: dict[str, Any]) -> list[Any]:
     days = []
     by_key: dict[tuple[str, date], list[FlaggedSeries]] = {}
@@ -362,19 +457,55 @@ def _markdown(
         "- Protocol coincidence requires distinct **causal domains**, not merely source families.",
         f"- Protocol coincidence episodes: {len(summary['protocol_alerts'])}",
         f"- Exploratory coincidence episodes: {len(summary['exploratory_alerts'])}",
+        (
+            f"- Rhythm coincidence episodes: {len(summary.get('rhythm_alerts') or [])} "
+            "(quiet/seasonal prior; same k/domains/persistence)"
+        ),
         "",
-        "## Verdict counts",
+        "## Quiet prior (control lookback)",
         "",
     ]
+    if summary.get("quiet_prior_period"):
+        lines.append(
+            f"- Period `{summary['quiet_prior_period']}` values strictly before "
+            f"`{summary.get('quiet_prior_end')}`."
+        )
+    for key, prior in sorted((summary.get("quiet_priors") or {}).items()):
+        lines.append(
+            f"- `{key}`: n={prior.get('n')} μ={prior.get('mu')} σ={prior.get('sigma')}"
+        )
+    lines += ["", "## Trailing-z verdict counts", ""]
     for key, value in sorted(summary["verdict_counts"].items()):
         lines.append(f"- `{key}`: {value}")
-    lines += ["", "## Daily states", ""]
+    lines += ["", "## Rhythm verdict counts", ""]
+    for key, value in sorted((summary.get("rhythm_verdict_counts") or {}).items()):
+        lines.append(f"- `{key}`: {value}")
+    lines += ["", "## Permutation (chorus vs independent kitchens)", ""]
+    for kind, block in (summary.get("permutation") or {}).items():
+        lines.append(f"### {kind}")
+        for window_id, stats in block.items():
+            lines.append(
+                f"- `{window_id}`: observed basket days {stats.get('observed_basket_days')}, "
+                f"episodes {stats.get('observed_episodes')}; "
+                f"null mean basket {stats.get('null_basket_days_mean')}; "
+                f"p_basket={stats.get('p_basket_days')}, p_episodes={stats.get('p_episodes')} "
+                f"(n_perm={stats.get('n_perm')})"
+            )
+        lines.append("")
+    lines += ["", "## Daily states (trailing z)", ""]
     header = "| Window | Day | Verdict | " + " | ".join(series) + " |"
     lines += [header, "|---|---|---|" + "|".join(["---"] * len(series)) + "|"]
     for row in days:
         cells = " | ".join(row["states"].get(item, "") for item in series)
         lines.append(
             f"| {row['window_id']} | {row['day']} | `{row['verdict']}` | {cells} |"
+        )
+    lines += ["", "## Daily states (rhythm vs quiet prior)", ""]
+    lines += [header, "|---|---|---|" + "|".join(["---"] * len(series)) + "|"]
+    for row in days:
+        cells = " | ".join(row.get("rhythm_states", {}).get(item, "") for item in series)
+        lines.append(
+            f"| {row['window_id']} | {row['day']} | `{row.get('rhythm_verdict', '')}` | {cells} |"
         )
     return "\n".join(lines) + "\n"
 

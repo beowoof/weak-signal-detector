@@ -210,7 +210,10 @@ def measure(
             "directory": str(directory),
             "protocol_alerts": len(summary["protocol_alerts"]),
             "exploratory_alerts": len(summary["exploratory_alerts"]),
+            "rhythm_alerts": len(summary.get("rhythm_alerts") or []),
             "verdict_counts": summary["verdict_counts"],
+            "rhythm_verdict_counts": summary.get("rhythm_verdict_counts"),
+            "permutation": summary.get("permutation"),
         }
     )
 

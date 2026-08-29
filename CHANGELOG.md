@@ -78,6 +78,8 @@ All notable enhancements to this project are recorded here. The project follows 
 - RIPEstat uses the prefix-count endpoint (one small JSON per ASN per window) instead of downloading announced-prefixes lists. AS12389 timed out for hours on the full list.
 - Live collect runs independent sources in parallel (default 4). Retries/backoff remain inside each connector; the same source still processes windows one at a time.
 - Collect harvests `lookback_days` before each scored window (default 120). Measure still scores only `start`–`end`; z-baselines can now reach protocol `n_min`. Coincidence thresholds are unchanged.
+- Parallel **rhythm** overlay: each series is scored against the control lookback as a frozen quiet/seasonal prior (z + empirical quantile). coincidence_v0 trailing-z rules are untouched.
+- Permutation test inside `wsd measure`: independently shuffle each series' flag calendar (1000 draws, seed from collection id). Reports p-values for basket-days and persistent episodes. HOWTO opens with the three-command live path.
 - README, HOWTO, and fixture notes aligned to the live panel (NOAA-20 FIRMS, ICEWS zip, Sentinel-1 off, `wsd measure`). The design spec defers to those files for connector state.
 
 ### Security

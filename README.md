@@ -27,7 +27,9 @@ This repository is at the live-connector checkpoint. It contains:
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
 - live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, and Brent are implemented but out of the v1 basket; Sentinel-1 is implemented but disabled on `ukraine2022`; OpenSky credentials may be present but the Trino connector is not built; default tests remain offline;
-- `wsd measure` scores a live harvest (missing/cloudy = unknown threat); no full-panel evaluation/report pipeline or model invocation yet.
+- `wsd measure` scores a live harvest two ways (trailing z vs quiet-prior rhythm) and permutation-tests the chorus; missing/cloudy = unknown threat; no Ollama yet.
+
+**Live path for `ukraine2022`:** `wsd corpus collect` → `wsd corpus review` (warnings OK) → `wsd measure` → read `measurement.md`. Details in [`HOWTO.md`](HOWTO.md) (“Current experiment”). This is a development showcase, not held-out evidence.
 
 The detailed design record is in `weak-signal-fusion-spec.md`. The literal operator workflow is in [`HOWTO.md`](HOWTO.md). This README is the operational source of truth and will be kept current as implementation proceeds.
 
