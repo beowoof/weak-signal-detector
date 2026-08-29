@@ -57,7 +57,7 @@ def default_connectors(
         "firms": FirmsConnector(http),
         "wiki_edits": WikiEditsConnector(http),
         "osm": OsmConnector(http),
-        "ripe": RipeConnector(http),
+        "ripe": RipeConnector(http, cache_dir=raw / "ripe"),
         "official": OfficialConnector(http),
         "ct": CtConnector(http),
         "icews": IcewsConnector(raw / "icews"),

@@ -3,7 +3,8 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from datetime import UTC, datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,9 @@ from wsf.scenario import (
 )
 from wsf.time import date_range
 
+# Overlap independent sources. Retries/backoff stay inside each connector.
+SOURCE_WORKERS = 4
+
 
 def collect_corpus(
     project_root: Path,
@@ -43,6 +47,7 @@ def collect_corpus(
     only: list[str] | None = None,
     connectors: dict[str, Connector] | None = None,
     progress: Progress | None = None,
+    source_workers: int = SOURCE_WORKERS,
 ) -> tuple[Path, dict[str, Any]]:
     scenario = load_scenario(project_root, scenario_id)
     require_collection_ready(scenario)
@@ -59,9 +64,10 @@ def collect_corpus(
     windows = [scenario.incident, *scenario.controls]
     retrieved_at = datetime.now(UTC)
 
+    workers = max(1, min(source_workers, len(selected)))
     log.line(
         f"collect {scenario_id} mode={'mock' if mock else 'live'} "
-        f"sources={','.join(selected)} windows={len(windows)}"
+        f"sources={','.join(selected)} windows={len(windows)} source_workers={workers}"
     )
     if mock:
         items = _synthetic_items(scenario, windows, selected)
@@ -83,6 +89,7 @@ def collect_corpus(
             registry=registry,
             retrieved_at=retrieved_at,
             progress=log,
+            source_workers=workers,
         )
         mode = "live_harvest"
 
@@ -181,6 +188,7 @@ def _live_items(
     registry: dict[str, Connector],
     retrieved_at: datetime,
     progress: Progress,
+    source_workers: int = SOURCE_WORKERS,
 ) -> list[dict[str, Any]]:
     focus_pairs = {
         (item["source"], item["window_id"]) for item in focus.get("critical_gaps", [])
@@ -190,43 +198,74 @@ def _live_items(
     if AOI_SOURCES.intersection(selected):
         aois, timezone = load_actor_aois(project_root, scenario.queries.facility_actor)
 
-    items: list[dict[str, Any]] = []
     jobs = [(source, window) for source in selected for window in windows]
-    for job_index, (source, window) in enumerate(jobs, start=1):
+    n_jobs = len(jobs)
+    job_index = {(source, window.id): index for index, (source, window) in enumerate(jobs, start=1)}
+
+    def harvest_source(source: str) -> dict[tuple[str, str], dict[str, Any]]:
         if source not in registry:
             raise ValueError(f"no connector registered for source {source}")
-        prefix = f"collect {source}/{window.id} [{job_index}/{len(jobs)}]"
-        key = (source, window.id)
-        if focus_pairs and key not in focus_pairs and key in parent_items:
-            progress.line(f"{prefix} copy from parent")
-            items.append(_copy_parent_item(parent_dir, directory, parent_items[key]))
-            continue
-        progress.line(f"{prefix} start {window.start}..{window.end}")
-        request = PullRequest(
-            source=source,
-            series_id=SOURCE_SERIES[source],
-            scenario_id=scenario_id,
-            window_id=window.id,
-            start=window.start,
-            end=window.end,
-            queries=scenario.queries,
-            aois=aois if source in AOI_SOURCES else [],
-            timezone=timezone,
-            retrieved_at=retrieved_at,
-            output_dir=directory,
-            progress=progress,
-        )
-        try:
-            result = registry[source].pull(request)
-        except Exception as error:  # noqa: BLE001
-            progress.line(f"{prefix} error: {error}")
-            result = failed_result(
-                request, date_range(window.start, window.end), str(error), retrieved_at
+        harvested: dict[tuple[str, str], dict[str, Any]] = {}
+        for window in windows:
+            prefix = f"collect {source}/{window.id} [{job_index[(source, window.id)]}/{n_jobs}]"
+            key = (source, window.id)
+            if focus_pairs and key not in focus_pairs and key in parent_items:
+                progress.line(f"{prefix} copy from parent")
+                harvested[key] = _copy_parent_item(parent_dir, directory, parent_items[key])
+                continue
+            harvest_start, harvest_end = harvest_span(window)
+            progress.line(
+                f"{prefix} start {harvest_start}..{harvest_end} "
+                f"(score {window.start}..{window.end})"
             )
-        items.append(_persist_result(directory, result))
-        coverage = result.item.get("coverage")
-        progress.line(f"{prefix} done coverage={coverage}")
-    return items
+            request = PullRequest(
+                source=source,
+                series_id=SOURCE_SERIES[source],
+                scenario_id=scenario_id,
+                window_id=window.id,
+                start=harvest_start,
+                end=harvest_end,
+                queries=scenario.queries,
+                aois=aois if source in AOI_SOURCES else [],
+                timezone=timezone,
+                retrieved_at=retrieved_at,
+                output_dir=directory,
+                progress=progress,
+            )
+            try:
+                result = registry[source].pull(request)
+            except Exception as error:  # noqa: BLE001
+                progress.line(f"{prefix} error: {error}")
+                result = failed_result(
+                    request,
+                    date_range(harvest_start, harvest_end),
+                    str(error),
+                    retrieved_at,
+                )
+            item = _persist_result(directory, result)
+            item["score_start"] = window.start.isoformat()
+            item["score_end"] = window.end.isoformat()
+            item["harvest_start"] = harvest_start.isoformat()
+            harvested[key] = item
+            coverage = result.item.get("coverage")
+            progress.line(f"{prefix} done coverage={coverage}")
+        return harvested
+
+    workers = max(1, min(source_workers, len(selected)))
+    collected: dict[tuple[str, str], dict[str, Any]] = {}
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {pool.submit(harvest_source, source): source for source in selected}
+        for future in as_completed(futures):
+            collected.update(future.result())
+    return [collected[(source, window.id)] for source, window in jobs]
+
+
+def harvest_span(window: Any) -> tuple[date, date]:
+    """Inclusive harvest range: lookback before the scored window, through window end."""
+    if window.start is None or window.end is None:
+        raise ValueError(f"{window.id}: harvest requires start and end dates")
+    lookback = int(getattr(window, "lookback_days", 120) or 0)
+    return window.start - timedelta(days=lookback), window.end
 
 
 def _persist_result(directory: Path, result: ConnectorResult) -> dict[str, Any]:

@@ -132,6 +132,10 @@ def corpus_collect(
     ),
     run_id: str | None = typer.Option(None, help="Explicit collection run id."),
     quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
+    source_workers: int = typer.Option(
+        4,
+        help="Max sources to harvest at once. Retries stay inside each source.",
+    ),
 ) -> None:
     """Collect a new corpus revision, optionally focused on declared gaps."""
     selected = [item.strip() for item in only.split(",")] if only else None
@@ -144,6 +148,7 @@ def corpus_collect(
             run_id=run_id,
             only=selected,
             progress=Progress(enabled=not quiet),
+            source_workers=source_workers,
         )
     _echo(
         {

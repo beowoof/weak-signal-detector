@@ -138,8 +138,8 @@ def measure_scenario(
         "scientific_result": False,
         "notes": [
             "A missing or cloudy observation is unknown threat, not normal activity.",
-            "Exploratory z-scores use available in-window history; they are not coincidence_v0.",
-            "Protocol flags require n_baseline >= protocol n_min.",
+            "Exploratory z-scores use trailing history in the collection (including lookback).",
+            "Protocol flags require n_baseline >= protocol n_min (window_days in protocol.yaml).",
             "Coincidence is across causal domains, not merely source families.",
         ],
         "n_feature_rows": len(rows),

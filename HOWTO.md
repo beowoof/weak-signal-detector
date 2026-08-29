@@ -162,13 +162,17 @@ Expected result:
 
 This partial harvest will fail deterministic review because GDELT and VIIRS are still enabled in `scenario.json`. That is intentional. Disable a source in `scenario.json` only if you are changing the hypothesis; do not use `--only` as a silent source substitution.
 
-Full live harvest of the declared **window dates** (not the 120-day lookback):
+Full live harvest of each window **plus its lookback** (`lookback_days`, default 120). Measure still scores only `start`–`end`; the extra days are the trailing baseline so `n_min=20` is real from day one of the scored window. Do not copy a 21-day parent with `--focus` for this — run a new full collect.
+
+Do **not** retune `z_threshold`, `k`, or persistence after seeing Ukraine 2022 flags. Those stay frozen.
+
+Full live harvest:
 
 ```bash
 wsd corpus collect --scenario ukraine2022
 ```
 
-Progress lines go to stderr (source, window, day, cache vs download). The JSON result stays on stdout. Use `--quiet` to suppress progress.
+Progress lines go to stderr (source, window, day, cache vs download). The JSON result stays on stdout. Use `--quiet` to suppress progress. Independent sources harvest in parallel (default four at a time); retries and backoff stay inside each source. Windows of the same source stay sequential. `--source-workers 1` restores the old one-source-at-a-time behaviour.
 
 Operator expectations:
 

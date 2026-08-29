@@ -39,7 +39,16 @@ class OfficialConnector:
                 "&fl=timestamp,original&filter=statuscode:200&collapse=digest"
             )
             progress.status(f"official {request.window_id} {host}")
-            response = get_with_retry(self.transport, url, timeout=120, attempts=3, sleep=0.5)
+            try:
+                response = get_with_retry(
+                    self.transport, url, timeout=180, attempts=4, sleep=2.0
+                )
+            except TimeoutError as error:
+                requests.append(
+                    {"url": redact_url(url), "host": host, "error": str(error)}
+                )
+                progress.line(f"official {request.window_id} {host} truncated/timeout")
+                continue
             requests.append({"url": redact_url(url), "status": response.status, "host": host})
             if response.status != 200:
                 continue
