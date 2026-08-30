@@ -8,7 +8,7 @@ The phenomenon under test is closer to **strategic coupling**: during costly sta
 
 Strategic intent is not directly observable. The first layer therefore measures unusual mobilisation or costly activation with deterministic time-series rules. A later, separately scored interpretation layer will compare an explicit historical prior with the same prior plus cutoff-safe signal evidence.
 
-The intended output is initially headless: a reproducible alert episode, its contributing indicators, source health, provenance, and an evidence packet suitable for analyst review. A dashboard is contingent on the headless PoC passing its investment gate.
+The scientific output remains headless: a reproducible alert episode, its contributing indicators, source health, provenance, and an evidence packet suitable for analyst review. A local read-only results viewer can plot those files for diagnosis, but a broader analyst or operational dashboard remains contingent on the headless PoC passing its investment gate.
 
 ## Current status
 
@@ -167,6 +167,18 @@ wsd measure --scenario ukraine2022 --exploratory
 
 The report records `measurement_mode: exploratory_unfrozen` and `scientific_result: false`.
 
+### Visualising local measurement results
+
+Start the dependency-free, read-only viewer from the repository root:
+
+```bash
+python3 dashboard/server.py
+```
+
+Then open <http://127.0.0.1:8000>. The viewer discovers every local `scenarios/*/measurement/measure-*` result and provides individual raw/z-score charts, all-series small multiples, combined trailing and rhythm z-score charts, and a trailing-versus-rhythm scatter plot. Result files remain ignored, immutable inputs; the server does not write to them.
+
+These plots are diagnostic views of the recorded result labels. In particular, `exploratory_unfrozen` remains non-scientific, missing values remain unknown, and plotting does not satisfy the investment gate.
+
 ## Running a scenario experiment
 
 The normal command is:
@@ -306,7 +318,7 @@ A positive result justifies further human investment. It does not validate auton
 - No missingness interpreted as meaningful silence without a declared baseline. A cloudy VIIRS night is missing, not a reason to stop watching other sources.
 - No stale daily carry, post-hoc threshold tuning, AOI splitting into extra votes, or hidden source substitution.
 - No synthetic fixture reported as a scientific result.
-- No dashboard before the headless investment gate.
+- No broader analyst, operational, or current-monitoring dashboard before the headless investment gate. The local read-only result visualiser is diagnostic only.
 
 ## Roadmap
 
