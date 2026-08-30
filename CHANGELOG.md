@@ -6,6 +6,14 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- Amber permutation: independently circular-shift non-costly flag calendars while freezing the costly/VIIRS unknown mask; test statistic is maximum consecutive amber run (`p_max_run`).
+- Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day scored windows, 120-day lookback, frozen `coincidence_v1`). 2018 cases disable FIRMS (NOAA-20 does not cover the 2017 control lookback) and MOEX; they use the declared ALFRED series. `GRC-TUR-2020` is still not harvested.
+- `prepare_scenario_workspace` so a tracked `scenario.json` can be validated and collected after a clone.
+
+- `coincidence_v1` amber evidence-gap episodes: at least two soft causal domains persisting while costly evidence is genuinely unavailable.
+- Incident/control comparison blocks in measurement JSON and Markdown.
+- Availability-aware circular-shift permutation output with preserved flag runs, null standard deviations, signed effects, and null percentiles.
+
 - Causal-domain metadata on every instantiated indicator (`physical_activity`, `mobility`, `bureaucratic`, `information`, `public_attention`, `market`, `digital_infrastructure`) plus collector and whether the subject controls the signal.
 - Coincidence now requires `k_domains` distinct causal domains. Sensor clones in the same domain (VIIRS+SAR+FIRMS, GDELT+ICEWS) cannot triple-vote.
 - Sentinel-1 GRD AOI mean VV backscatter via the Copernicus Data Space Statistical API (`tempo.s1_backscatter`). Comparable ascending IW passes; missing overpass = unknown, not zero. Not equipment detection.
@@ -17,6 +25,17 @@ All notable enhancements to this project are recorded here. The project follows 
 - ICEWS default path documents `data/raw/icews/dataverse_files.zip`; FIRMS MAP_KEY quota (5000 txn / 10 min) is noted in `.env.example`.
 
 ### Changed
+
+- MOEX coverage is harvest health (prints vs source_down), not the fraction of weekdays with a session. Exchange holidays stay `missing` (cannot flag) and no longer trip the 0.95 daily-coverage gate. ISS history is paginated; HTTP errors are `source_down`, not zeros.
+- ALFRED coverage is harvest health the same way: H.10 holidays (`.`) and unpublished tail days stay `missing` and no longer trip 0.95. Scoring uses a 7-day H.10 vintage lag (`fred` connector) so FX can become visible instead of remaining absent on every event day.
+
+- Filter measurement baskets to series actually materialised by the active collection, so disabled Sentinel-1 no longer creates permanent costly-source unknowns.
+- Replace raw prior-year rhythm comparison with a symmetric frozen local lookback for each incident/control window; require both z and empirical-tail thresholds.
+- Treat equality to a zero-variance baseline as normal while allowing a genuinely new value beyond that baseline to flag.
+- Require `wsd measure --exploratory` until a non-rehearsal semantic GO and freeze exist; every report records measurement mode and scientific status.
+- Bind new freezes and scientific measurements to the complete scientific-configuration hash, preventing a pre-revision freeze from validating a changed protocol.
+- Calculate MOEX coverage over expected weekdays. Keep weather-limited VIIRS shortfalls as warnings, but restore other daily coverage failures as hard gates.
+- Demote Internet Archive official-host capture counts from the voting basket until their bureaucratic construct validity is demonstrated.
 
 - OSM changesets, Wikipedia edits, and Brent are out of the v1 voting basket and disabled on new scenarios / `ukraine2022`. OSM is public attention, not physical activity.
 - ICEWS stays as a robustness stream in the information domain; it does not double-vote GDELT.
@@ -78,8 +97,7 @@ All notable enhancements to this project are recorded here. The project follows 
 - RIPEstat uses the prefix-count endpoint (one small JSON per ASN per window) instead of downloading announced-prefixes lists. AS12389 timed out for hours on the full list.
 - Live collect runs independent sources in parallel (default 4). Retries/backoff remain inside each connector; the same source still processes windows one at a time.
 - Collect harvests `lookback_days` before each scored window (default 120). Measure still scores only `start`–`end`; z-baselines can now reach protocol `n_min`. Coincidence thresholds are unchanged.
-- Parallel **rhythm** overlay: each series is scored against the control lookback as a frozen quiet/seasonal prior (z + empirical quantile). coincidence_v0 trailing-z rules are untouched.
-- Permutation test inside `wsd measure`: independently shuffle each series' flag calendar (1000 draws, seed from collection id). Reports p-values for basket-days and persistent episodes. HOWTO opens with the three-command live path.
+- Initial parallel rhythm overlay and permutation scaffolding, superseded in `coincidence_v1` by frozen local priors and availability-aware circular shifts.
 - README, HOWTO, and fixture notes aligned to the live panel (NOAA-20 FIRMS, ICEWS zip, Sentinel-1 off, `wsd measure`). The design spec defers to those files for connector state.
 
 ### Security

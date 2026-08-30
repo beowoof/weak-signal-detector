@@ -1,0 +1,109 @@
+{
+  "actors": {
+    "counterparts": [
+      "CHN"
+    ],
+    "focal": "USA"
+  },
+  "controls": [
+    {
+      "end": "2017-10-01",
+      "id": "same-period-prior-year",
+      "lookback_days": 120,
+      "selection_reason": "Same seasonal 21-day window in the prior year, before the 2018 tariff round.",
+      "start": "2017-09-11",
+      "target_end": null,
+      "target_start": null
+    }
+  ],
+  "corpus_gates": {
+    "forbid_post_cutoff_material": true,
+    "forbidden_outcome_terms": [
+      "china–united states trade war",
+      "us-china trade war"
+    ],
+    "maximum_incident_control_coverage_difference": 0.05,
+    "minimum_daily_coverage": 0.95,
+    "minimum_valid_viirs_fraction": 0.7,
+    "require_complete_provenance": true
+  },
+  "incident": {
+    "end": "2018-09-30",
+    "id": "incident",
+    "lookback_days": 120,
+    "selection_reason": "Twenty-one days around the September 2018 US-China tariff tranche: high-tension cheap talk without a mobilisation target. Every in-window episode is a false alert.",
+    "start": "2018-09-10",
+    "target_end": "2018-09-30",
+    "target_start": "2018-09-10"
+  },
+  "interpretation": {
+    "enabled": true,
+    "model": "qwen3.8:27b-mlx",
+    "repeats": 5
+  },
+  "purpose": "development_showcase",
+  "queries": {
+    "cameo_actor": "USA",
+    "cameo_root_codes": [
+      "01",
+      "02",
+      "04",
+      "13"
+    ],
+    "facility_actor": "USA",
+    "fred_series": "DEXCHUS",
+    "wiki_titles": [
+      "United States Department of Defense",
+      "The Pentagon",
+      "Ministry of National Defense of the People's Republic of China"
+    ]
+  },
+  "research_question": "Do correlated weak public signals add information to strategic-intent triage?",
+  "scenario_id": "usachn2018trade",
+  "schema_version": 1,
+  "sources": {
+    "alfred": {
+      "enabled": true
+    },
+    "brent": {
+      "enabled": false
+    },
+    "ct": {
+      "enabled": true
+    },
+    "firms": {
+      "enabled": false
+    },
+    "gdelt": {
+      "enabled": true
+    },
+    "icews": {
+      "enabled": true
+    },
+    "moex": {
+      "enabled": false
+    },
+    "official": {
+      "enabled": true
+    },
+    "osm": {
+      "enabled": false
+    },
+    "ripe": {
+      "enabled": true
+    },
+    "sar": {
+      "enabled": false
+    },
+    "viirs": {
+      "enabled": true
+    },
+    "wiki_edits": {
+      "enabled": false
+    },
+    "wikipedia": {
+      "enabled": true
+    }
+  },
+  "status": "draft"
+}

@@ -63,6 +63,60 @@ def test_moex_parses_usdrub_close() -> None:
     assert result.observations[0].quality == "ok"
 
 
+def test_moex_coverage_uses_weekdays_not_calendar_days() -> None:
+    body = {
+        "history": {
+            "columns": ["TRADEDATE", "CLOSE"],
+            "data": [["2022-02-18", 77.4], ["2022-02-21", 79.8]],
+        }
+    }
+
+    def handler(url: str) -> HttpResponse:
+        return HttpResponse(url, 200, json.dumps(body).encode(), {})
+
+    result = MoexConnector(FakeTransport(handler)).pull(
+        _request(start=date(2022, 2, 18), end=date(2022, 2, 21))
+    )
+    assert result.item["n_expected"] == 2
+    assert result.item["coverage"] == 1.0
+
+
+def test_moex_exchange_holidays_do_not_fail_coverage() -> None:
+    body = {
+        "history": {
+            "columns": ["TRADEDATE", "CLOSE"],
+            "data": [["2020-03-06", 66.1], ["2020-03-10", 67.2]],
+        }
+    }
+
+    def handler(url: str) -> HttpResponse:
+        return HttpResponse(url, 200, json.dumps(body).encode(), {})
+
+    result = MoexConnector(FakeTransport(handler)).pull(
+        _request(start=date(2020, 3, 6), end=date(2020, 3, 10))
+    )
+    weekday_missing = [
+        item
+        for item in result.observations
+        if item.quality == "missing" and item.event_time.weekday() < 5
+    ]
+    assert [item.event_time.date().isoformat() for item in weekday_missing] == [
+        "2020-03-09"
+    ]
+    assert result.item["coverage"] == 1.0
+    assert result.item["n_ok"] == 2
+
+
+def test_moex_http_error_is_source_down_not_zero() -> None:
+    def handler(url: str) -> HttpResponse:
+        return HttpResponse(url, 504, b"", {})
+
+    result = MoexConnector(FakeTransport(handler)).pull(_request())
+    assert result.item["n_source_down"] == 2
+    assert result.item["coverage"] == 0.0
+    assert all(item.quality == "source_down" for item in result.observations)
+
+
 def test_wiki_edits_bins_revision_timestamps() -> None:
     body = {
         "query": {

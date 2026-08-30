@@ -1,0 +1,106 @@
+{
+  "actors": {
+    "counterparts": [
+      "FRA"
+    ],
+    "focal": "DEU"
+  },
+  "controls": [
+    {
+      "end": "2017-10-29",
+      "id": "same-period-prior-year",
+      "lookback_days": 120,
+      "selection_reason": "Same seasonal 21-day window in the prior year, also a quiet European autumn.",
+      "start": "2017-10-09",
+      "target_end": null,
+      "target_start": null
+    }
+  ],
+  "corpus_gates": {
+    "forbid_post_cutoff_material": true,
+    "forbidden_outcome_terms": [],
+    "maximum_incident_control_coverage_difference": 0.05,
+    "minimum_daily_coverage": 0.95,
+    "minimum_valid_viirs_fraction": 0.7,
+    "require_complete_provenance": true
+  },
+  "incident": {
+    "end": "2018-10-28",
+    "id": "incident",
+    "lookback_days": 120,
+    "selection_reason": "Twenty-one-day quiet German autumn slice; no mobilisation target. Every in-window episode is a false alert.",
+    "start": "2018-10-08",
+    "target_end": "2018-10-28",
+    "target_start": "2018-10-08"
+  },
+  "interpretation": {
+    "enabled": true,
+    "model": "qwen3.8:27b-mlx",
+    "repeats": 5
+  },
+  "purpose": "development_showcase",
+  "queries": {
+    "cameo_actor": "DEU",
+    "cameo_root_codes": [
+      "01",
+      "02",
+      "04",
+      "13"
+    ],
+    "facility_actor": "DEU",
+    "fred_series": "DEXUSEU",
+    "wiki_titles": [
+      "Federal Ministry of Defence (Germany)",
+      "Berlin",
+      "Bundeswehr"
+    ]
+  },
+  "research_question": "Do correlated weak public signals add information to strategic-intent triage?",
+  "scenario_id": "deu2018quiet",
+  "schema_version": 1,
+  "sources": {
+    "alfred": {
+      "enabled": true
+    },
+    "brent": {
+      "enabled": false
+    },
+    "ct": {
+      "enabled": true
+    },
+    "firms": {
+      "enabled": false
+    },
+    "gdelt": {
+      "enabled": true
+    },
+    "icews": {
+      "enabled": true
+    },
+    "moex": {
+      "enabled": false
+    },
+    "official": {
+      "enabled": true
+    },
+    "osm": {
+      "enabled": false
+    },
+    "ripe": {
+      "enabled": true
+    },
+    "sar": {
+      "enabled": false
+    },
+    "viirs": {
+      "enabled": true
+    },
+    "wiki_edits": {
+      "enabled": false
+    },
+    "wikipedia": {
+      "enabled": true
+    }
+  },
+  "status": "draft"
+}

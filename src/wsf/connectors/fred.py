@@ -106,12 +106,9 @@ class FredConnector:
 
         observations = []
         n_ok = n_missing = n_source_down = 0
-        weekday_expected = 0
         weekday_ok = 0
         for day in days:
             is_weekday = day.weekday() < 5
-            if is_weekday:
-                weekday_expected += 1
             vintages = by_day[day]
             if not vintages:
                 quality = "missing"
@@ -157,7 +154,8 @@ class FredConnector:
                 )
             )
 
-        coverage = weekday_ok / weekday_expected if weekday_expected else 1.0
+        session_attempts = weekday_ok + n_source_down
+        coverage = weekday_ok / session_attempts if session_attempts else 0.0
         progress.line(f"alfred {request.window_id} {series_id} coverage={coverage:.3f}")
         return ConnectorResult(
             item=collection_item(
@@ -170,7 +168,7 @@ class FredConnector:
                     item.event_time.date() > request.end for item in observations
                 ),
                 checksum="",
-                n_expected=weekday_expected,
+                n_expected=session_attempts,
                 n_ok=weekday_ok,
                 n_missing=n_missing,
                 n_source_down=n_source_down,

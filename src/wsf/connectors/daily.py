@@ -16,13 +16,17 @@ def daily_count_result(
     requests: list[dict[str, object]],
     notes: str = "",
     weekend_missing: bool = False,
+    expected_weekdays_only: bool = False,
     absent_missing: bool = False,
     extra: dict[str, object] | None = None,
 ) -> ConnectorResult:
     observations: list[Observation] = []
     n_ok = n_missing = n_source_down = 0
     for day in days:
-        if weekend_missing and day.weekday() >= 5:
+        if expected_weekdays_only and day.weekday() >= 5:
+            quality = "missing"
+            value = None
+        elif weekend_missing and day.weekday() >= 5:
             quality = "missing"
             value = None
             n_missing += 1
@@ -30,7 +34,7 @@ def daily_count_result(
             quality = "ok"
             value = float(counts[day])
             n_ok += 1
-        elif weekend_missing or absent_missing:
+        elif weekend_missing or expected_weekdays_only or absent_missing:
             quality = "missing"
             value = None
             n_missing += 1
@@ -52,8 +56,14 @@ def daily_count_result(
                 extra=json.dumps(payload_extra, sort_keys=True),
             )
         )
-    n_expected = n_ok + n_missing + n_source_down
-    coverage = n_ok / n_expected if n_expected else 0.0
+    if expected_weekdays_only:
+        # Exchange holidays are missing (cannot flag) but are not harvest failures.
+        session_attempts = n_ok + n_source_down
+        n_expected = session_attempts
+        coverage = n_ok / session_attempts if session_attempts else 0.0
+    else:
+        n_expected = n_ok + n_missing + n_source_down
+        coverage = n_ok / n_expected if n_expected else 0.0
     checksum_ready = True
     return ConnectorResult(
         item=collection_item(

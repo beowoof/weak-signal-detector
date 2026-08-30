@@ -19,6 +19,7 @@ from wsf.scenario import (
     freeze_scenario,
     load_scenario,
     load_status,
+    prepare_scenario_workspace,
     require_collection_ready,
     scenario_hash,
 )
@@ -85,6 +86,7 @@ def scenario_create(
 def scenario_validate(scenario: str = typer.Option(..., help="Scenario identifier.")) -> None:
     """Validate the schema and confirm that collection inputs are complete."""
     with _operator_errors():
+        prepare_scenario_workspace(_root(), scenario)
         value = load_scenario(_root(), scenario)
         require_collection_ready(value)
     _echo(
@@ -193,14 +195,19 @@ def corpus_review(
 def measure(
     scenario: str = typer.Option(..., help="Scenario identifier."),
     run_id: str | None = typer.Option(None, help="Explicit measurement run id."),
+    exploratory: bool = typer.Option(
+        False,
+        help="Allow measurement before a real corpus GO/freeze; output is non-scientific.",
+    ),
     quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
 ) -> None:
-    """Score the active live harvest. Missing nights are unknown, not quiet."""
+    """Score the active live harvest, enforcing frozen versus exploratory status."""
     with _operator_errors():
         directory, summary = measure_scenario(
             _root(),
             scenario,
             run_id=run_id,
+            exploratory=exploratory,
             progress=Progress(enabled=not quiet),
         )
     _echo(
@@ -208,8 +215,11 @@ def measure(
             "scenario": scenario,
             "measure_id": summary["measure_id"],
             "directory": str(directory),
+            "measurement_mode": summary["measurement_mode"],
+            "scientific_result": summary["scientific_result"],
             "protocol_alerts": len(summary["protocol_alerts"]),
             "exploratory_alerts": len(summary["exploratory_alerts"]),
+            "amber_alerts": summary.get("amber_alerts"),
             "rhythm_alerts": len(summary.get("rhythm_alerts") or []),
             "verdict_counts": summary["verdict_counts"],
             "rhythm_verdict_counts": summary.get("rhythm_verdict_counts"),

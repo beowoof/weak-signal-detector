@@ -9,8 +9,8 @@ from pydantic import TypeAdapter
 
 from wsf.features.coincidence import FlaggedSeries, alerts_from_basket_days, basket_day
 from wsf.features.cutoff import select_expected_row
-from wsf.features.permutation import permute_independence, seed_for
-from wsf.features.rhythm import QuietPrior, build_quiet_priors, score_against_prior
+from wsf.features.permutation import permute_amber, permute_independence, seed_for
+from wsf.features.rhythm import QuietPrior, build_window_priors, score_against_prior
 from wsf.features.zscore import build_feature
 from wsf.progress import SILENT, Progress
 from wsf.protocol import load_yaml
@@ -19,6 +19,7 @@ from wsf.scenario import (
     append_history,
     load_scenario,
     load_status,
+    protocol_hash,
     save_status,
     scenario_directory,
     scenario_hash,
@@ -32,7 +33,8 @@ SOURCE_LAG = {
     "wiki_edits": 0,
     "gdelt": 0,
     "viirs": 3,
-    "alfred": 0,
+    "alfred": 7,
+    "fred": 7,
     "moex": 0,
     "firms": 0,
     "osm": 0,
@@ -50,6 +52,7 @@ def measure_scenario(
     scenario_id: str,
     *,
     run_id: str | None = None,
+    exploratory: bool = False,
     progress: Progress | None = None,
 ) -> tuple[Path, dict[str, Any]]:
     log = progress or SILENT
@@ -65,35 +68,29 @@ def measure_scenario(
         raise ValueError("scenario changed after collection; collect a new corpus revision")
     if manifest.get("mode") == "synthetic_rehearsal":
         raise ValueError("measurement requires a live harvest, not a synthetic rehearsal")
+    measurement_mode = _measurement_mode(
+        scenario_dir,
+        status,
+        manifest,
+        current_scenario_hash=scenario_hash(scenario),
+        current_protocol_hash=protocol_hash(project_root),
+        exploratory=exploratory,
+    )
 
     protocol = load_yaml(project_root / "config" / "protocol.yaml")
     indicators = TypeAdapter(list[IndicatorSpec]).validate_python(
         load_yaml(project_root / "config" / "indicator_register.yaml")
     )
-    skipped = {
-        item.get("series_id")
-        for item in manifest.get("items", [])
-        if item.get("not_applicable")
-    }
-    basket = [
-        item
-        for item in indicators
-        if item.in_basket
-        and item.connector
-        and (item.series_id or item.id) not in skipped
-    ]
+    basket = _active_basket(indicators, manifest)
+    if not basket:
+        raise ValueError("active collection contains no enabled basket series")
     observations = _load_observations(collection_dir, manifest)
     windows = [scenario.incident, *scenario.controls]
-    control = scenario.controls[0] if scenario.controls else None
-    quiet_priors = (
-        build_quiet_priors(
-            observations,
-            series_ids=[item.series_id or item.id for item in basket],
-            control_period_id=control.id,
-            prior_end=control.start,
-        )
-        if control is not None and control.start is not None
-        else {}
+    period_starts = {window.id: window.start for window in windows if window.start is not None}
+    rhythm_priors = build_window_priors(
+        observations,
+        series_ids=[item.series_id or item.id for item in basket],
+        period_starts=period_starts,
     )
     measure_id = validate_run_id(run_id or new_run_id("measure"))
     out_dir = scenario_dir / "measurement" / measure_id
@@ -120,7 +117,7 @@ def measure_scenario(
                     window_id=window.id,
                     event_day=day,
                     protocol=protocol,
-                    quiet_prior=quiet_priors.get(indicator.series_id or indicator.id),
+                    quiet_prior=rhythm_priors.get((window.id, indicator.series_id or indicator.id)),
                 )
                 rows.append(scored)
                 series_id = indicator.series_id or indicator.id
@@ -156,34 +153,82 @@ def measure_scenario(
     exploratory_alerts = _alerts_for(exploratory_flags, protocol)
     rhythm_alerts = _alerts_for(rhythm_protocol_flags, protocol)
     rhythm_exploratory_alerts = _alerts_for(rhythm_exploratory_flags, protocol)
-    log.status("permute trailing and rhythm flag calendars")
+    amber_alerts = _evidence_gap_episodes(day_verdicts, basket, protocol, rhythm=False)
+    rhythm_amber_alerts = _evidence_gap_episodes(day_verdicts, basket, protocol, rhythm=True)
+    log.status("permute trailing, rhythm, and amber flag calendars")
     permutation = {
         "trailing": _permute_windows(
-            protocol_flags, day_verdicts, protocol, collection_id, "trailing"
+            protocol_flags,
+            rows,
+            protocol,
+            collection_id,
+            "trailing",
+            eligibility_key="protocol_eligible",
         ),
         "rhythm": _permute_windows(
-            rhythm_protocol_flags, day_verdicts, protocol, collection_id, "rhythm"
+            rhythm_protocol_flags,
+            rows,
+            protocol,
+            collection_id,
+            "rhythm",
+            eligibility_key="rhythm_protocol_eligible",
+        ),
+        "amber": _permute_amber_windows(
+            day_verdicts,
+            basket,
+            protocol,
+            collection_id,
+            "amber",
+            rhythm=False,
+        ),
+        "rhythm_amber": _permute_amber_windows(
+            day_verdicts,
+            basket,
+            protocol,
+            collection_id,
+            "rhythm_amber",
+            rhythm=True,
         ),
     }
+    window_comparison = _window_comparison(
+        day_verdicts,
+        protocol_alerts,
+        rhythm_alerts,
+        amber_alerts,
+        rhythm_amber_alerts,
+    )
     summary = {
         "measure_id": measure_id,
         "scenario_id": scenario_id,
         "collection_id": collection_id,
         "scenario_hash": scenario_hash(scenario),
         "protocol_id": protocol.get("protocol_id"),
+        "protocol_hash": protocol_hash(project_root),
         "exploratory_n_min": EXPLORATORY_N_MIN,
         "protocol_n_min": protocol.get("n_min"),
-        "scientific_result": False,
-        "quiet_prior_period": control.id if control is not None else None,
-        "quiet_prior_end": control.start.isoformat() if control and control.start else None,
-        "quiet_priors": {key: prior.summary() for key, prior in quiet_priors.items()},
+        "measurement_mode": measurement_mode,
+        "scientific_result": measurement_mode == "frozen_protocol",
+        "active_series": [item.series_id or item.id for item in basket],
+        "rhythm_prior_mode": "frozen_local_lookback_per_window",
+        "rhythm_quantile_threshold": protocol.get("rhythm_quantile_threshold", 0.99),
+        "rhythm_priors": {
+            period_id: {
+                series_id: rhythm_priors[(period_id, series_id)].summary()
+                for series_id in sorted(key[1] for key in rhythm_priors if key[0] == period_id)
+            }
+            for period_id in sorted({key[0] for key in rhythm_priors})
+        },
         "notes": [
             "A missing or cloudy observation is unknown threat, not normal activity.",
             "Trailing z uses lookback in the same window (novelty vs recent history).",
-            "Rhythm z uses the control lookback as a frozen quiet/seasonal prior.",
-            "coincidence_v0 thresholds are unchanged. Rhythm is a parallel overlay.",
+            "Rhythm uses each window's own frozen pre-window lookback, "
+            "avoiding raw year-level shifts.",
+            "Rhythm flags require both z and empirical-tail thresholds.",
+            "coincidence_v1 keeps the strict costly, domain, and persistence gates.",
             "Coincidence is across causal domains, not merely source families.",
-            "Permutation shuffles each series' flag days independently (marginals fixed).",
+            "Permutation circularly shifts flags within each series' eligible-day mask.",
+            "Amber permutation shifts only non-costly flags; the costly/VIIRS "
+            "unknown mask stays fixed. The statistic is maximum consecutive amber run.",
         ],
         "n_feature_rows": len(rows),
         "protocol_alerts": [item.model_dump(mode="json") for item in protocol_alerts],
@@ -192,11 +237,14 @@ def measure_scenario(
         "rhythm_exploratory_alerts": [
             item.model_dump(mode="json") for item in rhythm_exploratory_alerts
         ],
+        "amber_alerts": amber_alerts,
+        "rhythm_amber_alerts": rhythm_amber_alerts,
         "verdict_counts": _count_verdicts(day_verdicts),
         "rhythm_verdict_counts": _count_verdicts(
             [{"verdict": row["rhythm_verdict"]} for row in day_verdicts]
         ),
         "permutation": permutation,
+        "window_comparison": window_comparison,
     }
     _write_json(out_dir / "summary.json", summary)
     _write_jsonl(out_dir / "features.jsonl", rows)
@@ -215,8 +263,11 @@ def measure_scenario(
         f"measure {scenario_id} finished {measure_id} "
         f"protocol_alerts={len(protocol_alerts)} exploratory_alerts={len(exploratory_alerts)} "
         f"rhythm_alerts={len(rhythm_alerts)} "
+        f"amber_alerts={len(amber_alerts)} "
         f"permute_incident_rhythm_p_basket="
-        f"{(permutation.get('rhythm') or {}).get('incident', {}).get('p_basket_days')}"
+        f"{(permutation.get('rhythm') or {}).get('incident', {}).get('p_basket_days')} "
+        f"permute_incident_amber_p_max_run="
+        f"{(permutation.get('amber') or {}).get('incident', {}).get('p_max_run')}"
     )
     return out_dir, summary
 
@@ -234,9 +285,7 @@ def _score_series(
     lag = SOURCE_LAG.get(indicator.connector or "", 0)
     cutoff_day = event_day + timedelta(days=lag)
     relevant = [
-        item
-        for item in observations
-        if item.period_id == window_id and item.series_id == series_id
+        item for item in observations if item.period_id == window_id and item.series_id == series_id
     ]
     observed = select_expected_row(relevant, cutoff_day, expected_lag_days=lag)
     payload = {
@@ -293,8 +342,8 @@ def _score_series(
     )
     payload["z"] = feature.z
     payload["n_baseline"] = feature.n_baseline
-    payload["protocol_eligible"] = (
-        not feature.missing and feature.n_baseline >= int(protocol.get("n_min", 20))
+    payload["protocol_eligible"] = not feature.missing and feature.n_baseline >= int(
+        protocol.get("n_min", 20)
     )
     if quiet_prior is not None:
         payload.update(
@@ -305,6 +354,7 @@ def _score_series(
                 polarity=indicator.polarity or Polarity.high_unusual,
                 n_min=EXPLORATORY_N_MIN,
                 protocol_n_min=int(protocol.get("n_min", 20)),
+                quantile_threshold=float(protocol.get("rhythm_quantile_threshold", 0.99)),
             )
         )
     if feature.missing:
@@ -321,6 +371,21 @@ def _score_series(
         return payload
     payload.update({"state": "normal", "threat": "not_elevated"})
     return payload
+
+
+def _active_basket(
+    indicators: list[IndicatorSpec], manifest: dict[str, Any]
+) -> list[IndicatorSpec]:
+    collected_series = {
+        item.get("series_id")
+        for item in manifest.get("items", [])
+        if not item.get("not_applicable") and item.get("observations")
+    }
+    return [
+        item
+        for item in indicators
+        if item.in_basket and item.connector and (item.series_id or item.id) in collected_series
+    ]
 
 
 def _as_flag(
@@ -361,8 +426,10 @@ def _day_verdict(states: dict[str, str], basket: list[IndicatorSpec]) -> str:
     costly_unknown = [item_id for item_id in costly_ids if item_id in unknown]
     if len(flagged) >= 3 and len(domains) >= 3 and len(sources) >= 3 and costly_flagged:
         return "protocol_coincidence"
-    if len(flagged) >= 2 and costly_unknown and not costly_flagged:
+    if len(flagged) >= 2 and len(domains) >= 2 and costly_unknown and not costly_flagged:
         return "soft_flags_costly_unknown"
+    if len(flagged) >= 2 and len(domains) < 2:
+        return "same_domain_cluster"
     if len(flagged) >= 2 and not costly_flagged and not costly_unknown:
         return "cheap_talk_without_costly"
     if flagged:
@@ -374,26 +441,234 @@ def _day_verdict(states: dict[str, str], basket: list[IndicatorSpec]) -> str:
 
 def _permute_windows(
     flags: list[FlaggedSeries],
-    days: list[dict[str, Any]],
+    rows: list[dict[str, Any]],
     protocol: dict[str, Any],
     collection_id: str,
     kind: str,
+    *,
+    eligibility_key: str,
 ) -> dict[str, Any]:
     n_perm = int(protocol.get("permutation_n", 1000))
     by_window: dict[str, list[date]] = {}
-    for row in days:
-        by_window.setdefault(row["window_id"], []).append(date.fromisoformat(row["day"]))
+    availability: dict[str, dict[str, list[date]]] = {}
+    for row in rows:
+        window_id = row["window_id"]
+        day = date.fromisoformat(row["event_day"])
+        by_window.setdefault(window_id, []).append(day)
+        if row.get(eligibility_key):
+            availability.setdefault(window_id, {}).setdefault(row["series_id"], []).append(day)
     result: dict[str, Any] = {}
     for window_id, window_days in by_window.items():
         window_flags = [flag for flag in flags if flag.period_id == window_id]
         result[window_id] = permute_independence(
             window_flags,
+            sorted(set(window_days)),
+            protocol=protocol,
+            n_perm=n_perm,
+            seed=seed_for(collection_id, kind, window_id),
+            available_days=availability.get(window_id, {}),
+        )
+    return result
+
+
+def _permute_amber_windows(
+    days: list[dict[str, Any]],
+    basket: list[IndicatorSpec],
+    protocol: dict[str, Any],
+    collection_id: str,
+    kind: str,
+    *,
+    rhythm: bool,
+) -> dict[str, Any]:
+    n_perm = int(protocol.get("permutation_n", 1000))
+    states_key = "rhythm_states" if rhythm else "states"
+    costly_ids = {
+        item.series_id or item.id for item in basket if item.cost_class is CostClass.costly
+    }
+    specs = {item.series_id or item.id: item for item in basket}
+    by_window: dict[str, list[dict[str, Any]]] = {}
+    for row in days:
+        by_window.setdefault(row["window_id"], []).append(row)
+    result: dict[str, Any] = {}
+    for window_id, window_rows in by_window.items():
+        ordered = sorted(window_rows, key=lambda item: item["day"])
+        window_days = [date.fromisoformat(row["day"]) for row in ordered]
+        costly_unknown: set[date] = set()
+        costly_flagged: set[date] = set()
+        flags: list[FlaggedSeries] = []
+        availability: dict[str, list[date]] = {}
+        for row in ordered:
+            day = date.fromisoformat(row["day"])
+            states = row.get(states_key) or {}
+            if any(
+                states.get(series_id) in {"unknown", "insufficient_baseline"}
+                for series_id in costly_ids
+            ):
+                costly_unknown.add(day)
+            if any(states.get(series_id) == "flagged" for series_id in costly_ids):
+                costly_flagged.add(day)
+            for series_id, state in states.items():
+                if series_id in costly_ids:
+                    continue
+                indicator = specs.get(series_id)
+                if indicator is None:
+                    continue
+                if state in {"flagged", "normal"}:
+                    availability.setdefault(series_id, []).append(day)
+                if state == "flagged":
+                    flag = _as_flag(
+                        indicator,
+                        window_id,
+                        day,
+                        {"state": "flagged"},
+                    )
+                    if flag is not None:
+                        flags.append(flag)
+        result[window_id] = permute_amber(
+            flags,
             window_days,
             protocol=protocol,
             n_perm=n_perm,
             seed=seed_for(collection_id, kind, window_id),
+            available_days=availability,
+            costly_unknown_days=costly_unknown,
+            costly_flagged_days=costly_flagged,
         )
     return result
+
+
+def _evidence_gap_episodes(
+    days: list[dict[str, Any]],
+    basket: list[IndicatorSpec],
+    protocol: dict[str, Any],
+    *,
+    rhythm: bool,
+) -> list[dict[str, Any]]:
+    verdict_key = "rhythm_verdict" if rhythm else "verdict"
+    states_key = "rhythm_states" if rhythm else "states"
+    persistence = int(protocol.get("amber_persistence_days", 3))
+    by_window: dict[str, list[dict[str, Any]]] = {}
+    for row in days:
+        by_window.setdefault(row["window_id"], []).append(row)
+    episodes: list[dict[str, Any]] = []
+    for window_id, window_rows in by_window.items():
+        run: list[dict[str, Any]] = []
+        for row in sorted(window_rows, key=lambda item: item["day"]):
+            row_day = date.fromisoformat(row["day"])
+            consecutive = not run or row_day == date.fromisoformat(run[-1]["day"]) + timedelta(
+                days=1
+            )
+            if row.get(verdict_key) == "soft_flags_costly_unknown" and consecutive:
+                run.append(row)
+                continue
+            if len(run) >= persistence:
+                episodes.append(_episode_payload(window_id, run, basket, states_key, rhythm))
+            run = [row] if row.get(verdict_key) == "soft_flags_costly_unknown" else []
+        if len(run) >= persistence:
+            episodes.append(_episode_payload(window_id, run, basket, states_key, rhythm))
+    return episodes
+
+
+def _episode_payload(
+    window_id: str,
+    run: list[dict[str, Any]],
+    basket: list[IndicatorSpec],
+    states_key: str,
+    rhythm: bool,
+) -> dict[str, Any]:
+    flagged = {
+        series_id
+        for row in run
+        for series_id, state in row[states_key].items()
+        if state == "flagged"
+    }
+    costly_unknown = {
+        item.series_id or item.id
+        for item in basket
+        if item.cost_class is CostClass.costly
+        and any(
+            row[states_key].get(item.series_id or item.id) in {"unknown", "insufficient_baseline"}
+            for row in run
+        )
+    }
+    domains = sorted(
+        {
+            item.causal_domain.value
+            for item in basket
+            if (item.series_id or item.id) in flagged and item.causal_domain is not None
+        }
+    )
+    return {
+        "window_id": window_id,
+        "start": run[0]["day"],
+        "end": run[-1]["day"],
+        "n_days": len(run),
+        "kind": "rhythm_evidence_gap" if rhythm else "evidence_gap",
+        "contributing_series": sorted(flagged),
+        "contributing_causal_domains": domains,
+        "costly_unknown_series": sorted(costly_unknown),
+        "analyst_action": "review_soft_correlation_and_resolve_costly_source_gap",
+    }
+
+
+def _window_comparison(
+    days: list[dict[str, Any]],
+    protocol_alerts: list[Any],
+    rhythm_alerts: list[Any],
+    amber_alerts: list[dict[str, Any]],
+    rhythm_amber_alerts: list[dict[str, Any]],
+) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for window_id in sorted({row["window_id"] for row in days}):
+        window_rows = [row for row in days if row["window_id"] == window_id]
+        result[window_id] = {
+            "n_days": len(window_rows),
+            "verdict_counts": _count_verdicts(window_rows),
+            "rhythm_verdict_counts": _count_verdicts(
+                [{"verdict": row["rhythm_verdict"]} for row in window_rows]
+            ),
+            "protocol_episodes": sum(item.period_id == window_id for item in protocol_alerts),
+            "rhythm_protocol_episodes": sum(item.period_id == window_id for item in rhythm_alerts),
+            "amber_episodes": sum(item["window_id"] == window_id for item in amber_alerts),
+            "rhythm_amber_episodes": sum(
+                item["window_id"] == window_id for item in rhythm_amber_alerts
+            ),
+        }
+    return result
+
+
+def _measurement_mode(
+    scenario_dir: Path,
+    status: dict[str, Any],
+    manifest: dict[str, Any],
+    *,
+    current_scenario_hash: str,
+    current_protocol_hash: str,
+    exploratory: bool,
+) -> str:
+    freeze_path = scenario_dir / "freeze.json"
+    if freeze_path.is_file():
+        freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+        if (
+            freeze.get("collection_id") == manifest.get("collection_id")
+            and freeze.get("scenario_hash") == current_scenario_hash
+            and freeze.get("protocol_hash") == current_protocol_hash
+            and not freeze.get("rehearsal")
+        ):
+            return "frozen_protocol"
+    if exploratory:
+        return "exploratory_unfrozen"
+    review_id = status.get("active_review_id")
+    decision = None
+    if review_id:
+        decision_path = scenario_dir / "reviews" / review_id / "decision.json"
+        if decision_path.is_file():
+            decision = json.loads(decision_path.read_text(encoding="utf-8")).get("decision")
+    raise ValueError(
+        "measurement requires a non-rehearsal frozen corpus; "
+        f"active review decision is {decision or 'missing'}. "
+        "Use --exploratory to create a clearly non-scientific development result."
+    )
 
 
 def _alerts_for(flags: list[FlaggedSeries], protocol: dict[str, Any]) -> list[Any]:
@@ -448,31 +723,54 @@ def _markdown(
         "",
         f"- Scenario: `{summary['scenario_id']}`",
         f"- Collection: `{summary['collection_id']}`",
+        f"- Measurement mode: `{summary['measurement_mode']}`",
+        f"- Scientific result: **{'yes' if summary['scientific_result'] else 'no'}**",
         (
             f"- Protocol: `{summary['protocol_id']}` "
             f"(alerts require n_baseline ≥ {summary['protocol_n_min']})"
         ),
-        f"- Exploratory n_min: {summary['exploratory_n_min']} (not coincidence_v0)",
+        f"- Exploratory n_min: {summary['exploratory_n_min']} (not the frozen protocol)",
         "- Missing/cloudy/source_down = **unknown threat**, not normal activity.",
         "- Protocol coincidence requires distinct **causal domains**, not merely source families.",
         f"- Protocol coincidence episodes: {len(summary['protocol_alerts'])}",
         f"- Exploratory coincidence episodes: {len(summary['exploratory_alerts'])}",
         (
             f"- Rhythm coincidence episodes: {len(summary.get('rhythm_alerts') or [])} "
-            "(quiet/seasonal prior; same k/domains/persistence)"
+            "(window-local frozen prior; same k/domains/persistence)"
         ),
+        f"- Amber evidence-gap episodes: {len(summary.get('amber_alerts') or [])}",
+        f"- Rhythm amber episodes: {len(summary.get('rhythm_amber_alerts') or [])}",
         "",
-        "## Quiet prior (control lookback)",
+        "## Incident versus control",
         "",
     ]
-    if summary.get("quiet_prior_period"):
+    for window_id, comparison in summary.get("window_comparison", {}).items():
         lines.append(
-            f"- Period `{summary['quiet_prior_period']}` values strictly before "
-            f"`{summary.get('quiet_prior_end')}`."
+            f"- `{window_id}`: protocol episodes={comparison['protocol_episodes']}, "
+            f"amber episodes={comparison['amber_episodes']}, "
+            f"rhythm protocol episodes={comparison['rhythm_protocol_episodes']}, "
+            f"rhythm amber episodes={comparison['rhythm_amber_episodes']}"
         )
-    for key, prior in sorted((summary.get("quiet_priors") or {}).items()):
+    lines += ["", "## Frozen local rhythm priors", ""]
+    lines.append(
+        "Each window is scaled against its own strictly pre-window lookback; "
+        "raw year-to-year source levels are not compared directly."
+    )
+    for period_id, priors in summary.get("rhythm_priors", {}).items():
+        lines.append(f"- `{period_id}`")
+        for key, prior in sorted(priors.items()):
+            lines.append(
+                f"  - `{key}`: n={prior.get('n')} μ={prior.get('mu')} σ={prior.get('sigma')}"
+            )
+    lines += ["", "## Amber evidence-gap episodes", ""]
+    amber = summary.get("amber_alerts") or []
+    if not amber:
+        lines.append("- None")
+    for item in amber:
         lines.append(
-            f"- `{key}`: n={prior.get('n')} μ={prior.get('mu')} σ={prior.get('sigma')}"
+            f"- `{item['window_id']}` {item['start']}..{item['end']} "
+            f"({item['n_days']} days): domains={','.join(item['contributing_causal_domains'])}; "
+            f"costly unknown={','.join(item['costly_unknown_series'])}"
         )
     lines += ["", "## Trailing-z verdict counts", ""]
     for key, value in sorted(summary["verdict_counts"].items()):
@@ -484,23 +782,15 @@ def _markdown(
     for kind, block in (summary.get("permutation") or {}).items():
         lines.append(f"### {kind}")
         for window_id, stats in block.items():
-            lines.append(
-                f"- `{window_id}`: observed basket days {stats.get('observed_basket_days')}, "
-                f"episodes {stats.get('observed_episodes')}; "
-                f"null mean basket {stats.get('null_basket_days_mean')}; "
-                f"p_basket={stats.get('p_basket_days')}, p_episodes={stats.get('p_episodes')} "
-                f"(n_perm={stats.get('n_perm')})"
-            )
+            lines.append(f"- `{window_id}`: {_permutation_line(stats)}")
         lines.append("")
     lines += ["", "## Daily states (trailing z)", ""]
     header = "| Window | Day | Verdict | " + " | ".join(series) + " |"
     lines += [header, "|---|---|---|" + "|".join(["---"] * len(series)) + "|"]
     for row in days:
         cells = " | ".join(row["states"].get(item, "") for item in series)
-        lines.append(
-            f"| {row['window_id']} | {row['day']} | `{row['verdict']}` | {cells} |"
-        )
-    lines += ["", "## Daily states (rhythm vs quiet prior)", ""]
+        lines.append(f"| {row['window_id']} | {row['day']} | `{row['verdict']}` | {cells} |")
+    lines += ["", "## Daily states (rhythm vs frozen local prior)", ""]
     lines += [header, "|---|---|---|" + "|".join(["---"] * len(series)) + "|"]
     for row in days:
         cells = " | ".join(row.get("rhythm_states", {}).get(item, "") for item in series)
@@ -508,6 +798,28 @@ def _markdown(
             f"| {row['window_id']} | {row['day']} | `{row.get('rhythm_verdict', '')}` | {cells} |"
         )
     return "\n".join(lines) + "\n"
+
+
+def _permutation_line(stats: dict[str, Any]) -> str:
+    if "p_max_run" in stats:
+        return (
+            f"observed max amber run {stats.get('observed_max_run')} "
+            f"({stats.get('observed_amber_days')} amber days, "
+            f"{stats.get('observed_episodes')} episodes); "
+            f"null mean max run {stats.get('null_max_run_mean')}; "
+            f"effect {stats.get('max_run_effect')}; "
+            f"p_max_run={stats.get('p_max_run')}, p_episodes={stats.get('p_episodes')} "
+            f"(frozen costly unknown days={stats.get('frozen_costly_unknown_days')}, "
+            f"n_perm={stats.get('n_perm')}, method={stats.get('method')})"
+        )
+    return (
+        f"observed basket days {stats.get('observed_basket_days')}, "
+        f"episodes {stats.get('observed_episodes')}; "
+        f"null mean basket {stats.get('null_basket_days_mean')}; "
+        f"effect {stats.get('basket_days_effect')}; "
+        f"p_basket={stats.get('p_basket_days')}, p_episodes={stats.get('p_episodes')} "
+        f"(n_perm={stats.get('n_perm')}, method={stats.get('method')})"
+    )
 
 
 def _write_json(path: Path, value: Any) -> None:

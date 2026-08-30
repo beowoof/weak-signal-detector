@@ -27,9 +27,10 @@ This repository is at the live-connector checkpoint. It contains:
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
 - live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, and Brent are implemented but out of the v1 basket; Sentinel-1 is implemented but disabled on `ukraine2022`; OpenSky credentials may be present but the Trino connector is not built; default tests remain offline;
-- `wsd measure` scores a live harvest two ways (trailing z vs quiet-prior rhythm) and permutation-tests the chorus; missing/cloudy = unknown threat; no Ollama yet.
+- `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet.
+- Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day score + 120-day lookback) sit next to `ukraine2022`. Frozen `coincidence_v1` rules; do not retune from Ukraine. `GRC-TUR-2020` stays unharvested.
 
-**Live path for `ukraine2022`:** `wsd corpus collect` → `wsd corpus review` (warnings OK) → `wsd measure` → read `measurement.md`. Details in [`HOWTO.md`](HOWTO.md) (“Current experiment”). This is a development showcase, not held-out evidence.
+**Live development path:** `wsd scenario validate` → `wsd corpus collect` → `wsd corpus review` → `wsd measure --exploratory` → read `measurement.md`. Next cases are `rus2021apr`, then the two hard negatives. Details in [`HOWTO.md`](HOWTO.md) (“Current experiment”). `ukraine2022` is a development showcase, not held-out evidence.
 
 The detailed design record is in `weak-signal-fusion-spec.md`. The literal operator workflow is in [`HOWTO.md`](HOWTO.md). This README is the operational source of truth and will be kept current as implementation proceeds.
 
@@ -46,7 +47,7 @@ Docker is used when a component requires a persistent process or a specific repr
 | Future API/frontend | Docker | Persistent environment-specific component |
 | Future PostgreSQL or ChromaDB | Docker, only if access patterns justify it | No database is required for the current tabular PoC |
 
-ChromaDB is deferred. It becomes relevant only if the cited prior corpus grows large enough to need semantic retrieval. Explicit frozen prior packets are currently easier to reproduce and audit.
+ChromaDB is not part of measurement. When an LLM later acts as a **named intelligence-analyst step** (packet interpretation, not a general-purpose aggregator and never a combiner), retrieval will go through Chroma + embeddings so the model sees a cutoff-safe cited subset rather than the raw harvest. Explicit frozen prior packets remain the audit trail.
 
 ## Scientific separation
 
@@ -65,7 +66,7 @@ v1 coincidence requires three distinct **causal domains** and three source syste
 | Sentinel-1 backscatter | physical activity | register yes; **off** on `ukraine2022` |
 | FIRMS thermal (NOAA-20) | physical activity | yes |
 | OpenSky ADS-B | mobility | no (credentials optional; connector not built) |
-| Official publication cadence | bureaucratic | yes |
+| Internet Archive official-host captures | bureaucratic hypothesis | no (diagnostic; construct validity unresolved) |
 | GDELT CAMEO | information | yes |
 | ICEWS | information | yes (robustness, not a second domain) |
 | Wikipedia pageviews | public attention | yes |
@@ -125,14 +126,14 @@ Google Cloud will not be configured or used without an explicit decision after t
 
 ## Scenario workflow
 
-Corpus review separates **broken collection** from **incomplete nights**. Provenance failures, post-cutoff material, outcome-encoded queries, and a source that never arrived are hard NO-GOs. Coverage holes (cloud, holidays, one-AOI nights) are warnings. The measurement layer already treats missing days as not flagged; a learning / covariance system should keep ingesting every source that is up, including future X, OSINT, and news metrics.
+Corpus review separates **broken collection** from **weather-limited nights**. Provenance failures, post-cutoff material, outcome-encoded queries, a source that never arrived, and non-weather daily coverage below its declared gate are hard NO-GOs. VIIRS cloud coverage and balanced incident/control missingness remain explicit warnings. MOEX coverage is calculated over expected weekdays rather than calendar weekends.
 
 The workflow is intentionally gated:
 
 ```text
-draft -> collected -> reviewed -> frozen
-             ^           |            \
-             +-- focused recollection  +-> wsd measure (live harvest; not a scientific freeze)
+draft -> collected -> reviewed -> frozen -> scientific measurement
+             ^           |
+             +-- focused recollection  +-> exploratory measurement (explicit flag)
 ```
 
 Create an incomplete scenario template, fill it in, and validate it:
@@ -157,6 +158,14 @@ wsd corpus collect --scenario ukraine2022
 ```
 
 VIIRS live harvest also needs `uv sync --extra viirs`. Mocked output is always labelled rehearsal and cannot be frozen as real evidence. Live harvests are still not frozen scientific results until deterministic gates and the owner-run semantic review both pass. See [`HOWTO.md`](HOWTO.md).
+
+Until the owner-run semantic review is implemented, development measurements must opt in explicitly:
+
+```bash
+wsd measure --scenario ukraine2022 --exploratory
+```
+
+The report records `measurement_mode: exploratory_unfrozen` and `scientific_result: false`.
 
 ## Running a scenario experiment
 
