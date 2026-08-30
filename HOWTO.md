@@ -309,6 +309,23 @@ Expected report labels for this path are `measurement_mode: exploratory_unfrozen
 
 A future scientific freeze records both the scenario hash and the complete scientific-configuration hash. Changing `protocol.yaml`, the indicator register, priors, or interpretation protocol invalidates that freeze and requires a new review/freeze cycle.
 
+## 6D. Plot recorded measurements locally
+
+From the repository root, start the read-only results viewer:
+
+```bash
+python3 dashboard/server.py
+```
+
+Open <http://127.0.0.1:8000>. Use **Result set** to move between scenarios and measurement runs, then switch among:
+
+- **Individual series** for raw values plus trailing and frozen-rhythm z-scores;
+- **All series** for aligned small multiples with independent raw-value scales;
+- **Combined z-scores** for comparable multi-series time plots; and
+- **Z-score scatter** to see where trailing and rhythm baselines disagree.
+
+The server discovers ignored `scenarios/*/measurement/` outputs on each request and never changes them. Older result formats without rhythm fields remain navigable; their rhythm and scatter views state that paired values are unavailable. Treat the viewer as a diagnostic aid only: it does not change `measurement_mode`, make an exploratory result scientific, or turn missingness into a normal observation.
+
 ## 7. Run the whole mocked test harness
 
 After `scenario.json` validates, Steps 4 and 5 can be run together:

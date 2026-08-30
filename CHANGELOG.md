@@ -6,6 +6,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- Dependency-free local results viewer (`python3 dashboard/server.py`) with result-set/window navigation, individual raw and normalized series, all-series small multiples, combined trailing/rhythm z-score plots, and paired z-score scatter. It reads ignored measurement artifacts without modifying them and labels legacy/rhythm-incomplete runs honestly.
 - Amber permutation: independently circular-shift non-costly flag calendars while freezing the costly/VIIRS unknown mask; test statistic is maximum consecutive amber run (`p_max_run`).
 - Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day scored windows, 120-day lookback, frozen `coincidence_v1`). 2018 cases disable FIRMS (NOAA-20 does not cover the 2017 control lookback) and MOEX; they use the declared ALFRED series. `GRC-TUR-2020` is still not harvested.
 - `prepare_scenario_workspace` so a tracked `scenario.json` can be validated and collected after a clone.
