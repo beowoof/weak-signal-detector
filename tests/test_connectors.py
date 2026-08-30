@@ -207,6 +207,49 @@ def test_fred_uses_alfred_vintages_and_redacts_key(monkeypatch: pytest.MonkeyPat
     assert "REDACTED" in result.requests[0]["url"]
     assert result.observations[0].value == pytest.approx(1.11)
     assert result.observations[1].quality == "missing"
+    assert result.item["coverage"] == 1.0
+
+
+def test_fred_holiday_dots_do_not_fail_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("FRED_API_KEY", "secret-token")
+
+    def handler(url: str) -> HttpResponse:
+        body = {
+            "observations": [
+                {
+                    "realtime_start": "2018-07-03",
+                    "realtime_end": "9999-12-31",
+                    "date": "2018-07-03",
+                    "value": "1.16",
+                },
+                {
+                    "realtime_start": "2018-07-05",
+                    "realtime_end": "9999-12-31",
+                    "date": "2018-07-04",
+                    "value": ".",
+                },
+                {
+                    "realtime_start": "2018-07-05",
+                    "realtime_end": "9999-12-31",
+                    "date": "2018-07-05",
+                    "value": "1.17",
+                },
+            ]
+        }
+        return HttpResponse(url, 200, json.dumps(body).encode(), {})
+
+    result = FredConnector(FakeTransport(handler)).pull(
+        _request(
+            source="alfred",
+            series_id="dyad.fx",
+            start=date(2018, 7, 3),
+            end=date(2018, 7, 5),
+            queries=_queries(fred_series="DEXUSEU"),
+        )
+    )
+    assert result.item["coverage"] == 1.0
+    assert result.item["n_ok"] == 2
+    assert [item.quality for item in result.observations] == ["ok", "missing", "ok"]
     assert redact_url("https://api.stlouisfed.org/fred?api_key=secret-token") == (
         "https://api.stlouisfed.org/fred?api_key=REDACTED"
     )

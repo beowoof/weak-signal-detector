@@ -25,13 +25,14 @@ def test_v1_basket_spans_independent_causal_domains() -> None:
     assert CausalDomain.physical_activity in domains
     assert CausalDomain.information in domains
     assert CausalDomain.public_attention in domains
-    assert CausalDomain.bureaucratic in domains
     assert CausalDomain.digital_infrastructure in domains
     assert CausalDomain.market in domains
     demoted = {item.id: item for item in indicators}
     assert demoted["attn.osm_changesets"].in_basket is False
     assert demoted["attn.wiki_edits"].in_basket is False
     assert demoted["info.brent"].in_basket is False
+    assert demoted["official.gazette"].in_basket is False
+    assert demoted["official.gazette"].collector == "Internet Archive"
     assert demoted["attn.osm_changesets"].causal_domain is CausalDomain.public_attention
     assert demoted["mobility.opensky"].status.value == "uninstantiated"
     assert demoted["tempo.s1_backscatter"].in_basket is True

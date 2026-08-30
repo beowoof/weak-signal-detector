@@ -1,4 +1,4 @@
-protocol_id: coincidence_v0
+protocol_id: coincidence_v1
 window_days: 90
 n_min: 20
 z_threshold: 2.5
@@ -11,7 +11,13 @@ k_distinct_causal_domains: true
 k_domains: 3
 detection_horizon_days: 30
 persistence_days: 3
+amber_persistence_days: 3
 permutation_n: 1000
+permutation_method: independent_circular_shift_within_available_days
+amber_permutation_statistic: max_run_length
+amber_permutation_method: independent_circular_shift_soft_flags_frozen_costly_mask
+rhythm_prior_mode: frozen_local_lookback_per_window
+rhythm_quantile_threshold: 0.99
 logistic: false
 covar_short_days: 14
 covar_short_min_n: 10
@@ -35,5 +41,5 @@ freshness:
   gdelt: {cadence: daily, expected_lag_days: 0, max_age_days: 0}
   wikipedia: {cadence: daily, expected_lag_days: 1, max_age_days: 0}
   viirs: {cadence: daily, expected_lag_days: 3, max_age_days: 0}
-  fred: {cadence: fed_h10_print_days, expected_lag_days: 0, max_age_days: 0}
+  fred: {cadence: fed_h10_print_days, expected_lag_days: 7, max_age_days: 0}
   sar: {cadence: sentinel1_revisit, expected_lag_days: 1, max_age_days: 0}

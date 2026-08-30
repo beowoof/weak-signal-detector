@@ -131,9 +131,11 @@ def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[
     by_source: dict[str, list[dict[str, Any]]] = defaultdict(list)
     selected = set(collection.get("selected_sources") or [])
     for source, config in scenario.sources.items():
-        if config.enabled and source not in selected and source not in {
-            item["source"] for item in collection["items"]
-        }:
+        if (
+            config.enabled
+            and source not in selected
+            and source not in {item["source"] for item in collection["items"]}
+        ):
             gaps.append(
                 _gap(
                     "missing_source",
@@ -165,15 +167,22 @@ def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[
             else scenario.corpus_gates.minimum_daily_coverage
         )
         if item["coverage"] < threshold:
+            weather_limited = item["source"] == "viirs"
             gaps.append(
                 _gap(
                     "coverage_below_threshold",
                     item["source"],
                     item["window_id"],
                     f"coverage {item['coverage']:.3f} is below {threshold:.3f}; "
-                    "treat as missing nights, not a stop",
-                    "continue_with_available_sources",
-                    severity="warning",
+                    + (
+                        "weather-limited nights remain unknown"
+                        if weather_limited
+                        else "the declared daily coverage gate failed"
+                    ),
+                    "continue_with_recorded_weather_gaps"
+                    if weather_limited
+                    else "repair_or_recollect_source",
+                    severity="warning" if weather_limited else "critical",
                 )
             )
         if scenario.corpus_gates.require_complete_provenance and not item["provenance_complete"]:

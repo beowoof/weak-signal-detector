@@ -89,6 +89,44 @@ def test_insufficient_baseline_is_missing_and_never_flags() -> None:
     assert feature.flagged is False
 
 
+def test_constant_baseline_equal_value_is_normal() -> None:
+    current_day = date(2021, 2, 1)
+    rows = [observation(current_day - timedelta(days=offset), 0.0) for offset in range(20, 0, -1)]
+    rows.append(observation(current_day, 0.0))
+    feature = build_feature(
+        rows,
+        period_id="fixture-period",
+        series_id="fixture.series",
+        cutoff_day=current_day,
+        expected_lag_days=0,
+        window_days=90,
+        n_min=20,
+        threshold=2.5,
+    )
+    assert feature.missing is False
+    assert feature.z is None
+    assert feature.flagged is False
+
+
+def test_new_value_above_constant_baseline_flags_without_fake_z() -> None:
+    current_day = date(2021, 2, 1)
+    rows = [observation(current_day - timedelta(days=offset), 0.0) for offset in range(20, 0, -1)]
+    rows.append(observation(current_day, 1.0))
+    feature = build_feature(
+        rows,
+        period_id="fixture-period",
+        series_id="fixture.series",
+        cutoff_day=current_day,
+        expected_lag_days=0,
+        window_days=90,
+        n_min=20,
+        threshold=2.5,
+    )
+    assert feature.missing is False
+    assert feature.z is None
+    assert feature.flagged is True
+
+
 @pytest.mark.parametrize(
     ("z", "polarity", "expected"),
     [

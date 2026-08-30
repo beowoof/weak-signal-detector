@@ -116,18 +116,18 @@
   notes: NOAA-20 VIIRS SP AOI anomaly count, not a military-thermal classifier. SNPP FIRMS ceases 2026-11-01; NOAA-21 is too new for 2022 windows. Agriculture, industry, wildfire, and seasonal heating remain in the noise.
 - id: official.gazette
   family: official_residue
-  hypothesis: Official publication cadence on frozen hosts becomes unusual.
+  hypothesis: Internet Archive capture cadence on frozen official hosts becomes unusual.
   status: instantiated
   cost_class: info
   polarity: high_unusual
-  in_basket: true
+  in_basket: false
   source_system: internet_archive
   connector: official
   series_id: official.gazette
   causal_domain: bureaucratic
-  collector: focal state
-  subject_controls_signal: "yes"
-  notes: Bureaucratic tempo (capture count), not document semantics. Timing-distribution features are later.
+  collector: Internet Archive
+  subject_controls_signal: partly
+  notes: Demoted from the v1 basket because capture count mixes focal-host changes with Internet Archive crawl behaviour. Retained as a diagnostic until construct validity is established.
 - id: official.ct_certs
   family: official_residue
   hypothesis: New TLS certificates on a frozen ex-ante domain list become unusual relative to trailing baseline.

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -13,11 +14,16 @@ from wsf.scenario import (
     freeze_scenario,
     load_scenario,
     load_status,
+    prepare_scenario_workspace,
     require_collection_ready,
 )
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
 
 def _complete_scenario(project_root: Path, scenario_id: str = "ukraine2022") -> Path:
+    if not (project_root / "config").exists():
+        shutil.copytree(PROJECT_ROOT / "config", project_root / "config")
     directory = create_scenario(project_root, scenario_id)
     path = directory / "scenario.json"
     value = json.loads(path.read_text(encoding="utf-8"))
@@ -49,6 +55,24 @@ def _complete_scenario(project_root: Path, scenario_id: str = "ukraine2022") -> 
     )
     path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return directory
+
+
+def test_tracked_scenario_json_prepares_local_workspace(tmp_path: Path) -> None:
+    if not (tmp_path / "config").exists():
+        shutil.copytree(PROJECT_ROOT / "config", tmp_path / "config")
+    source = PROJECT_ROOT / "scenarios" / "deu2018quiet" / "scenario.json"
+    target = tmp_path / "scenarios" / "deu2018quiet"
+    target.mkdir(parents=True)
+    shutil.copy(source, target / "scenario.json")
+
+    directory = prepare_scenario_workspace(tmp_path, "deu2018quiet")
+    status = load_status(tmp_path, "deu2018quiet")
+    require_collection_ready(load_scenario(tmp_path, "deu2018quiet"))
+
+    assert directory == target
+    assert status["phase"] == "draft"
+    assert (target / "status.json").is_file()
+    assert (target / "corpus").is_dir()
 
 
 def test_created_scenario_is_deliberately_incomplete(tmp_path: Path) -> None:
@@ -130,6 +154,26 @@ def test_coverage_holes_are_warnings_not_no_go(tmp_path: Path) -> None:
     warnings = review["deterministic"]["warning_gaps"]
     assert any(item["gap_id"].startswith("coverage_below_threshold:viirs") for item in warnings)
     assert review["deterministic"]["critical_gaps"] == []
+
+
+def test_non_weather_daily_coverage_hole_is_no_go(tmp_path: Path) -> None:
+    _complete_scenario(tmp_path)
+    collection_dir, _ = collect_corpus(tmp_path, "ukraine2022", mock=True)
+    manifest_path = collection_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for item in manifest["items"]:
+        if item["source"] == "wikipedia":
+            item["coverage"] = 0.25
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    _, review = review_corpus(tmp_path, "ukraine2022", mock_model=True)
+    assert review["decision"] == "no_go"
+    assert any(
+        item["gap_id"].startswith("coverage_below_threshold:wikipedia")
+        for item in review["deterministic"]["critical_gaps"]
+    )
 
 
 def test_review_refuses_scenario_changed_after_collection(tmp_path: Path) -> None:

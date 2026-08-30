@@ -1,0 +1,112 @@
+{
+  "actors": {
+    "counterparts": [
+      "UKR"
+    ],
+    "focal": "RUS"
+  },
+  "controls": [
+    {
+      "end": "2020-04-09",
+      "id": "same-period-prior-year",
+      "lookback_days": 120,
+      "selection_reason": "Same seasonal 21-day window in the prior year without the spring 2021 buildup.",
+      "start": "2020-03-20",
+      "target_end": null,
+      "target_start": null
+    }
+  ],
+  "corpus_gates": {
+    "forbid_post_cutoff_material": true,
+    "forbidden_outcome_terms": [
+      "full-scale invasion",
+      "2022 russian invasion of ukraine",
+      "2021 ukraine crisis"
+    ],
+    "maximum_incident_control_coverage_difference": 0.05,
+    "minimum_daily_coverage": 0.95,
+    "minimum_valid_viirs_fraction": 0.7,
+    "require_complete_provenance": true
+  },
+  "incident": {
+    "end": "2021-04-08",
+    "id": "incident",
+    "lookback_days": 120,
+    "selection_reason": "Twenty-one days covering the declared 2021-03-25..2021-04-08 mobilisation interval (buildup then drawdown).",
+    "start": "2021-03-19",
+    "target_end": "2021-04-08",
+    "target_start": "2021-03-25"
+  },
+  "interpretation": {
+    "enabled": true,
+    "model": "qwen3.8:27b-mlx",
+    "repeats": 5
+  },
+  "purpose": "development_showcase",
+  "queries": {
+    "cameo_actor": "RUS",
+    "cameo_root_codes": [
+      "01",
+      "02",
+      "04",
+      "13"
+    ],
+    "facility_actor": "RUS",
+    "fred_series": null,
+    "wiki_titles": [
+      "Ministry of Defence (Russia)",
+      "Moscow",
+      "Moscow Kremlin",
+      "Ukraine",
+      "Kyiv"
+    ]
+  },
+  "research_question": "Do correlated weak public signals add information to strategic-intent triage?",
+  "scenario_id": "rus2021apr",
+  "schema_version": 1,
+  "sources": {
+    "alfred": {
+      "enabled": true
+    },
+    "brent": {
+      "enabled": false
+    },
+    "ct": {
+      "enabled": true
+    },
+    "firms": {
+      "enabled": true
+    },
+    "gdelt": {
+      "enabled": true
+    },
+    "icews": {
+      "enabled": true
+    },
+    "moex": {
+      "enabled": true
+    },
+    "official": {
+      "enabled": true
+    },
+    "osm": {
+      "enabled": false
+    },
+    "ripe": {
+      "enabled": true
+    },
+    "sar": {
+      "enabled": false
+    },
+    "viirs": {
+      "enabled": true
+    },
+    "wiki_edits": {
+      "enabled": false
+    },
+    "wikipedia": {
+      "enabled": true
+    }
+  },
+  "status": "draft"
+}

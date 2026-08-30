@@ -2,26 +2,43 @@
 
 ## Current experiment (read this first)
 
-`ukraine2022` is a **development showcase**, not held-out evidence. One live path:
+`ukraine2022` is a **development showcase**, not held-out evidence. Do **not** change `z_threshold`, `k`, amber persistence, or coincidence rules after seeing February 2022. Do **not** add another media feed.
+
+The next live work uses the **same frozen `coincidence_v1` rules** on other panel cases (21-day scored windows + 120-day lookback). Create local lifecycle files automatically via `wsd scenario validate` if you cloned only `scenario.json`.
 
 ```text
-1. wsd corpus collect --scenario ukraine2022
+Order (all development_showcase, none of them held-out):
+  1. rus2021apr        other mobilisation-positive (spring 2021 buildup/drawdown)
+  2. deu2018quiet      hard negative: quiet German autumn
+  3. usachn2018trade   hard negative: loud 2018 tariff talk, no mobilisation
+Do not harvest GRC-TUR-2020 yet.
+
+For each scenario:
+
+1. wsd scenario validate --scenario <id>
+2. wsd corpus collect --scenario <id>
       Harvest each window plus 120-day lookback. Sources run in parallel.
       Inspect collection_summary.md (zeros and cloud are OK; source_down is not).
-
-2. wsd corpus review --scenario ukraine2022
-      critical=0 → continue (warnings are cloud/weekends).
+      2018 cases disable FIRMS (NOAA-20 starts 2018-04-01; 2017 control lookback
+      cannot use the frozen instrument) and MOEX (not a DEU/USA mechanism).
+      They do call ALFRED (`DEXUSEU` / `DEXCHUS`); confirm FRED_API_KEY.
+3. wsd corpus review --scenario <id>
+      critical=0 → continue (VIIRS weather gaps may remain warnings).
       no_go → focused recollect from the printed missing.json, then review again.
+4. wsd measure --scenario <id> --exploratory
+      Development scoring, explicitly non-scientific until semantic review and freeze:
+        a. Trailing z — novelty vs the last 90 days of this window.
+        b. Rhythm — each window vs its own frozen pre-window baseline (z + tail rank).
+        c. Amber — persistent cross-domain soft flags while costly evidence is unavailable.
+        d. Red permutation — circularly shift all flags across that series' observable days.
+        e. Amber permutation — shift only non-costly flags; freeze the costly/VIIRS
+           unknown mask. Statistic: max consecutive amber run.
+      Read measurement.md. Compare incident vs control. Do not retune from Ukraine.
 
-3. wsd measure --scenario ukraine2022
-      Three scores, same frozen coincidence rule (k=3 domains, costly gate, 3-day persistence):
-        a. Trailing z — novelty vs the last 90 days of this window (can hide a long plan).
-        b. Rhythm z — overlay vs the control lookback (known winter-quiet).
-        c. Permutation — shuffle each series' flag days; is the chorus rarer than chance?
-      Read measurement.md in the printed measure directory. That is the result.
+Ollama / Qwen is not part of this path. A later analyst step will retrieve
+cutoff-safe packets from a vector store (Chroma + embeddings), not dump the harvest
+into a general-purpose aggregator.
 ```
-
-Do **not** change `z_threshold`, `k`, or persistence after seeing February 2022. Do **not** add another media feed. Ollama is not part of this path.
 
 ---
 
@@ -223,7 +240,7 @@ wsd corpus review --scenario ukraine2022 --mock-model
 
 Expected result: a new `reviews/review-.../` directory containing:
 
-- `deterministic_review.json`: hard provenance/cutoff/query checks plus coverage *warnings*;
+- `deterministic_review.json`: hard provenance/cutoff/query/daily-coverage checks plus VIIRS weather warnings;
 - `model_queue.jsonl`: the semantic-review job that a later owner-run Ollama harness will consume;
 - `model_responses.jsonl`: fake response, present only because `--mock-model` was used;
 - `missing.json`: machine-readable gaps for focused recollection;
@@ -231,7 +248,7 @@ Expected result: a new `reviews/review-.../` directory containing:
 
 Expected mocked decision: `go_candidate_rehearsal`. This proves only that the workflow can advance. It is not a scientific GO.
 
-Without `--mock-model`, the command still makes **no model call**. When hard gates pass, it writes the queue and returns `model_pending`. Cloudy VIIRS nights and incident/control coverage imbalance are **warnings**, not NO-GOs. Missingness is recorded; the other sources still proceed. Stop at `model_pending` until the owner-run Ollama execution step is implemented.
+Without `--mock-model`, the command still makes **no model call**. When hard gates pass, it writes the queue and returns `model_pending`. Cloudy VIIRS nights and incident/control coverage imbalance are **warnings**, not NO-GOs. Other daily sources below their declared coverage gate are critical. MOEX weekends/exchange holidays and ALFRED H.10 holidays (`.` values) or unpublished tail days are `missing` (cannot flag) and do not count against coverage; do not recollect them hoping for a print. ALFRED scoring waits 7 days for the H.10 vintage. Stop at `model_pending` until the owner-run Ollama execution step is implemented.
 
 A NO-GO means the collection is broken (no provenance, post-cutoff leakage, an enabled source never collected, or a connector that is down every day). It does not mean “a sensor had weather.”
 
@@ -271,20 +288,26 @@ Do not use `--allow-rehearsal` for a scientific run. It exists solely to prove t
 
 ## 6C. Measure the live harvest
 
-After a live collection (review may be `model_pending` with coverage warnings):
+After a live collection and review, development measurement must explicitly acknowledge that semantic review and freeze are incomplete:
 
 ```bash
-wsd measure --scenario ukraine2022
+wsd measure --scenario ukraine2022 --exploratory
 ```
 
 This writes `scenarios/ukraine2022/measurement/measure-.../`:
 
 - `features.jsonl`: per series-day state (`flagged`, `normal`, `unknown`, `insufficient_baseline`)
 - `days.jsonl`: a verdict that does **not** treat a cloudy VIIRS night as quiet
-- `measurement.md`: readable table
+- `measurement.md`: incident/control comparison, amber episodes, null effects, and daily tables
 - `summary.json`
 
-A missing or cloudy night is **unknown threat**, not a normal activity level. Soft flags (Wikipedia/GDELT) with VIIRS unknown are `soft_flags_costly_unknown`. Trailing z uses lookback in the same window. **Rhythm** scores the same days against the control lookback (quiet/seasonal prior) with the same z threshold and chorus rule; it does not retune coincidence_v0. **Permutation** (in the same `summary.json` / `measurement.md`) asks whether that chorus is unusual if each kitchen flags on its own calendar. Protocol coincidence still requires `n_baseline ≥ 20`, a costly gate, and **three distinct causal domains**. VIIRS+SAR+FIRMS in the same domain do not triple-vote. GDELT and ICEWS share the information domain.
+A missing or cloudy night is **unknown threat**, not a normal activity level. `soft_flags_costly_unknown` requires at least two distinct non-costly causal domains while a costly series is unavailable. Three consecutive such days create an **amber evidence-gap episode** for analyst review; it is not promoted to a red protocol alert.
+
+Trailing z uses a moving baseline within the same window. **Rhythm** freezes each incident or control window's own pre-window lookback, then requires both the z threshold and an empirical tail rank. It never compares raw 2021 source levels directly with raw 2022 levels. **Red permutation** independently circular-shifts each series' flag calendar within that series' protocol-eligible days, preserving missingness and flag runs. **Amber permutation** circular-shifts only the non-costly kitchens and holds the costly/VIIRS unknown (cloud) mask fixed; the test statistic is the maximum consecutive amber run, with `p_max_run = P(null max_run ≥ observed)`. `coincidence_v1` still requires `n_baseline ≥ 20`, a costly signal, three sources, three distinct causal domains, and three-day persistence. VIIRS+SAR+FIRMS cannot triple-vote; GDELT and ICEWS share one information domain.
+
+Expected report labels for this path are `measurement_mode: exploratory_unfrozen`, `scientific_result: no`. Omitting `--exploratory` before a real non-rehearsal freeze is an error.
+
+A future scientific freeze records both the scenario hash and the complete scientific-configuration hash. Changing `protocol.yaml`, the indicator register, priors, or interpretation protocol invalidates that freeze and requires a new review/freeze cycle.
 
 ## 7. Run the whole mocked test harness
 
@@ -334,7 +357,7 @@ python3 run_unit_tests.py --with-model
 | Review | Applies hard gates; queues semantic balance review | Read decision and every critical gap | Decision is GO, or a focused recollection is approved |
 | Recollect | Links the new revision to prior gaps | Verify it addressed gaps without changing the hypothesis | Review passes |
 | Freeze | Pins scenario, collection, review, and hashes | Confirm rehearsal versus real status | `freeze.json` is correct |
-| Measure | `wsd measure` scores the active live harvest | Read `measurement.md`; cloudy = unknown | Exploratory until lookback / protocol n_min |
+| Measure | `wsd measure --exploratory` scores the active development harvest | Read strict, amber, control, and null results | Scientific only after real GO and freeze |
 | Interpret | Future owner-run Ollama packets | Not implemented yet | — |
 
 The “ball” is always either with the system (a command is running) or the operator (a named file must be reviewed). There is no automatic jump from corpus collection to scientific analysis.

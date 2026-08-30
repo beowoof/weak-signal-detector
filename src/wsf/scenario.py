@@ -8,7 +8,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from wsf.protocol import canonical_sha256
+from wsf.protocol import canonical_sha256, combined_protocol_hash, scientific_config_hashes
 
 SCENARIO_NAME = re.compile(r"^[a-z0-9][a-z0-9-]{1,62}$")
 
@@ -156,7 +156,39 @@ def load_scenario(project_root: Path, scenario_id: str) -> ScenarioConfig:
     return ScenarioConfig.model_validate_json(path.read_text(encoding="utf-8"))
 
 
+def prepare_scenario_workspace(project_root: Path, scenario_id: str) -> Path:
+    """Create local lifecycle files for a tracked scenario.json if they are missing."""
+    directory = scenario_directory(project_root, scenario_id)
+    scenario_path = directory / "scenario.json"
+    if not scenario_path.is_file():
+        raise ValueError(f"missing scenario contract: {scenario_path}")
+    for relative in ("corpus", "reviews", "measurement", "interpretation", "reports"):
+        (directory / relative).mkdir(exist_ok=True)
+    status_path = directory / "status.json"
+    if not status_path.is_file():
+        now = datetime.now(UTC).isoformat()
+        _write_json(
+            status_path,
+            {
+                "scenario_id": scenario_id,
+                "phase": "draft",
+                "created_at": now,
+                "updated_at": now,
+                "active_collection_id": None,
+                "active_review_id": None,
+                "freeze_id": None,
+            },
+        )
+        append_history(
+            directory,
+            "scenario_workspace_prepared",
+            {"scenario_hash": scenario_hash(load_scenario(project_root, scenario_id))},
+        )
+    return directory
+
+
 def load_status(project_root: Path, scenario_id: str) -> dict[str, Any]:
+    prepare_scenario_workspace(project_root, scenario_id)
     path = scenario_directory(project_root, scenario_id) / "status.json"
     return json.loads(path.read_text(encoding="utf-8"))
 
@@ -199,6 +231,10 @@ def scenario_hash(scenario: ScenarioConfig) -> str:
     return canonical_sha256(scenario.model_dump(mode="json"))
 
 
+def protocol_hash(project_root: Path) -> str:
+    return combined_protocol_hash(scientific_config_hashes(project_root / "config"))
+
+
 def freeze_scenario(
     project_root: Path,
     scenario_id: str,
@@ -228,6 +264,7 @@ def freeze_scenario(
         "freeze_id": freeze_id,
         "scenario_id": scenario_id,
         "scenario_hash": current_hash,
+        "protocol_hash": protocol_hash(project_root),
         "collection_id": collection_id,
         "review_id": review_id,
         "rehearsal": review.get("decision") == "go_candidate_rehearsal",

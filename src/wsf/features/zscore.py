@@ -67,16 +67,23 @@ def build_feature(
     baseline_mu = statistics.fmean(baseline_values)
     baseline_sigma = statistics.pstdev(baseline_values)
     if baseline_sigma == 0:
-        return _missing_feature(
-            period_id,
-            series_id,
-            cutoff_day,
-            expected,
-            current=current,
+        if current.value is None:
+            raise ValueError("current observation unexpectedly has no value")
+        return FeatureRow(
+            period_id=period_id,
+            series_id=series_id,
+            cutoff=cutoff_day,
+            expected_event_date=expected,
+            current_event_time=current.event_time,
+            age_days=(cutoff_day - current.event_time.date()).days,
             raw=current.value,
             baseline_mu=baseline_mu,
             baseline_sigma=baseline_sigma,
             n_baseline=len(baseline_values),
+            z=None,
+            missing=False,
+            silence=False,
+            flagged=_constant_baseline_flagged(current.value, baseline_mu, polarity),
         )
 
     if current.value is None:  # guarded by select_expected_current; keeps typing explicit
@@ -98,6 +105,14 @@ def build_feature(
         silence=False,
         flagged=is_flagged(z, threshold, polarity),
     )
+
+
+def _constant_baseline_flagged(value: float, baseline: float, polarity: Polarity) -> bool:
+    if polarity is Polarity.high_unusual:
+        return value > baseline
+    if polarity is Polarity.low_unusual:
+        return value < baseline
+    return value != baseline
 
 
 def _missing_feature(
