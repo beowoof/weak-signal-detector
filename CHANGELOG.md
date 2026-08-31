@@ -6,6 +6,8 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- `FINDINGS.md`: recorded outcome of the development panel (speculative success, execution failure). Development stopped.
+
 - Dependency-free local results viewer (`python3 dashboard/server.py`) with result-set/window navigation, individual raw and normalized series, all-series small multiples, combined trailing/rhythm z-score plots, and paired z-score scatter. It reads ignored measurement artifacts without modifying them and labels legacy/rhythm-incomplete runs honestly.
 - Amber permutation: independently circular-shift non-costly flag calendars while freezing the costly/VIIRS unknown mask; test statistic is maximum consecutive amber run (`p_max_run`).
 - Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day scored windows, 120-day lookback, frozen `coincidence_v1`). 2018 cases disable FIRMS (NOAA-20 does not cover the 2017 control lookback) and MOEX; they use the declared ALFRED series. `GRC-TUR-2020` is still not harvested.
@@ -26,6 +28,11 @@ All notable enhancements to this project are recorded here. The project follows 
 - ICEWS default path documents `data/raw/icews/dataverse_files.zip`; FIRMS MAP_KEY quota (5000 txn / 10 min) is noted in `.env.example`.
 
 ### Changed
+
+- Sentinel-1 frozen orbit is descending IW. On the panel AOIs it is the only RUS overpass geometry, slightly denser than ascending for DEU, and thinner for USA. Ascending+descending are not mixed. Revisit-limited SAR coverage is a review warning, not a 0.95 daily no-go.
+
+- FIRMS area queries use a 1–5 day span (NASA now rejects 10). HTTP 400/invalid and crt.sh 502/timeout are `source_down` (unknown threat), never observed zero. MAP_KEY is stripped from FIRMS provenance URLs.
+- Certificate Transparency queries the frozen official-host domains (not only `mil.ru` / `army.mil`, which public CT often omits) and treats a total fetch failure as `source_down`. Demoted from the v1 basket: crt.sh is not a usable dated series from the UK.
 
 - MOEX coverage is harvest health (prints vs source_down), not the fraction of weekdays with a session. Exchange holidays stay `missing` (cannot flag) and no longer trip the 0.95 daily-coverage gate. ISS history is paginated; HTTP errors are `source_down`, not zeros.
 - ALFRED coverage is harvest health the same way: H.10 holidays (`.`) and unpublished tail days stay `missing` and no longer trip 0.95. Scoring uses a 7-day H.10 vintage lag (`fred` connector) so FX can become visible instead of remaining absent on every event day.

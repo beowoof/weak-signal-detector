@@ -134,14 +134,14 @@
   status: instantiated
   cost_class: info
   polarity: high_unusual
-  in_basket: true
+  in_basket: false
   source_system: certificate_transparency
   connector: ct
   series_id: official.ct_certs
   causal_domain: digital_infrastructure
   collector: global CT
   subject_controls_signal: partly
-  notes: Count on frozen domains. Do not inspect names retrospectively and decide which look military.
+  notes: Demoted from the v1 basket. crt.sh is 502/unreachable from the UK and not a dated 2017–2022 daily series; mil.ru is a poor public-CT identity. Connector retained as a diagnostic.
 - id: net.ripe_prefixes
   family: official_residue
   hypothesis: Announced prefix counts for frozen ASNs become unusual relative to the actor's own routing history.

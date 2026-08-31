@@ -12,7 +12,9 @@ The scientific output remains headless: a reproducible alert episode, its contri
 
 ## Current status
 
-This repository is at the live-connector checkpoint. It contains:
+Development on this PoC has **stopped**. The recorded outcome is in [`FINDINGS.md`](FINDINGS.md): speculative success (public series do move together in late February 2022; hard negatives stay quiet) and execution failure (availability, costly-gate design, and instrument range cannot support a proof). Do not add sources or retune thresholds.
+
+The repository still contains:
 
 - a reduced five-window development/holdout panel;
 - nine versioned scientific configuration objects;
@@ -26,13 +28,11 @@ This repository is at the live-connector checkpoint. It contains:
 - deterministic corpus gates and an explicit semantic-review queue;
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
-- live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, and Brent are implemented but out of the v1 basket; Sentinel-1 is implemented but disabled on `ukraine2022`; OpenSky credentials may be present but the Trino connector is not built; default tests remain offline;
+- live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Sentinel-1 (descending IW), Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, Brent, and Certificate Transparency are out of the v1 basket; OpenSky Trino is not built; default tests remain offline;
 - `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet.
 - Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day score + 120-day lookback) sit next to `ukraine2022`. Frozen `coincidence_v1` rules; do not retune from Ukraine. `GRC-TUR-2020` stays unharvested.
 
-**Live development path:** `wsd scenario validate` → `wsd corpus collect` → `wsd corpus review` → `wsd measure --exploratory` → read `measurement.md`. Next cases are `rus2021apr`, then the two hard negatives. Details in [`HOWTO.md`](HOWTO.md) (“Current experiment”). `ukraine2022` is a development showcase, not held-out evidence.
-
-The detailed design record is in `weak-signal-fusion-spec.md`. The literal operator workflow is in [`HOWTO.md`](HOWTO.md). This README is the operational source of truth and will be kept current as implementation proceeds.
+Replay of a recorded harvest is in [`HOWTO.md`](HOWTO.md). `ukraine2022` is a development showcase, not held-out evidence. Findings: [`FINDINGS.md`](FINDINGS.md). Design record: `weak-signal-fusion-spec.md`.
 
 ## Architecture and lifecycle boundaries
 
@@ -74,7 +74,7 @@ v1 coincidence requires three distinct **causal domains** and three source syste
 | Wikipedia edits | public attention | no |
 | MOEX FX | market | yes |
 | Brent | market | no |
-| Certificate Transparency | digital infrastructure | yes |
+| Certificate Transparency | digital infrastructure | no (diagnostic; crt.sh not a dated series) |
 | RIPEstat BGP prefixes | digital infrastructure | yes |
 
 `qwen3.8:27b-mlx` is local and token-costless but relatively slow. The planned harness therefore uses bounded output, warm serial batches, five repeated runs, native Ollama timing counters, checkpointing, and resume. Codex will implement and test that harness with mocks but will not invoke the model.

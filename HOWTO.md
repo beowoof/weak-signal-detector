@@ -2,9 +2,11 @@
 
 ## Current experiment (read this first)
 
-`ukraine2022` is a **development showcase**, not held-out evidence. Do **not** change `z_threshold`, `k`, amber persistence, or coincidence rules after seeing February 2022. Do **not** add another media feed.
+Development has stopped. Read [`FINDINGS.md`](FINDINGS.md) first.
 
-The next live work uses the **same frozen `coincidence_v1` rules** on other panel cases (21-day scored windows + 120-day lookback). Create local lifecycle files automatically via `wsd scenario validate` if you cloned only `scenario.json`.
+`ukraine2022` is a **development showcase**, not held-out evidence. Do **not** change `z_threshold`, `k`, amber persistence, or coincidence rules after seeing February 2022. Do **not** add another media feed. Do **not** harvest `GRC-TUR-2020`.
+
+The commands below replay the recorded path (21-day scored windows + 120-day lookback) under frozen `coincidence_v1`. Create local lifecycle files automatically via `wsd scenario validate` if you cloned only `scenario.json`.
 
 ```text
 Order (all development_showcase, none of them held-out):
@@ -222,7 +224,7 @@ Operator expectations:
 - VIIRS requires `uv sync --extra viirs` and `EARTHDATA_TOKEN`. Collection 2 is a 15-arc-second geographic grid (Moscow is tile `h21v03`), retrospectively reconstructed; `available_at` is night + 3 days.
 - v1 harvests independent *mechanisms*, not more media clones. Enabled by default: Wikipedia pageviews, GDELT, ICEWS (robustness only; same information domain as GDELT), ALFRED, MOEX, VIIRS, FIRMS, Internet Archive official-host cadence, crt.sh certificate counts, RIPEstat prefixes. OSM, Wikipedia edits, Brent, and Sentinel-1 are implemented but disabled. FIRMS needs a free `FIRMS_MAP_KEY` (quota 5000 transactions / 10 minutes; this harvest is about 6 calls). ICEWS needs `ICEWS_EVENTS_PATH=data/raw/icews/dataverse_files.zip` (the zip is read in place; do not unpack it, and do not commit it). Failures on one source no longer abort the rest of the harvest. X and full news NLP remain paid/heavy. Do not add another media-derived feed until a synchrony/permutation test has run.
 - Sentinel-1, if later enabled, is a boring AOI series: mean IW VV backscatter (dB) versus the AOI's own history on comparable ascending passes. It does not detect vehicles. Days without an overpass are unknown, not zero.
-- FIRMS is an AOI thermal-count anomaly, not "military thermal activity." The frozen sensor is NOAA-20 VIIRS standard processing (`VIIRS_NOAA20_SP`), which covers April 2018–present. Suomi-NPP FIRMS delivery ceases 1 November 2026; do not use SNPP as the panel instrument. NOAA-21 only starts January 2024, so it cannot cover Ukraine 2022.
+- FIRMS is an AOI thermal-count anomaly, not "military thermal activity." The frozen sensor is NOAA-20 VIIRS standard processing (`VIIRS_NOAA20_SP`), which covers April 2018–present. The area API accepts a 1–5 day span (10-day chunks return HTTP 400 and must be `source_down`, not zero). Suomi-NPP FIRMS delivery ceases 1 November 2026; do not use SNPP as the panel instrument. NOAA-21 only starts January 2024, so it cannot cover Ukraine 2022. crt.sh 502/timeout is the same as cloudy: unknown, never a recorded zero.
 - Certificate Transparency and RIPEstat are frozen-list counts versus own history. Do not inspect certificate names or infer cyber operations.
 - OpenSky remains **uninstantiated**. Trino user/password may already be in `.env`; there is still no connector. Do not scrape the public REST API. If implemented later, freeze AOIs and ask whether nighttime aviation activity is unusual relative to itself.
 - Google Cloud is not used.
@@ -248,7 +250,7 @@ Expected result: a new `reviews/review-.../` directory containing:
 
 Expected mocked decision: `go_candidate_rehearsal`. This proves only that the workflow can advance. It is not a scientific GO.
 
-Without `--mock-model`, the command still makes **no model call**. When hard gates pass, it writes the queue and returns `model_pending`. Cloudy VIIRS nights and incident/control coverage imbalance are **warnings**, not NO-GOs. Other daily sources below their declared coverage gate are critical. MOEX weekends/exchange holidays and ALFRED H.10 holidays (`.` values) or unpublished tail days are `missing` (cannot flag) and do not count against coverage; do not recollect them hoping for a print. ALFRED scoring waits 7 days for the H.10 vintage. Stop at `model_pending` until the owner-run Ollama execution step is implemented.
+Without `--mock-model`, the command still makes **no model call**. When hard gates pass, it writes the queue and returns `model_pending`. Cloudy VIIRS nights, Sentinel-1 days without an overpass, and incident/control coverage imbalance are **warnings**, not NO-GOs. Other daily sources below their declared coverage gate are critical. MOEX weekends/exchange holidays and ALFRED H.10 holidays (`.` values) or unpublished tail days are `missing` (cannot flag) and do not count against coverage; do not recollect them hoping for a print. ALFRED scoring waits 7 days for the H.10 vintage. Stop at `model_pending` until the owner-run Ollama execution step is implemented.
 
 A NO-GO means the collection is broken (no provenance, post-cutoff leakage, an enabled source never collected, or a connector that is down every day). It does not mean “a sensor had weather.”
 

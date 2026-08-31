@@ -137,6 +137,30 @@ def test_no_go_missing_file_can_drive_focused_recollection(tmp_path: Path) -> No
     assert history.count("corpus_collected") == 2
 
 
+def test_sar_revisit_holes_are_warnings_not_no_go(tmp_path: Path) -> None:
+    directory = _complete_scenario(tmp_path)
+    path = directory / "scenario.json"
+    value = json.loads(path.read_text(encoding="utf-8"))
+    value["sources"]["sar"] = {"enabled": True}
+    path.write_text(json.dumps(value, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    collection_dir, _ = collect_corpus(tmp_path, "ukraine2022", mock=True)
+    manifest_path = collection_dir / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    for item in manifest["items"]:
+        if item["source"] == "sar":
+            item["coverage"] = 0.04
+            item["not_applicable"] = False
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    )
+
+    _, review = review_corpus(tmp_path, "ukraine2022", mock_model=True)
+    assert review["decision"] == "go_candidate_rehearsal"
+    warnings = review["deterministic"]["warning_gaps"]
+    assert any(item["gap_id"].startswith("coverage_below_threshold:sar") for item in warnings)
+    assert review["deterministic"]["critical_gaps"] == []
+
+
 def test_coverage_holes_are_warnings_not_no_go(tmp_path: Path) -> None:
     _complete_scenario(tmp_path)
     collection_dir, _ = collect_corpus(tmp_path, "ukraine2022", mock=True)

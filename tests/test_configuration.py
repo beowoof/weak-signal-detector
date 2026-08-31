@@ -32,6 +32,8 @@ def test_v1_basket_spans_independent_causal_domains() -> None:
     assert demoted["attn.wiki_edits"].in_basket is False
     assert demoted["info.brent"].in_basket is False
     assert demoted["official.gazette"].in_basket is False
+    assert demoted["official.ct_certs"].in_basket is False
+    assert demoted["official.ct_certs"].causal_domain is CausalDomain.digital_infrastructure
     assert demoted["official.gazette"].collector == "Internet Archive"
     assert demoted["attn.osm_changesets"].causal_domain is CausalDomain.public_attention
     assert demoted["mobility.opensky"].status.value == "uninstantiated"

@@ -20,6 +20,10 @@ TOKEN_URL = (
 )
 STATS_URL = "https://sh.dataspace.copernicus.eu/api/v1/statistics"
 CRS84 = "http://www.opengis.net/def/crs/OGC/1.3/CRS84"
+# Denser comparable pass on the frozen AOIs (RUS descending-only; DEU slightly
+# denser descending; USA prefers ascending). Mixes of ASC+DESC are not comparable.
+ORBIT_DIRECTION = "DESCENDING"
+ACQUISITION_MODE = "IW"
 
 # Linear gamma0 to dB. Asks how different the AOI is from itself, not what is there.
 EVALSCRIPT = """
@@ -91,11 +95,14 @@ class SarConnector:
             retrieved_at=retrieved_at,
             requests=requests,
             absent_missing=True,
-            extra={"orbit_direction": "ASCENDING", "acquisition_mode": "IW"},
+            extra={
+                "orbit_direction": ORBIT_DIRECTION,
+                "acquisition_mode": ACQUISITION_MODE,
+            },
             notes=(
-                "Mean IW VV backscatter (dB) of frozen AOIs on comparable ascending "
-                "passes. Days without an overpass are unknown, not zero. Not equipment "
-                "detection."
+                f"Mean {ACQUISITION_MODE} VV backscatter (dB) of frozen AOIs on "
+                f"comparable {ORBIT_DIRECTION.lower()} passes. Days without an "
+                "overpass are unknown, not zero. Not equipment detection."
             ),
         )
 
@@ -197,9 +204,9 @@ def statistical_request(bbox: list[float], start: date, end: date) -> dict[str, 
                     "type": "sentinel-1-grd",
                     "dataFilter": {
                         "timeRange": {"from": start_stamp, "to": end_stamp},
-                        "acquisitionMode": "IW",
+                        "acquisitionMode": ACQUISITION_MODE,
                         "polarization": "DV",
-                        "orbitDirection": "ASCENDING",
+                        "orbitDirection": ORBIT_DIRECTION,
                     },
                     "processing": {
                         "orthorectify": True,
