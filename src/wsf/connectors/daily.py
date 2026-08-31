@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from datetime import UTC, date, datetime, time
 
 from wsf.connectors.base import ConnectorResult, PullRequest, collection_item
@@ -18,12 +19,18 @@ def daily_count_result(
     weekend_missing: bool = False,
     expected_weekdays_only: bool = False,
     absent_missing: bool = False,
+    source_down_days: Iterable[date] | None = None,
     extra: dict[str, object] | None = None,
 ) -> ConnectorResult:
     observations: list[Observation] = []
     n_ok = n_missing = n_source_down = 0
+    down = set(source_down_days or ())
     for day in days:
-        if expected_weekdays_only and day.weekday() >= 5:
+        if day in down:
+            quality = "source_down"
+            value = None
+            n_source_down += 1
+        elif expected_weekdays_only and day.weekday() >= 5:
             quality = "missing"
             value = None
         elif weekend_missing and day.weekday() >= 5:

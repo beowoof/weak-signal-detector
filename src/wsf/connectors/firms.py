@@ -60,12 +60,14 @@ class FirmsConnector:
             )
         west, south, east, north = _union_bbox(request.aois)
         progress = request.log()
-        counts: dict[date, float] = {day: 0.0 for day in days}
+        counts: dict[date, float] = {}
         requests: list[dict[str, object]] = []
-        # Area API: 1 MAP_KEY transaction per call, max 10 days (quota 5000/10 min).
+        # Area API: 1 MAP_KEY transaction per call. NASA currently accepts day range 1–5.
+        max_span = 5
         cursor = request.start
+        down_days: set[date] = set()
         while cursor <= request.end:
-            chunk_end = min(cursor + timedelta(days=9), request.end)
+            chunk_end = min(cursor + timedelta(days=max_span - 1), request.end)
             span = (chunk_end - cursor).days + 1
             url = FIRMS_AREA.format(
                 key=key,
@@ -81,33 +83,42 @@ class FirmsConnector:
             response = get_with_retry(self.transport, url, timeout=60, attempts=3, sleep=0.5)
             requests.append(
                 {
-                    "url": redact_url(url),
+                    "url": redact_url(url).replace(key, "REDACTED") if key else redact_url(url),
                     "status": response.status,
                     "bytes": len(response.body),
                 }
             )
-            if response.status == 200:
-                text = response.body.decode("utf-8", errors="replace")
-                if not text.lower().startswith("invalid"):
-                    reader = csv.DictReader(io.StringIO(text))
-                    for row in reader:
-                        raw = row.get("acq_date") or row.get("ACQ_DATE")
-                        if not raw:
-                            continue
-                        day = date.fromisoformat(raw[:10])
-                        if day in counts:
-                            counts[day] += 1
+            text = response.body.decode("utf-8", errors="replace")
+            chunk_days = date_range(cursor, chunk_end)
+            if response.status != 200 or text.lower().startswith("invalid"):
+                down_days.update(chunk_days)
+            else:
+                for day in chunk_days:
+                    counts.setdefault(day, 0.0)
+                reader = csv.DictReader(io.StringIO(text))
+                for row in reader:
+                    raw = row.get("acq_date") or row.get("ACQ_DATE")
+                    if not raw:
+                        continue
+                    day = date.fromisoformat(raw[:10])
+                    if day in counts:
+                        counts[day] += 1
             cursor = chunk_end + timedelta(days=1)
-        progress.line(f"firms {request.window_id} detections={sum(counts.values())}")
+        progress.line(
+            f"firms {request.window_id} detections={sum(counts.values())} "
+            f"down_days={len(down_days)}"
+        )
         return daily_count_result(
             request,
             days,
             counts,
             retrieved_at=retrieved_at,
             requests=requests,
+            source_down_days=down_days,
             extra={"sensor": sensor},
             notes=(
-                f"{sensor} thermal detections in the union AOI; 0 is observed zero. "
+                f"{sensor} thermal detections in the union AOI; 0 is observed zero; "
+                "HTTP/invalid responses are source_down, not zero. "
                 "NOAA-20 is the frozen FIRMS instrument (SNPP delivery ends 2026-11-01)."
             ),
         )

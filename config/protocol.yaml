@@ -35,7 +35,7 @@ aggregation:
   viirs_min_valid_aois: 2
   gdelt: daily_row_count
   sar: mean_of_aoi_mean_vv_db
-  sar_orbit_direction: ASCENDING
+  sar_orbit_direction: DESCENDING
   sar_acquisition_mode: IW
 freshness:
   gdelt: {cadence: daily, expected_lag_days: 0, max_age_days: 0}

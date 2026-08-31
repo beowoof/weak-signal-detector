@@ -72,7 +72,7 @@
       "enabled": false
     },
     "ct": {
-      "enabled": true
+      "enabled": false
     },
     "firms": {
       "enabled": true

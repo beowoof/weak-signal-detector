@@ -161,24 +161,25 @@ def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[
                     "repair_connector_or_credentials",
                 )
             )
+        weather_limited = item["source"] in {"viirs", "sar"}
         threshold = (
             scenario.corpus_gates.minimum_valid_viirs_fraction
-            if item["source"] == "viirs"
+            if weather_limited
             else scenario.corpus_gates.minimum_daily_coverage
         )
         if item["coverage"] < threshold:
-            weather_limited = item["source"] == "viirs"
+            if item["source"] == "sar":
+                why = "revisit-limited overpasses remain unknown"
+            elif weather_limited:
+                why = "weather-limited nights remain unknown"
+            else:
+                why = "the declared daily coverage gate failed"
             gaps.append(
                 _gap(
                     "coverage_below_threshold",
                     item["source"],
                     item["window_id"],
-                    f"coverage {item['coverage']:.3f} is below {threshold:.3f}; "
-                    + (
-                        "weather-limited nights remain unknown"
-                        if weather_limited
-                        else "the declared daily coverage gate failed"
-                    ),
+                    f"coverage {item['coverage']:.3f} is below {threshold:.3f}; {why}",
                     "continue_with_recorded_weather_gaps"
                     if weather_limited
                     else "repair_or_recollect_source",

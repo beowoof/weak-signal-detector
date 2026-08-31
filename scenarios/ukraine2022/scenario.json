@@ -69,7 +69,7 @@
       "enabled": false
     },
     "ct": {
-      "enabled": true
+      "enabled": false
     },
     "firms": {
       "enabled": true
@@ -93,7 +93,7 @@
       "enabled": true
     },
     "sar": {
-      "enabled": false
+      "enabled": true
     },
     "viirs": {
       "enabled": true

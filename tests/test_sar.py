@@ -96,13 +96,17 @@ def test_parse_statistical_intervals_skips_empty_overpasses() -> None:
     assert parsed == {date(2022, 2, 17): -12.5}
 
 
-def test_statistical_request_freezes_ascending_iw() -> None:
+def test_statistical_request_freezes_descending_iw() -> None:
+    from wsf.protocol import load_yaml
+
     request = statistical_request(
         [37.61, 55.745, 37.68, 55.78], date(2022, 2, 17), date(2022, 2, 18)
     )
+    protocol = load_yaml(Path(__file__).resolve().parents[1] / "config" / "protocol.yaml")
     filt = request["input"]["data"][0]["dataFilter"]
     assert filt["acquisitionMode"] == "IW"
-    assert filt["orbitDirection"] == "ASCENDING"
+    assert filt["orbitDirection"] == "DESCENDING"
+    assert filt["orbitDirection"] == protocol["aggregation"]["sar_orbit_direction"]
     assert request["aggregation"]["aggregationInterval"]["of"] == "P1D"
 
 
