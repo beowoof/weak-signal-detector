@@ -12,6 +12,12 @@ dependencies = [
   "pydantic>=2.11,<3",
   "pyyaml>=6,<7",
   "typer>=0.16,<1",
+  "pandas>=3.0.1",
+  "earthaccess>=0.11,<1",
+  "h5py>=3.11,<4",
+  "numpy>=2,<3",
+  "pytest>=8,<9",
+  "ruff>=0.12,<1",
 ]
 
 [project.optional-dependencies]

@@ -5,13 +5,17 @@ from typing import Any
 
 from wsf.connectors.base import Connector
 from wsf.connectors.brent import BrentConnector
+from wsf.connectors.cbr import CbrConnector
 from wsf.connectors.ctlogs import CtConnector
 from wsf.connectors.firms import FirmsConnector
 from wsf.connectors.fred import FredConnector
+from wsf.connectors.gazette_cadence import GazetteCadenceConnector
 from wsf.connectors.gdelt import GdeltConnector
 from wsf.connectors.http import HttpTransport, UrllibTransport
 from wsf.connectors.icews import IcewsConnector
 from wsf.connectors.moex import MoexConnector
+from wsf.connectors.navarea import NavareaConnector
+from wsf.connectors.notam import NotamConnector
 from wsf.connectors.official import OfficialConnector
 from wsf.connectors.osm import OsmConnector
 from wsf.connectors.ripe import RipeConnector
@@ -35,6 +39,10 @@ SOURCE_SERIES = {
     "icews": "talk.icews_cameo",
     "brent": "info.brent",
     "sar": "tempo.s1_backscatter",
+    "gazette_cadence": "official.gazette_cadence",
+    "navarea": "nav.spatial_warnings",
+    "notam": "air.notam_restrictions",
+    "cbr": "market.cbr_funding_spread",
 }
 
 AOI_SOURCES = frozenset({"viirs", "firms", "osm", "sar"})
@@ -63,6 +71,10 @@ def default_connectors(
         "icews": IcewsConnector(raw / "icews"),
         "brent": BrentConnector(http),
         "sar": SarConnector(http, cache_dir=raw / "sar"),
+        "gazette_cadence": GazetteCadenceConnector(http),
+        "navarea": NavareaConnector(http),
+        "notam": NotamConnector(http),
+        "cbr": CbrConnector(http),
     }
 
 

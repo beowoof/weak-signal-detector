@@ -146,3 +146,108 @@ select {
   .chart-header { align-items: start; flex-direction: column; gap: .1rem; }
   .chart-wrap svg, .chart-wrap.small svg { min-height: 240px; }
 }
+
+/* Multi-domain Coupling Styles */
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+.metric-card {
+  padding: 1.15rem 1.25rem;
+  border: 1px solid var(--border);
+  border-radius: .45rem;
+  background: var(--surface);
+}
+.metric-card.highlight-warning {
+  border-color: var(--accent-2);
+  background: color-mix(in srgb, var(--accent-2) 8%, var(--surface));
+}
+.metric-card.highlight-cue {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
+}
+.metric-card.highlight-tasking {
+  border-color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, var(--surface));
+}
+.metric-label {
+  color: var(--muted);
+  font-size: .78rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: .35rem;
+}
+.metric-value {
+  font-size: 1.85rem;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--ink);
+}
+.metric-sub {
+  margin-top: .4rem;
+  font-size: .8rem;
+  color: var(--muted);
+}
+
+.coupling-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: .45rem;
+  background: var(--surface);
+  margin-top: 1rem;
+}
+.coupling-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: .84rem;
+  text-align: left;
+}
+.coupling-table th, .coupling-table td {
+  padding: .65rem .9rem;
+  border-bottom: 1px solid var(--border);
+}
+.coupling-table th {
+  background: var(--surface-2);
+  color: var(--muted);
+  font-weight: 650;
+  text-transform: uppercase;
+  font-size: .75rem;
+  letter-spacing: .05em;
+}
+.coupling-table tr:last-child td { border-bottom: 0; }
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: .2rem .5rem;
+  border-radius: .25rem;
+  font-size: .75rem;
+  font-weight: 650;
+  letter-spacing: .03em;
+}
+.badge-warning {
+  background: color-mix(in srgb, var(--accent-2) 20%, transparent);
+  color: var(--accent-2);
+  border: 1px solid var(--accent-2);
+}
+.badge-cue {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+.badge-tasking {
+  background: color-mix(in srgb, var(--danger) 20%, transparent);
+  color: var(--danger);
+  border: 1px solid var(--danger);
+}
+.badge-quiet {
+  background: var(--surface-2);
+  color: var(--muted);
+}
+.tasking-point {
+  fill: var(--danger);
+  stroke: var(--surface);
+  stroke-width: 2;
+}

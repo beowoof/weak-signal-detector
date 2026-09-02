@@ -4,7 +4,7 @@ const state = {
   result: null,
   windowId: null,
   seriesId: null,
-  view: "series",
+  view: "coupling",
   visibleSeries: new Set(),
 };
 
@@ -274,13 +274,175 @@ function renderEmpty(message) {
   chartRoot.append(empty);
 }
 
+function renderCouplingView() {
+  const coupling = state.result.coupling?.[state.windowId];
+  if (!coupling || !coupling.daily_states?.length) {
+    return renderEmpty("No multi-domain coupling data available for this window.");
+  }
+
+  // 1. Executive Metric Cards
+  const metricsGrid = document.createElement("div");
+  metricsGrid.className = "metrics-grid";
+
+  const k3Count = coupling.episodes_k3?.length || 0;
+  const k3Days = coupling.days_ge3_domains_z15 || 0;
+  const k2Count = coupling.episodes_k2?.length || 0;
+  const k2Days = coupling.days_ge2_domains_z15 || 0;
+  const taskingDays = coupling.tasking_order_days || 0;
+  const maxEnergy = coupling.max_energy || 0;
+
+  metricsGrid.innerHTML = `
+    <div class="metric-card ${k3Count ? 'highlight-warning' : ''}">
+      <div class="metric-label">Strategic Warnings (K ≥ 3)</div>
+      <div class="metric-value">${k3Count} ep (${k3Days}d)</div>
+      <div class="metric-sub">${k3Count ? 'Multi-domain co-elevation' : 'Zero false alarms'}</div>
+    </div>
+    <div class="metric-card ${k2Count && !k3Count ? 'highlight-cue' : ''}">
+      <div class="metric-label">Soft Coupling Cues (K ≥ 2)</div>
+      <div class="metric-value">${k2Count} ep (${k2Days}d)</div>
+      <div class="metric-sub">Multi-channel preparatory activity</div>
+    </div>
+    <div class="metric-card ${taskingDays ? 'highlight-tasking' : ''}">
+      <div class="metric-label">Sensor Tasking Orders</div>
+      <div class="metric-value">${taskingDays} days</div>
+      <div class="metric-sub">Auto-cued collection during optical gaps</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">Peak Domain Energy</div>
+      <div class="metric-value">${number(maxEnergy)} σ</div>
+      <div class="metric-sub">Mean: ${number(coupling.mean_energy)} σ</div>
+    </div>
+  `;
+  chartRoot.append(metricsGrid);
+
+  // 2. Multi-Domain Energy Over Time Chart
+  const energySection = chartSection("Multi-Domain Anomaly Energy (E_dom)", "Sum of maximum standardized deviations across independent causal domains; points show daily total energy");
+  chartRoot.append(energySection.block);
+
+  const energyRows = coupling.daily_states.map(st => ({
+    event_day: st.date,
+    total_energy: st.total_energy,
+    state: st.n_domains_z15 >= 3 ? "flagged" : "normal",
+    rhythm_state: st.sensor_tasking_order ? "flagged" : "normal",
+    quality: "ok",
+    raw: st.total_energy
+  }));
+
+  lineChart(energySection.chart, [{ id: "Total Multi-Domain Energy", rows: energyRows, color: cssSeries(0) }], {
+    valueKey: "total_energy",
+    yLabel: "Domain Energy (σ)",
+    thresholds: [4.5, 9.0],
+    domain: values => extent([...values, 0, 10]),
+    ariaLabel: "Multi-domain anomaly energy over time"
+  });
+
+  // 3. Domain Energy Breakdown Chart
+  const domainsPresent = Object.keys(coupling.daily_states[0]?.domain_energies || {}).sort();
+  if (domainsPresent.length) {
+    const breakdownSection = chartSection("Causal Domain Energy Contributions", "Standardized anomaly score within each distinct causal mechanism");
+    chartRoot.append(breakdownSection.block);
+
+    const domainSeries = domainsPresent.map((dom, idx) => ({
+      id: dom.replaceAll("_", " "),
+      color: cssSeries(idx),
+      rows: coupling.daily_states.map(st => ({
+        event_day: st.date,
+        domain_energy: st.domain_energies[dom] || 0.0,
+        state: (st.domain_energies[dom] || 0) >= 1.5 ? "flagged" : "normal",
+        quality: "ok"
+      }))
+    }));
+
+    renderLegend(breakdownSection.block, domainSeries, false);
+    lineChart(breakdownSection.chart, domainSeries, {
+      valueKey: "domain_energy",
+      yLabel: "Max z-score in domain",
+      thresholds: [1.5],
+      domain: values => extent([...values, 0, 3]),
+      ariaLabel: "Domain energy breakdown over time"
+    });
+  }
+
+  // 4. Daily Status & Triage Matrix
+  const tableSection = document.createElement("section");
+  tableSection.className = "chart-block";
+  tableSection.innerHTML = `
+    <div class="chart-header">
+      <div>
+        <h2>Daily Multi-Domain Status Matrix</h2>
+        <p>Operational triage verdicts, active domain counts (K), and automated collection cues per day</p>
+      </div>
+    </div>
+    <div class="coupling-table-wrap">
+      <table class="coupling-table">
+        <thead>
+          <tr>
+            <th>Date</th>
+            <th>Active Domains (z ≥ 1.5)</th>
+            <th>Total Energy</th>
+            <th>Optical/SAR Sensors</th>
+            <th>Operational Verdict</th>
+            <th>Sensor Tasking Order</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${coupling.daily_states.map(st => {
+            const verdictBadge = st.verdict === "strategic_coupling_warning"
+              ? `<span class="badge badge-warning">Strategic Warning (K=${st.n_domains_z15})</span>`
+              : st.verdict === "soft_coupling_cue"
+              ? `<span class="badge badge-cue">Soft Cue (K=${st.n_domains_z15})</span>`
+              : st.verdict === "single_domain_spike"
+              ? `<span class="badge badge-quiet">Single Domain Spike</span>`
+              : `<span class="badge badge-quiet">Quiet</span>`;
+            const taskingBadge = st.sensor_tasking_order
+              ? `<span class="badge badge-tasking">⚡ Cue Remote Sensing</span>`
+              : `<span style="color:var(--muted)">—</span>`;
+            const domList = st.active_domains_z15.length
+              ? `<span style="font-size:.78rem;color:var(--ink)">${st.active_domains_z15.map(d => escapeHtml(d.replaceAll("_", " "))).join(", ")}</span>`
+              : `<span style="color:var(--muted)">0</span>`;
+            const costlyStatus = st.costly_status === "unknown"
+              ? `<span style="color:var(--accent-2)">Cloudy / Unknown</span>`
+              : st.costly_status === "flagged"
+              ? `<span style="color:var(--danger)">Elevated</span>`
+              : `<span style="color:var(--muted)">Normal</span>`;
+            return `
+              <tr>
+                <td><strong>${escapeHtml(st.date)}</strong></td>
+                <td>${domList}</td>
+                <td>${number(st.total_energy)} σ</td>
+                <td>${costlyStatus}</td>
+                <td>${verdictBadge}</td>
+                <td>${taskingBadge}</td>
+              </tr>
+            `;
+          }).join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
+  chartRoot.append(tableSection);
+}
+
 function renderSummary() {
-  const { scenario, summary } = state.result;
+  const { scenario, summary, coupling } = state.result;
   const alertKeys = ["protocol_alerts", "amber_alerts", "rhythm_alerts", "rhythm_amber_alerts"];
   const alertCount = alertKeys.reduce((total, key) => total + (Array.isArray(summary[key]) ? summary[key].length : 0), 0);
   const purpose = scenario.purpose ? scenario.purpose.replaceAll("_", " ") : "unspecified purpose";
   const mode = summary.measurement_mode || "legacy unspecified";
-  summaryRoot.innerHTML = `<strong>${escapeHtml(scenario.scenario_id || "Unknown scenario")}</strong><span>${escapeHtml(purpose)}</span><span>${summary.n_feature_rows ?? state.result.features.length} feature rows</span><span>${seriesIds().length} series</span><span>${escapeHtml(summary.protocol_id || "unknown protocol")}</span><span class="mode-warning">${escapeHtml(mode.replaceAll("_", " "))}</span><span class="${alertCount ? "alert-count" : ""}">${alertCount} alert episode${alertCount === 1 ? "" : "s"}</span>`;
+  const winCoupling = coupling?.[state.windowId];
+  const k3Count = winCoupling?.episodes_k3?.length || 0;
+  const taskingDays = winCoupling?.tasking_order_days || 0;
+
+  summaryRoot.innerHTML = `
+    <strong>${escapeHtml(scenario.scenario_id || "Unknown scenario")}</strong>
+    <span>${escapeHtml(purpose)}</span>
+    <span>${summary.n_feature_rows ?? state.result.features.length} feature rows</span>
+    <span>${seriesIds().length} series</span>
+    <span class="mode-warning">${escapeHtml(mode.replaceAll("_", " "))}</span>
+    ${k3Count ? `<span class="badge badge-warning" style="margin-left:.4rem">${k3Count} Strategic Warning Ep</span>` : ''}
+    ${taskingDays ? `<span class="badge badge-tasking" style="margin-left:.4rem">${taskingDays}d Tasking Orders</span>` : ''}
+    <span class="${alertCount ? "alert-count" : ""}">${alertCount} alert episode${alertCount === 1 ? "" : "s"}</span>
+  `;
 }
 
 function render() {
@@ -290,7 +452,8 @@ function render() {
   seriesControl.hidden = state.view !== "series";
   document.querySelectorAll("[data-view]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.view === state.view)));
   renderSummary();
-  if (state.view === "series") renderSeriesView();
+  if (state.view === "coupling") renderCouplingView();
+  else if (state.view === "series") renderSeriesView();
   else if (state.view === "all") renderAllView();
   else if (state.view === "combined") renderCombinedView();
   else renderScatterView();

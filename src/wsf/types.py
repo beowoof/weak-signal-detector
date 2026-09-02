@@ -40,6 +40,8 @@ class CausalDomain(StrEnum):
     public_attention = "public_attention"
     market = "market"
     digital_infrastructure = "digital_infrastructure"
+    spatial_restriction = "spatial_restriction"
+    domestic_financial_conditions = "domestic_financial_conditions"
 
 
 class SubjectControl(StrEnum):

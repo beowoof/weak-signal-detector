@@ -69,6 +69,7 @@ def test_discover_index_and_load_result(tmp_path: Path) -> None:
     assert result["summary"]["protocol_id"] == "coincidence_test"
     assert result["features"][0]["z"] == 1.5
     assert result["days"][0]["verdict"] == "quiet"
+    assert "coupling" in result
 
 
 def test_load_result_rejects_unknown_key(tmp_path: Path) -> None:

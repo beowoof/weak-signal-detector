@@ -243,3 +243,59 @@
   cost_class: info
   in_basket: false
   uninstantiated_reason: expected_baselines.yaml is empty in v0.
+- id: official.gazette_cadence
+  family: official_residue
+  hypothesis: Official legal gazette publication tempo, weekend releases, and document-type entropy reflect executive operational cadence.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: official_gazette
+  connector: gazette_cadence
+  series_id: official.gazette_cadence
+  causal_domain: bureaucratic
+  collector: official legal registries
+  subject_controls_signal: "yes"
+  notes: Measures positive administrative residue (document count, weekend/out-of-hours publication). Portable across pravo.gov.ru, Federal Register, and legislation.gov.uk.
+- id: nav.spatial_warnings
+  family: facility_tempo
+  hypothesis: NAVAREA coastal navigation warnings and hazard areas reflect physical reservation of navigable maritime space.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: nga_msi
+  connector: navarea
+  series_id: nav.spatial_warnings
+  causal_domain: spatial_restriction
+  collector: maritime safety authorities
+  subject_controls_signal: "yes"
+  notes: Tracks warning frequency, total restricted area (km2), and median notice lead time (days). Low-semantic physical spatial reservation.
+- id: air.notam_restrictions
+  family: facility_tempo
+  hypothesis: Temporary flight restrictions and airspace closures reflect physical reservation of aviation corridors.
+  status: uninstantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: false
+  causal_domain: spatial_restriction
+  collector: aviation authorities
+  subject_controls_signal: "yes"
+  uninstantiated_reason: FAA NOTAM Management Service API access requires registration and historical coverage qualification before freeze.
+  notes: Shares the spatial_restriction domain with NAVAREA to avoid tempo cloning.
+- id: market.cbr_funding_spread
+  family: dyadic_counterpart
+  hypothesis: Overnight interbank money market rate spread over policy rate (RUONIA - policy rate) and zero-coupon curve slope reflect domestic liquidity hoarding and institutional stress.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: true
+  source_system: cbr_iss
+  connector: cbr
+  series_id: market.cbr_funding_spread
+  causal_domain: domestic_financial_conditions
+  collector: central bank
+  subject_controls_signal: partly
+  notes: Measures domestic banking balance-sheet stress and liquidity hoarding rather than foreign-sentiment-contaminated FX.
+
+
