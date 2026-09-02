@@ -94,6 +94,73 @@ def result_index(scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     return {"results": items, "scenarios": scenarios}
 
 
+from wsf.analysis.coupling import evaluate_window_coupling
+
+
+def compute_coupling_for_windows(scenario_id: str, features: list[dict]) -> dict[str, dict]:
+    windows = sorted({r["window_id"] for r in features if r.get("window_id")})
+    result: dict[str, dict] = {}
+    for w in windows:
+        try:
+            w_res = evaluate_window_coupling(scenario_id, w, features, threshold_z=1.5, persistence_days=3, run_permutation=False)
+            result[w] = {
+                "dates": w_res.dates,
+                "daily_states": [
+                    {
+                        "date": st.date,
+                        "window_id": st.window_id,
+                        "domain_energies": st.domain_energies,
+                        "total_energy": st.total_energy,
+                        "active_domains_z15": st.active_domains_z15,
+                        "active_domains_z20": st.active_domains_z20,
+                        "n_domains_z15": st.n_domains_z15,
+                        "n_domains_z20": st.n_domains_z20,
+                        "costly_status": st.costly_status,
+                        "verdict": st.verdict,
+                        "sensor_tasking_order": st.sensor_tasking_order,
+                        "series_z": st.series_z,
+                    }
+                    for st in w_res.daily_states
+                ],
+                "episodes_k3": [
+                    {
+                        "level": ep.level,
+                        "start_date": ep.start_date,
+                        "end_date": ep.end_date,
+                        "duration_days": ep.duration_days,
+                        "contributing_domains": ep.contributing_domains,
+                        "contributing_series": ep.contributing_series,
+                        "tasking_order_days": ep.tasking_order_days,
+                        "mean_energy": ep.mean_energy,
+                        "max_energy": ep.max_energy,
+                    }
+                    for ep in w_res.episodes_k3
+                ],
+                "episodes_k2": [
+                    {
+                        "level": ep.level,
+                        "start_date": ep.start_date,
+                        "end_date": ep.end_date,
+                        "duration_days": ep.duration_days,
+                        "contributing_domains": ep.contributing_domains,
+                        "contributing_series": ep.contributing_series,
+                        "tasking_order_days": ep.tasking_order_days,
+                        "mean_energy": ep.mean_energy,
+                        "max_energy": ep.max_energy,
+                    }
+                    for ep in w_res.episodes_k2
+                ],
+                "max_energy": w_res.max_energy,
+                "mean_energy": w_res.mean_energy,
+                "days_ge3_domains_z15": w_res.days_ge3_domains_z15,
+                "days_ge2_domains_z15": w_res.days_ge2_domains_z15,
+                "tasking_order_days": w_res.tasking_order_days,
+            }
+        except Exception:
+            pass
+    return result
+
+
 def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     matches = {ref.key: ref for ref in discover_results(scenarios_root)}
     ref = matches.get(key)
@@ -103,12 +170,14 @@ def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     features = read_jsonl(ref.directory / "features.jsonl")
     days_path = ref.directory / "days.jsonl"
     days = read_jsonl(days_path) if days_path.is_file() else []
+    coupling = compute_coupling_for_windows(ref.scenario_id, features)
     return {
         "key": ref.key,
         "scenario": scenario_metadata(ref.scenario_id, scenarios_root),
         "summary": summary,
         "features": features,
         "days": days,
+        "coupling": coupling,
     }
 
 

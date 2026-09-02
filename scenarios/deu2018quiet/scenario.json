@@ -65,11 +65,17 @@
     "brent": {
       "enabled": false
     },
+    "cbr": {
+      "enabled": false
+    },
     "ct": {
       "enabled": false
     },
     "firms": {
       "enabled": false
+    },
+    "gazette_cadence": {
+      "enabled": true
     },
     "gdelt": {
       "enabled": true
@@ -80,8 +86,14 @@
     "moex": {
       "enabled": false
     },
-    "official": {
+    "navarea": {
       "enabled": true
+    },
+    "notam": {
+      "enabled": false
+    },
+    "official": {
+      "enabled": false
     },
     "osm": {
       "enabled": false

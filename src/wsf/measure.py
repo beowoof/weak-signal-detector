@@ -44,6 +44,10 @@ SOURCE_LAG = {
     "icews": 0,
     "brent": 0,
     "sar": 1,
+    "gazette_cadence": 1,
+    "navarea": 0,
+    "notam": 0,
+    "cbr": 0,
 }
 
 

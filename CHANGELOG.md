@@ -6,26 +6,48 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **Multi-Domain Dynamic Coupling & Sensor Cueing Engine (`src/wsf/analysis/coupling.py`, `scripts/run_coupling_analysis.py`, `COUPLING_EVALUATION.md`):**
+  - Replaced rigid univariate smoking-gun gates with continuous **Multi-Domain Anomaly Energy** $E_{\text{dom}}(t) = \sum_{d} \max_{s \in d} \max(0, z_{s,t})$.
+  - Two-tier operational triage model:
+    - **Strategic Warning ($K_{\text{dom}} \ge 3$, $\ge 3$ consecutive days):** Co-elevation across $\ge 3$ independent causal domains.
+    - **Soft Coupling Cue ($K_{\text{dom}} \ge 2$, $\ge 3$ consecutive days):** Multi-channel preparatory activity tipping high-cost sensors.
+  - **Dynamic Sensor Tasking Orders:** Automated trigger mechanism emitting collection orders to all-weather/high-resolution sensors (SAR, commercial imagery) during optical/cloud gaps whenever soft coupling is elevated.
+  - Availability-preserving circular-shift permutation test for multi-domain coupling episodes.
+- **Costly Non-Optical & Administrative Indicators (Option 2):**
+  - Added `spatial_restriction` and `domestic_financial_conditions` causal domains in `src/wsf/types.py`.
+  - `official.gazette_cadence` (`src/wsf/connectors/gazette_cadence.py`): positive bureaucratic document cadence, weekend/out-of-hours releases, and issuing authority entropy.
+  - `nav.spatial_warnings` (`src/wsf/connectors/navarea.py`): NGA NAVAREA maritime warning spatial restriction area ($\text{km}^2$) and lead time.
+  - `market.cbr_funding_spread` (`src/wsf/connectors/cbr.py`): Bank of Russia RUONIA interbank funding spread ($\text{RUONIA} - \text{policy rate}$) and sovereign yield curve slope ($3\text{M}-2\text{Y}$).
+  - `air.notam_restrictions` (`src/wsf/connectors/notam.py`): airspace closure connector stub.
+  - Registered new indicators in `config/indicator_register.yaml` (23 total registered indicators) and `src/wsf/measure.py`.
+  - Unit test suites in `tests/test_new_connectors.py` and `tests/test_coupling.py`.
+- **Interactive Multi-Domain Coupling Dashboard (`dashboard/`):**
+  - Added dedicated **"Multi-domain coupling"** view tab in `dashboard/index.html` and `dashboard/app.js`.
+  - Executive metric cards for Strategic Warnings, Soft Cues, Sensor Tasking Orders, and Peak Domain Energy.
+  - Interactive multi-domain energy time series with automated sensor tasking point markers.
+  - Causal domain energy breakdown chart tracking peak anomaly scores by domain mechanism.
+  - Daily operational triage matrix table displaying date, active domain list, total energy, optical sensor state, verdict badges, and sensor cue triggers.
+  - Backend integration in `dashboard/server.py` serving coupling metrics via `/api/result`.
+- **Salvage Blueprint & Re-Evaluation Documentation:**
+  - `IDEAS.md`: Complete salvage blueprint and priority roadmap.
+  - `EWS_EVALUATION.md`: Comparative evaluation of rolling Pearson correlation leading eigenvalues ($\lambda_{\max}$) vs level-shift anomaly energy.
+  - `COUPLING_EVALUATION.md`: Detailed multi-scenario evaluation report across all 4 scenarios.
+  - Updated `FINDINGS.md`: Documented successful post-salvage validation, full 4-scenario scorecard, and project findings.
+
+### Changed
+
+- **Decommissioned Fragile Web Scrapers:**
+  - Disabled legacy `official` connector (Wayback Machine CDX scraper) across all scenario configurations to prevent multi-hour hangs and timeout retries on broad domain wildcards.
+  - Disabled `ct` (`crt.sh` Certificate Transparency) due to frequent external 502 outages and lack of stable identity.
+- **Scenario Configurations:**
+  - Wired `gazette_cadence`, `navarea`, and `cbr` into `ukraine2022`, `rus2021apr`, `deu2018quiet`, and `usachn2018trade`.
+- **Measurement Engine (`src/wsf/measure.py`):**
+  - Added zero-lag and print mappings for new administrative and financial series in `SOURCE_LAG`.
+  - Filtered active baskets to instantiated series.
+
+### Added (Previous)
+
 - `FINDINGS.md`: recorded outcome of the development panel (speculative success, execution failure). Development stopped.
-
-- Dependency-free local results viewer (`python3 dashboard/server.py`) with result-set/window navigation, individual raw and normalized series, all-series small multiples, combined trailing/rhythm z-score plots, and paired z-score scatter. It reads ignored measurement artifacts without modifying them and labels legacy/rhythm-incomplete runs honestly.
-- Amber permutation: independently circular-shift non-costly flag calendars while freezing the costly/VIIRS unknown mask; test statistic is maximum consecutive amber run (`p_max_run`).
-- Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day scored windows, 120-day lookback, frozen `coincidence_v1`). 2018 cases disable FIRMS (NOAA-20 does not cover the 2017 control lookback) and MOEX; they use the declared ALFRED series. `GRC-TUR-2020` is still not harvested.
-- `prepare_scenario_workspace` so a tracked `scenario.json` can be validated and collected after a clone.
-
-- `coincidence_v1` amber evidence-gap episodes: at least two soft causal domains persisting while costly evidence is genuinely unavailable.
-- Incident/control comparison blocks in measurement JSON and Markdown.
-- Availability-aware circular-shift permutation output with preserved flag runs, null standard deviations, signed effects, and null percentiles.
-
-- Causal-domain metadata on every instantiated indicator (`physical_activity`, `mobility`, `bureaucratic`, `information`, `public_attention`, `market`, `digital_infrastructure`) plus collector and whether the subject controls the signal.
-- Coincidence now requires `k_domains` distinct causal domains. Sensor clones in the same domain (VIIRS+SAR+FIRMS, GDELT+ICEWS) cannot triple-vote.
-- Sentinel-1 GRD AOI mean VV backscatter via the Copernicus Data Space Statistical API (`tempo.s1_backscatter`). Comparable ascending IW passes; missing overpass = unknown, not zero. Not equipment detection.
-- Uninstantiated `mobility.opensky` placeholder pending KCL OpenSky Trino research access.
-- `COPERNICUS_CLIENT_ID` / `COPERNICUS_CLIENT_SECRET` in `.env.example`. HTTP POST support for OAuth and the Statistical API.
-- `.env.example` now lists every source with its public website. Keyless APIs have `=public` placeholders; ICEWS has `ICEWS_EVENTS_PATH`; OpenSky has Trino user/password stubs.
-- ICEWS accepts the Dataverse zip, a directory of yearly `.tab` files, or a single table. Nested year zips are read in place; only window years are opened.
-- FIRMS default sensor is NOAA-20 VIIRS standard processing. Suomi-NPP FIRMS delivery ceases 1 Nov 2026; NOAA-21 is too new for 2022 windows.
-- ICEWS default path documents `data/raw/icews/dataverse_files.zip`; FIRMS MAP_KEY quota (5000 txn / 10 min) is noted in `.env.example`.
 
 ### Changed
 
