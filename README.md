@@ -12,7 +12,9 @@ The scientific output remains headless: a reproducible alert episode, its contri
 
 ## Current status
 
-Development on this PoC has **stopped**. The recorded outcome is in [`FINDINGS.md`](FINDINGS.md): speculative success (public series do move together in late February 2022; hard negatives stay quiet) and execution failure (availability, costly-gate design, and instrument range cannot support a proof). Do not add sources or retune thresholds.
+The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do move together in late February 2022; hard negatives stay quiet; that is not a proof of invasion and not a smoking-gun tripwire.
+
+Work continues as a **collection indicator**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
 
 The repository still contains:
 

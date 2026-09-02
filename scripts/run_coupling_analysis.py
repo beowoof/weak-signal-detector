@@ -56,10 +56,10 @@ def main():
         "**Verdict:** not a salvage of the detector. This experiment still applies "
         "point-in-time marginal thresholds (now $z \\ge 1.5$ instead of $2.5$) and "
         "counts domains. That is failure mode 1 in [`IDEAS.md`](IDEAS.md), not "
-        "Blueprint B. Both mobilisation windows produce a 3-day $K_{\\mathrm{dom}} "
-        "\\ge 3$ episode, and the hard negatives do not, but permutation "
-        "$p_{\\mathrm{episodes}}$ is not small. The actual Phase 1 instrument "
-        "(rolling $\\lambda_{\\max}$) is in [`EWS_EVALUATION.md`](EWS_EVALUATION.md).",
+        "Blueprint B. Both mobilisation windows produce $K_{\\mathrm{dom}} \\ge 3$ "
+        "warning episodes (Ukraine produces two, rus2021apr produces one), and the "
+        "hard negatives do not, but permutation $p_{\\mathrm{episodes}}$ is not small (~0.43). "
+        "The actual Phase 1 instrument (rolling $\\lambda_{\\max}$) is in [`EWS_EVALUATION.md`](EWS_EVALUATION.md).",
         "",
         "---",
         "",
@@ -80,38 +80,42 @@ def main():
                     )
                 )
             )
-            k3_disp = f"**{len(r.episodes_k3)} ({r.days_ge3_domains_z15}d)**" if r.episodes_k3 else "0 (0d)"
-            k2_disp = f"{len(r.episodes_k2)} ({r.days_ge2_domains_z15}d)" if r.episodes_k2 else "0 (0d)"
+            k3_disp = f"**{len(r.episodes_k3)} ({r.days_ge3_domains_z15}d)**" if r.episodes_k3 else f"0 ({r.days_ge3_domains_z15}d)"
+            k2_disp = f"{len(r.episodes_k2)} ({r.days_ge2_domains_z15}d)" if r.episodes_k2 else f"0 ({r.days_ge2_domains_z15}d)"
             task_disp = f"**{r.tasking_order_days}d**" if r.tasking_order_days > 0 else "0d"
             p_val = r.permutation.get("k3_strategic", {}).get("p_episodes", 1.0)
             p_disp = f"{p_val:.4f}" if r.episodes_k3 else "1.0000"
             md_lines.append(f"| `{s}` | `{w}` | {role} | {k3_disp} | {k2_disp} | {task_disp} | {p_disp} | {r.max_energy:.2f} |")
-            
+
+    ukr_inc = all_results["ukraine2022"]["incident"]
+    rus_inc = all_results["rus2021apr"]["incident"]
+    ukr_p = ukr_inc.permutation.get("k3_strategic", {}).get("p_episodes", 1.0)
+    rus_p = rus_inc.permutation.get("k3_strategic", {}).get("p_episodes", 1.0)
+
     md_lines.extend([
         "",
         "---",
         "",
         "## 2. What the lowered-threshold coincidence detector actually shows",
         "",
-        "### 2.1 Specificity without rarity",
-        "- Both mobilisation windows produce one $K_{\\mathrm{dom}} \\ge 3$ episode "
-        "at $z \\ge 1.5$ with 3-day persistence. Hard negatives and prior-year "
-        "controls do not produce a $K_{\\mathrm{dom}} \\ge 3$ episode.",
-        "- That pattern is **not** rare under independent circular shifts of the "
-        "same z-calendars. Ukraine $p_{\\mathrm{episodes}} \\approx 0.88$; "
-        "rus2021apr $p_{\\mathrm{episodes}} \\approx 0.43$. Lowering $\\tau$ from "
-        "2.5 to 1.5 makes three-domain days common once any series is noisy.",
-        "- `usachn2018trade` still isolates the 9/11 Wikipedia spike as a single-domain "
-        "event at $K_{\\mathrm{dom}} \\ge 3$, which is the one useful property of "
-        "domain counting. It also produces a 4-day $K_{\\mathrm{dom}} \\ge 2$ soft cue.",
+        "### 2.1 Specificity without statistical rarity",
+        f"- Ukraine produces {len(ukr_inc.episodes_k3)} $K_{{\\mathrm{{dom}}}} \\ge 3$ episodes "
+        f"({ukr_inc.days_ge3_domains_z15} days total) at $z \\ge 1.5$ with 3-day persistence; "
+        f"rus2021apr produces {len(rus_inc.episodes_k3)} episode ({rus_inc.days_ge3_domains_z15} days total). "
+        "Hard negatives and prior-year controls do not produce a 3-day $K_{\\mathrm{dom}} \\ge 3$ episode.",
+        f"- That pattern is **not** statistically rare under independent circular shifts of the "
+        f"same z-calendars: Ukraine $p_{{\\mathrm{{episodes}}}} \\approx {ukr_p:.4f}$; "
+        f"rus2021apr $p_{{\\mathrm{{episodes}}}} \\approx {rus_p:.4f}$. Lowering $\\tau$ from "
+        "2.5 to 1.5 makes three-domain days common under unconstrained random shifts once series are noisy.",
+        "- `usachn2018trade` isolates the 9/11 Wikipedia spike as a single-domain "
+        "event at $K_{\\mathrm{dom}} \\ge 3$, which is the useful property of "
+        "multi-domain counting. It produces a 4-day $K_{\\mathrm{dom}} \\ge 2$ soft cue.",
         "",
-        "### 2.2 Tasking orders are not a free lunch",
-        "Tasking is emitted when $K_{\\mathrm{dom}} \\ge 2$ and imaging (VIIRS/SAR) "
-        "is unknown. FIRMS zeros on capital stamps must not be treated as a clear "
-        "night; that was the postage-stamp leak. Even after restricting the gate "
-        "to imaging series, the count of tasking days is a derived label, not "
-        "evidence that coupling is unusual. Read the table, not a narrative that "
-        "disagrees with it.",
+        "### 2.2 Tasking orders are a derived label",
+        "Tasking orders are emitted on days when $K_{\\mathrm{dom}} \\ge 2$ and physical "
+        "sensors (VIIRS/SAR) are in state unknown (cloud-cover or missing overpass). "
+        "The count of tasking days is an operational triage rule, not independent "
+        "evidence of unexpected coupling.",
         "",
         "### 2.3 Bidirectional RIPEstat",
         "Taking absolute z for `net.ripe_prefixes` includes the February prefix "

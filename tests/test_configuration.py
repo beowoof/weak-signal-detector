@@ -9,6 +9,17 @@ from wsf.types import CausalDomain, IndicatorSpec
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+def test_rus_physical_aois_are_staging_corridors() -> None:
+    facilities = load_yaml(PROJECT_ROOT / "config" / "facilities.yaml")
+    rus = facilities["actors"]["RUS"]["aois"]
+    ids = {item["id"] for item in rus}
+    assert "RUS-capital" not in ids
+    assert "RUS-mod" not in ids
+    assert len(rus) >= 6
+    assert facilities["generation"]["max_aois_per_focal"] >= len(rus)
+    assert {item["kind"] for item in rus} <= {"staging", "frontier_railhead"}
+
+
 def test_frozen_configuration_contracts_are_valid() -> None:
     result = validate_configuration(PROJECT_ROOT / "config")
     assert result["indicator_count"] == 23

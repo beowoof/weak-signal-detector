@@ -293,19 +293,19 @@ function renderCouplingView() {
 
   metricsGrid.innerHTML = `
     <div class="metric-card ${k3Count ? 'highlight-warning' : ''}">
-      <div class="metric-label">Strategic Warnings (K ≥ 3)</div>
+      <div class="metric-label">Collection indicator (K ≥ 3)</div>
       <div class="metric-value">${k3Count} ep (${k3Days}d)</div>
-      <div class="metric-sub">${k3Count ? 'Multi-domain co-elevation' : 'Zero false alarms'}</div>
+      <div class="metric-sub">${k3Count ? 'Independent channels unusual together — collect more' : 'No multi-domain indicator'}</div>
     </div>
     <div class="metric-card ${k2Count && !k3Count ? 'highlight-cue' : ''}">
-      <div class="metric-label">Soft Coupling Cues (K ≥ 2)</div>
+      <div class="metric-label">Watchlist (K ≥ 2)</div>
       <div class="metric-value">${k2Count} ep (${k2Days}d)</div>
-      <div class="metric-sub">Multi-channel preparatory activity</div>
+      <div class="metric-sub">Two-domain co-movement; not a determination</div>
     </div>
     <div class="metric-card ${taskingDays ? 'highlight-tasking' : ''}">
-      <div class="metric-label">Sensor Tasking Orders</div>
+      <div class="metric-label">Collect more (optical gap)</div>
       <div class="metric-value">${taskingDays} days</div>
-      <div class="metric-sub">Auto-cued collection during optical gaps</div>
+      <div class="metric-sub">Chorus is up and VIIRS/SAR cannot see; cue other collection</div>
     </div>
     <div class="metric-card">
       <div class="metric-label">Peak Domain Energy</div>
@@ -369,8 +369,8 @@ function renderCouplingView() {
   tableSection.innerHTML = `
     <div class="chart-header">
       <div>
-        <h2>Daily Multi-Domain Status Matrix</h2>
-        <p>Operational triage verdicts, active domain counts (K), and automated collection cues per day</p>
+        <h2>Daily indicator matrix</h2>
+        <p>Co-movement is a cue to gather news and tasked collection, not a call of what will happen</p>
       </div>
     </div>
     <div class="coupling-table-wrap">
@@ -381,21 +381,21 @@ function renderCouplingView() {
             <th>Active Domains (z ≥ 1.5)</th>
             <th>Total Energy</th>
             <th>Optical/SAR Sensors</th>
-            <th>Operational Verdict</th>
-            <th>Sensor Tasking Order</th>
+            <th>Indicator</th>
+            <th>Collect more</th>
           </tr>
         </thead>
         <tbody>
           ${coupling.daily_states.map(st => {
             const verdictBadge = st.verdict === "strategic_coupling_warning"
-              ? `<span class="badge badge-warning">Strategic Warning (K=${st.n_domains_z15})</span>`
+              ? `<span class="badge badge-warning">Collect more (K=${st.n_domains_z15})</span>`
               : st.verdict === "soft_coupling_cue"
-              ? `<span class="badge badge-cue">Soft Cue (K=${st.n_domains_z15})</span>`
+              ? `<span class="badge badge-cue">Watchlist (K=${st.n_domains_z15})</span>`
               : st.verdict === "single_domain_spike"
-              ? `<span class="badge badge-quiet">Single Domain Spike</span>`
+              ? `<span class="badge badge-quiet">Single domain</span>`
               : `<span class="badge badge-quiet">Quiet</span>`;
             const taskingBadge = st.sensor_tasking_order
-              ? `<span class="badge badge-tasking">⚡ Cue Remote Sensing</span>`
+              ? `<span class="badge badge-tasking">Cue tasked collection</span>`
               : `<span style="color:var(--muted)">—</span>`;
             const domList = st.active_domains_z15.length
               ? `<span style="font-size:.78rem;color:var(--ink)">${st.active_domains_z15.map(d => escapeHtml(d.replaceAll("_", " "))).join(", ")}</span>`
@@ -439,8 +439,8 @@ function renderSummary() {
     <span>${summary.n_feature_rows ?? state.result.features.length} feature rows</span>
     <span>${seriesIds().length} series</span>
     <span class="mode-warning">${escapeHtml(mode.replaceAll("_", " "))}</span>
-    ${k3Count ? `<span class="badge badge-warning" style="margin-left:.4rem">${k3Count} Strategic Warning Ep</span>` : ''}
-    ${taskingDays ? `<span class="badge badge-tasking" style="margin-left:.4rem">${taskingDays}d Tasking Orders</span>` : ''}
+    ${k3Count ? `<span class="badge badge-warning" style="margin-left:.4rem">${k3Count} collection indicator ep</span>` : ''}
+    ${taskingDays ? `<span class="badge badge-tasking" style="margin-left:.4rem">${taskingDays}d collect more</span>` : ''}
     <span class="${alertCount ? "alert-count" : ""}">${alertCount} alert episode${alertCount === 1 ? "" : "s"}</span>
   `;
 }

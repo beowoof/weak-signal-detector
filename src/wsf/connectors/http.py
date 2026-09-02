@@ -92,13 +92,14 @@ def get_with_retry(
     transport: HttpTransport,
     url: str,
     *,
+    headers: dict[str, str] | None = None,
     timeout: float = 60,
     attempts: int = 3,
     retry_statuses: tuple[int, ...] = (429, 500, 502, 503, 504),
     sleep: float = 0.0,
 ) -> HttpResponse:
     return _retry(
-        lambda: transport.get(url, timeout=timeout),
+        lambda: transport.get(url, headers=headers, timeout=timeout),
         url=url,
         attempts=attempts,
         retry_statuses=retry_statuses,

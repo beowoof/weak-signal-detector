@@ -15,6 +15,7 @@ from typing import Any
 
 import numpy as np
 
+from wsf.connectors import SOURCE_SERIES
 from wsf.scenario import load_scenario, load_status, scenario_directory
 from wsf.types import Observation
 
@@ -26,6 +27,9 @@ DOMAIN_REPRESENTATIVES: dict[str, tuple[str, ...]] = {
     "information": ("talk.gdelt_cameo",),
     "market": ("dyad.moex_usdrub", "dyad.fx"),
     "digital_infrastructure": ("net.ripe_prefixes",),
+    "domestic_financial_conditions": ("market.cbr_funding_spread",),
+    "spatial_restriction": ("nav.spatial_warnings",),
+    "bureaucratic": ("official.gazette_cadence",),
 }
 
 CORE_DOMAINS: tuple[str, ...] = ("public_attention", "information", "market")
@@ -34,6 +38,23 @@ EXTENDED_DOMAINS: tuple[str, ...] = (
     "information",
     "market",
     "digital_infrastructure",
+)
+# Soft chorus plus live Option-2 costly meters, when the harvest actually has them.
+COSTLY_DOMAINS: tuple[str, ...] = (
+    "public_attention",
+    "information",
+    "market",
+    "domestic_financial_conditions",
+    "spatial_restriction",
+    "bureaucratic",
+)
+OPTIONAL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "digital_infrastructure",
+        "domestic_financial_conditions",
+        "spatial_restriction",
+        "bureaucratic",
+    }
 )
 
 TRAILING_Z_WINDOW = 90
@@ -269,8 +290,12 @@ def resolve_panel_series(
         options = DOMAIN_REPRESENTATIVES[domain]
         match = next((series_id for series_id in options if series_id in available), None)
         if match is None:
+            if domain in OPTIONAL_DOMAINS:
+                continue
             raise ValueError(f"{period_id}: no representative for domain {domain}")
         chosen.append(match)
+    if len(chosen) < 2:
+        raise ValueError(f"{period_id}: need at least two series, got {chosen}")
     return chosen
 
 
@@ -287,7 +312,12 @@ def evaluate_window_ews(
     n_perm: int = 1000,
     seed: int = 42,
 ) -> WindowEwsSummary:
-    domains = CORE_DOMAINS if panel == "core" else EXTENDED_DOMAINS
+    if panel == "core":
+        domains = CORE_DOMAINS
+    elif panel == "costly":
+        domains = COSTLY_DOMAINS
+    else:
+        domains = EXTENDED_DOMAINS
     series_ids = resolve_panel_series(observations, window_id, domains)
     days, z_matrix = build_z_panel(observations, period_id=window_id, series_ids=series_ids)
     points = rolling_ews(z_matrix, days, window=window)
@@ -353,7 +383,16 @@ def load_scenario_observations(
     if not collection_id:
         raise ValueError(f"{scenario_id}: no active collection")
     collection_dir = scenario_directory(project_root, scenario_id) / "corpus" / collection_id
-    return collection_dir, load_collection_observations(collection_dir)
+    rows = load_collection_observations(collection_dir)
+    scenario = load_scenario(project_root, scenario_id)
+    enabled_series = {
+        SOURCE_SERIES[name]
+        for name, cfg in scenario.sources.items()
+        if cfg.enabled and name in SOURCE_SERIES
+    }
+    if enabled_series:
+        rows = [row for row in rows if row.series_id in enabled_series]
+    return collection_dir, rows
 
 
 def load_window_bounds(project_root: Path, scenario_id: str) -> dict[str, tuple[date, date]]:

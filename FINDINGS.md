@@ -109,49 +109,60 @@ Those are funding and access problems, not another free OSINT list. RIMA, awesom
 
 ---
 
-## Salvage Re-Evaluation: Options 1 & 2 (Dynamic Coupling & Costly Administrative Signals)
+## Salvage re-evaluation (2026-09-02)
 
-Following the initial post-mortem, the architecture was overhauled to test whether the core intent could be salvaged:
+Following the identification of uninstantiated stubs, real working HTTP connectors were implemented, smoke tested against live APIs (`scripts/smoke_test_connectors.py`), and re-harvested across the panel (preserving existing heavy VIIRS/SAR items while fetching new metrics live). Unfiltered US Federal Register volume was removed from Russian scenarios.
 
-1. **Option 1 (Dynamic Coupling & Sensor Cueing Engine):**
-   - Replaced brittle static smoking-gun gates with continuous **Multi-Domain Anomaly Energy** $E_{\text{dom}}(t) = \sum_{d} \max_{s \in d} \max(0, z_{s,t})$.
-   - Introduced a two-tier operational triage model:
-     - **Strategic Warning ($K_{\text{dom}} \ge 3$, $\ge 3$ consecutive days):** Triggered by simultaneous co-elevation across $\ge 3$ independent causal mechanisms.
-     - **Soft Coupling Cue ($K_{\text{dom}} \ge 2$, $\ge 3$ consecutive days):** Triggers automated **Sensor Tasking Orders** to all-weather/high-resolution assets (SAR, commercial tasking) whenever optical sensors face cloud cover.
-2. **Option 2 (Non-Optical Costly & Administrative Signals):**
-   - Added `official.gazette_cadence` (positive bureaucratic document cadence and entropy; replaced unstable Wayback scraping).
-   - Added `nav.spatial_warnings` (NAVAREA physical spatial closure area $\text{km}^2$ and lead time).
-   - Added `market.cbr_funding_spread` (domestic interbank liquidity stress: $\text{RUONIA} - \text{policy rate}$ and sovereign yield curve inversion).
-   - Decommissioned fragile crawlers (`crt.sh`, Wayback CDX scraping).
+### Active Harvest & Measurement Runs
 
-### Panel Scorecard (Full 4-Scenario Evaluation)
-
-All four scenarios were measured and evaluated without retraining thresholds:
-
-| Scenario | Role | Incident Scored Period | Matched Control Period | Strategic Warning ($K \ge 3$) | Soft Cue ($K \ge 2$) | Sensor Tasking Orders | Peak Energy ($E_{\text{dom}}$) |
-|---|---|---|---|---|---|---|---|
-| `ukraine2022` | Showcase (Overt Action) | Feb 3 – Feb 23, 2022 | Feb 4 – Feb 24, 2021 | **1 ep (6d total, 3d terminal)** | **2 ep (15d total)** | **8 days** | **$18.44\ \sigma$** (Control: $5.09\ \sigma$) |
-| `rus2021apr` | Positive (Reversed Mobil.) | Mar 19 – Apr 8, 2021 | Mar 20 – Apr 9, 2020 | **1 ep (4d total, 3d peak)** | **2 ep (11d total)** | **3 days** | **$10.04\ \sigma$** (Control: $2.83\ \sigma$) |
-| `deu2018quiet` | Hard Negative (Quiet) | Oct 8 – Oct 28, 2018 | Oct 9 – Oct 29, 2017 | **0 ep (0 days)** | **0 ep (1 isolated day)** | **0 days** | **$2.06\ \sigma$** (Control: $1.56\ \sigma$) |
-| `usachn2018trade` | Hard Negative (Tariff Talk) | Sep 10 – Sep 30, 2018 | Sep 11 – Oct 1, 2017 | **0 ep (0 days)** | **1 ep (4 days)** | **0 days** | **$4.46\ \sigma$** (Control: $2.92\ \sigma$) |
+| Case | Role | Collection ID | Measure ID | Active Series |
+|---|---|---|---|---|
+| `ukraine2022` | Showcase (Overt Action) | `collection-20260902T150825Z-90ef95` | `measure-20260902T150854Z-655a4a` | 10 series (incl. CBR, NAVAREA; gazette disabled) |
+| `rus2021apr` | Positive (Reversed Mobil.) | `collection-20260902T150849Z-d4cba9` | `measure-20260902T150858Z-bd7e79` | 9 series (incl. CBR, NAVAREA; gazette disabled) |
+| `deu2018quiet` | Hard Negative (Quiet) | `collection-20260902T150806Z-fcaa01` | `measure-20260902T150901Z-128bab` | 8 series (incl. paginated DEU Gazette, NAVAREA) |
+| `usachn2018trade` | Hard Negative (Tariff Talk) | `collection-20260902T144915Z-2ce633` | `measure-20260902T144954Z-e3e102` | 8 series (incl. USA Federal Register, NAVAREA) |
 
 ---
 
-### Core Scientific Findings from the Re-Evaluation
+### Working Connectors Implementation & Verification
 
-1. **Reversed Mobilization Recovered:**
-   - In `rus2021apr`, the initial v1 stack completely failed because optical night-lights around Moscow were static.
-   - Under the multi-domain framework, the April 6–8 buildup co-elevated public attention, information, and domestic financial/market indicators ($10.04\ \sigma$), successfully triggering a **Strategic Warning** and emitting **3 Sensor Tasking Orders** during overcast intervals.
-2. **Rejection of High-Tension Cheap Talk:**
-   - In `usachn2018trade`, the September 2018 tariff announcement generated high-volume rhetorical noise ($K_{\text{dom}} = 2$ in information and Wikipedia attention).
-   - Because no physical closures, bureaucratic acceleration, or domestic banking stress accompanied the rhetoric, the system classified it strictly as a soft cue and emitted **zero false strategic warnings** and **zero false collection cues**.
-3. **From Confirmation Bottleneck to Active Sensor Cueing:**
-   - Optical weather-blindness is no longer a fatal evidence void. In `ukraine2022`, multi-domain elevation autonomously cued collection for **8 cloudy days**, providing a principled mechanism to tip radar and high-resolution collection before events occur.
-4. **Specificity:**
-   - Across all negative cases (`deu2018quiet` incident/control, `usachn2018trade` incident/control, `rus2021apr` control, `ukraine2022` control), the false strategic warning rate was **0.0%**.
+1. **`market.cbr_funding_spread` ([`src/wsf/connectors/cbr.py`](file:///Users/matthewtoy/source/weak-signal-detector/src/wsf/connectors/cbr.py)):**
+   - Live SOAP client querying Bank of Russia `DailyInfo.asmx` (`RuoniaXML` and `KeyRateXML`).
+   - Measures daily interbank funding spread $\text{RUONIA}_t - \text{KeyRate}_t$ in basis points.
+   - Non-zero, dated trading day prints (e.g. Ukraine window: 91 days harvested, 14 trading days scored). Transport/parse failures are explicitly marked `source_down_days`.
+2. **`nav.spatial_warnings` ([`src/wsf/connectors/navarea.py`](file:///Users/matthewtoy/source/weak-signal-detector/src/wsf/connectors/navarea.py)):**
+   - Live REST client querying NGA MSI `broadcast-warn?status=all` across theater navareas (HYDROLANT `A`, HYDROARC `C`, HYDROPAC `P`, NAVAREA IV/XII).
+   - Real daily warning issue counts (e.g. Ukraine window: 1,390 warnings; USA–China: 632 warnings; DEU: 1,513 warnings). HTTP/parse failures are recorded as `source_down_days`.
+3. **`official.gazette_cadence` ([`src/wsf/connectors/gazette_cadence.py`](file:///Users/matthewtoy/source/weak-signal-detector/src/wsf/connectors/gazette_cadence.py)):**
+   - For USA: Queries Federal Register API daily facets (e.g. USA–China window: 10,710 Federal Register documents across 97 publishing days).
+   - For DEU: Paginated OffeneGesetze client following `next` URLs (e.g. DEU window: 206 documents across 25 publishing days; prior year: 456 documents across 48 days).
+   - Disabled on Russian scenarios where no domestic legislative API is configured.
 
 ---
 
-### Conclusion & Final Verdict
+### Empirical Coupling & Triage Scorecard
 
-**Verdict:** Architectural validation achieved. Weak public signals—when evaluated as multi-domain coupled energy rather than isolated univariate gates—contain demonstrable predictive value for strategic triage and sensor cueing. The system reliably discriminates true mobilization from cheap talk and provides an automated, operational tipping mechanism for high-cost intelligence assets.
+Evaluating continuous multi-domain coupled energy $E_{\text{dom}}(t) = \sum_{d} \max_{s \in d} \max(0, z_{s,t})$ at lowered threshold $\tau = 1.5$ on the live harvested panel ([`COUPLING_EVALUATION.md`](COUPLING_EVALUATION.md)):
+
+| Scenario | Window | $K_{\mathrm{dom}} \ge 3$ (Warning) | $K_{\mathrm{dom}} \ge 2$ (Cue) | Sensor Tasking Orders | Peak Energy ($E_{\mathrm{dom}}$) | Permutation $p_{\mathrm{episodes}}$ |
+|---|---|---|---|---|---|---|
+| `ukraine2022` | Incident (Feb 2022) | **2 ep (8d total)** | **2 ep (15d total)** | **8 days** | **21.89 $\sigma$** (mean 8.57 $\sigma$) | 0.432 |
+| `ukraine2022` | Control (Feb 2021) | 0 ep (0 days) | 0 ep (3 days) | 1 day | 5.98 $\sigma$ (mean 2.68 $\sigma$) | 1.000 |
+| `rus2021apr` | Incident (Apr 2021) | **1 ep (5d total)** | **2 ep (11d total)** | **3 days** | **10.15 $\sigma$** (mean 5.24 $\sigma$) | 0.439 |
+| `rus2021apr` | Control (Apr 2020) | 0 ep (0 days) | 0 ep (2 days) | 0 days | **18.08 $\sigma$** (mean 3.28 $\sigma$) | 1.000 |
+| `deu2018quiet` | Incident (Oct 2018) | 0 ep (1 day) | 0 ep (2 days) | 0 days | 11.38 $\sigma$ (mean 2.79 $\sigma$) | 1.000 |
+| `deu2018quiet` | Control (Oct 2017) | 0 ep (1 day) | 0 ep (1 day) | 0 days | 6.64 $\sigma$ (mean 2.46 $\sigma$) | 1.000 |
+| `usachn2018trade` | Incident (Sep 2018) | 0 ep (3 days) | 1 ep (4 days) | 0 days | **38.18 $\sigma$** (mean 5.34 $\sigma$) | 1.000 |
+| `usachn2018trade` | Control (Sep 2017) | 0 ep (2 days) | 0 ep (4 days) | 2 days | 19.53 $\sigma$ (mean 4.32 $\sigma$) | 1.000 |
+
+---
+
+### Methodological Conclusions
+
+1. **Option 2 Is Live:** Real non-optical costly signals (CBR funding spreads, NAVAREA maritime closures, paginated Federal/OffeneGesetze gazette counts) now execute against live endpoints and contribute real non-zero time series with proper `source_down` error tracking.
+2. **Option 1 Is Lowered-Threshold Domain Counting:** The detection mechanism remains point-in-time thresholding ($z \ge 1.5$) aggregated across causal domains, not high-frequency dynamical system EWS ($\lambda_{\max}$).
+3. **Specificity vs Rarity:**
+   - **Specificity at $K \ge 3$ holds:** No negative baseline produced a 3-day Strategic Warning episode ($p = 1.000$).
+   - **Statistical rarity is moderate:** Under unconstrained circular-shift permutations of z-calendars, $p_{\text{episodes}} \approx 0.43$ for Ukraine and $p_{\text{episodes}} \approx 0.44$ for April 2021 because lowered marginal thresholds ($\tau = 1.5$) allow noisy soft series to co-occur frequently by chance.
+4. **Sensor Tasking Orders Are a Derived Operational Label:** Tasking days are triggered whenever $K \ge 2$ and physical/optical sensors are unknown. While operationally useful for sensor scheduling, tasking volume is a derived output rather than independent statistical proof of unexpected precursor coupling.
+5. **Final Verdict:** The v1 verdict stands: weak public series show co-movement in February 2022, but without higher statistical rarity or non-weather-gated primary physical verification, this stack cannot serve as a standalone strategic early-warning detector.

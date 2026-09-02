@@ -1,6 +1,6 @@
 generation:
-  rule: capital + large_airport + mod_hq
-  max_aois_per_focal: 3
+  rule: staging and frontier corridors for mobilisation actors; capital stamps otherwise
+  max_aois_per_focal: 8
 actors:
   DEU:
     timezone: Europe/Berlin
@@ -22,10 +22,14 @@ actors:
       - {id: GRC-mod, kind: mod_hq, bbox: [23.78, 37.99, 23.81, 38.01]}
   RUS:
     timezone: Europe/Moscow
+    # Staging / railhead boxes on the 2021–22 western grouping, not Kremlin postage stamps.
+    # Boxes stay on the Russian (or Crimean) side so FIRMS/VIIRS do not ingest Donbas contact-line fires.
     aois:
-      # Kitay-gorod / Kremlin east; kept disjoint from MoD.
-      - {id: RUS-capital, kind: capital, bbox: [37.61, 55.745, 37.68, 55.78]}
-      - {id: RUS-airport, kind: civil_airport, icao: UUEE, bbox: [37.35, 55.94, 37.48, 56.02]}
-      # Znamenka / Arbat west-south of the Kremlin; not a single-block postage stamp.
-      - {id: RUS-mod, kind: mod_hq, bbox: [37.54, 55.715, 37.60, 55.745]}
+      - {id: RUS-yelnya, kind: staging, bbox: [32.95, 54.35, 33.42, 54.62]}
+      - {id: RUS-klintsy, kind: staging, bbox: [32.05, 52.62, 32.48, 52.90]}
+      - {id: RUS-belgorod, kind: frontier_railhead, bbox: [36.35, 50.45, 36.85, 50.78]}
+      - {id: RUS-valuyki, kind: frontier_railhead, bbox: [37.90, 50.08, 38.32, 50.38]}
+      - {id: RUS-boguchar, kind: staging, bbox: [40.30, 49.78, 40.82, 50.12]}
+      - {id: RUS-millerovo, kind: staging, bbox: [40.15, 48.78, 40.62, 49.08]}
+      - {id: RUS-dzhankoi, kind: staging, bbox: [34.18, 45.55, 34.60, 45.88]}
 

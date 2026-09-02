@@ -11,7 +11,7 @@
   causal_domain: physical_activity
   collector: NASA satellite
   subject_controls_signal: "no"
-  notes: Retrospectively reconstructed Collection 2. Asks whether the place is unusually bright, not what is there.
+  notes: Retrospectively reconstructed Collection 2. RUS AOIs are frontier/staging corridors, not capital stamps. Brightness is a corroborating physical indicator, not a smoking gun.
 - id: tempo.s1_backscatter
   family: facility_tempo
   hypothesis: Sentinel-1 IW VV backscatter at frozen AOIs becomes unusual relative to comparable historical passes.
