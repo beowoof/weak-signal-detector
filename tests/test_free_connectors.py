@@ -73,6 +73,34 @@ def test_firms_http_invalid_range_is_source_down_not_zero(monkeypatch) -> None:
     assert result.item["coverage"] == 0.0
 
 
+def test_firms_does_not_count_fires_between_aois(monkeypatch) -> None:
+    monkeypatch.setenv("FIRMS_MAP_KEY", "test-key")
+    # Empty payloads: a fire between the two boxes must not be queried.
+    csv_empty = "latitude,longitude,acq_date\n"
+
+    def handler(url: str) -> HttpResponse:
+        if "32.95,54.35,33.42,54.62" in url:
+            return HttpResponse(url, 200, csv_empty.encode(), {})
+        if "40.15,48.78,40.62,49.08" in url:
+            return HttpResponse(url, 200, csv_empty.encode(), {})
+        raise AssertionError(f"unexpected FIRMS bbox in {url}")
+
+    result = FirmsConnector(FakeTransport(handler)).pull(
+        _request(
+            source="firms",
+            series_id="tempo.firms_thermal",
+            start=date(2022, 2, 12),
+            end=date(2022, 2, 12),
+            aois=[
+                {"id": "RUS-yelnya", "bbox": [32.95, 54.35, 33.42, 54.62]},
+                {"id": "RUS-millerovo", "bbox": [40.15, 48.78, 40.62, 49.08]},
+            ],
+        )
+    )
+    assert result.observations[0].quality == "ok"
+    assert result.observations[0].value == 0.0
+
+
 def test_firms_empty_200_is_observed_zero(monkeypatch) -> None:
     monkeypatch.setenv("FIRMS_MAP_KEY", "test-key")
     csv_body = (

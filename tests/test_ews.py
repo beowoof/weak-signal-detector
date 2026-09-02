@@ -9,6 +9,7 @@ from wsf.analysis.ews import (
     leading_eigenvalue,
     marcenko_pastur_upper,
     multi_information,
+    resolve_panel_series,
     rolling_ews,
     trailing_z,
 )
@@ -137,3 +138,33 @@ def test_evaluate_window_ews_rises_only_in_the_scored_window() -> None:
     assert result.delta_mean_lambda is not None
     assert result.delta_mean_lambda > 0.2
     assert result.permutation["p_ge"] < 0.05
+
+
+def test_costly_panel_skips_missing_optional_domains() -> None:
+    start = date(2022, 1, 1)
+    observations = [
+        _obs("attn.wiki_pageviews", "incident", start, 1.0),
+        _obs("talk.gdelt_cameo", "incident", start, 2.0),
+        _obs("dyad.moex_usdrub", "incident", start, 3.0),
+        _obs("market.cbr_funding_spread", "incident", start, -12.0),
+        _obs("nav.spatial_warnings", "incident", start, 4.0),
+    ]
+    series = resolve_panel_series(
+        observations,
+        "incident",
+        (
+            "public_attention",
+            "information",
+            "market",
+            "domestic_financial_conditions",
+            "spatial_restriction",
+            "bureaucratic",
+        ),
+    )
+    assert series == [
+        "attn.wiki_pageviews",
+        "talk.gdelt_cameo",
+        "dyad.moex_usdrub",
+        "market.cbr_funding_spread",
+        "nav.spatial_warnings",
+    ]

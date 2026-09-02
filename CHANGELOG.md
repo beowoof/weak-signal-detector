@@ -4,6 +4,12 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ## Unreleased
 
+### Changed
+
+- **Collection-indicator framing:** dashboard and README treat multi-domain co-movement as a cue to collect more (news, tasked imagery), not as a determination of mobilisation or intent.
+- **RUS physical AOIs:** `config/facilities.yaml` replaces Kremlin / Sheremetyevo / MoD postage stamps with seven frontier/staging boxes (Yelnya, Klintsy, Belgorod, Valuyki, Boguchar, Millerovo, Dzhankoi). `max_aois_per_focal` is 8.
+- **FIRMS per-AOI counts:** detections are summed inside each staging box. A union bbox from Yelnya to Crimea would have ingested Donbas contact-line fires.
+
 ### Added
 
 - **Multi-Domain Dynamic Coupling & Sensor Cueing Engine (`src/wsf/analysis/coupling.py`, `scripts/run_coupling_analysis.py`, `COUPLING_EVALUATION.md`):**
@@ -34,16 +40,22 @@ All notable enhancements to this project are recorded here. The project follows 
   - `COUPLING_EVALUATION.md`: Detailed multi-scenario evaluation report across all 4 scenarios.
   - Updated `FINDINGS.md`: Documented successful post-salvage validation, full 4-scenario scorecard, and project findings.
 
-### Changed
+### Fixed
 
-- **Decommissioned Fragile Web Scrapers:**
-  - Disabled legacy `official` connector (Wayback Machine CDX scraper) across all scenario configurations to prevent multi-hour hangs and timeout retries on broad domain wildcards.
-  - Disabled `ct` (`crt.sh` Certificate Transparency) due to frequent external 502 outages and lack of stable identity.
-- **Scenario Configurations:**
-  - Wired `gazette_cadence`, `navarea`, and `cbr` into `ukraine2022`, `rus2021apr`, `deu2018quiet`, and `usachn2018trade`.
-- **Measurement Engine (`src/wsf/measure.py`):**
-  - Added zero-lag and print mappings for new administrative and financial series in `SOURCE_LAG`.
-  - Filtered active baskets to instantiated series.
+- **DEU Gazette Cadence Pagination (`src/wsf/connectors/gazette_cadence.py`):**
+  - Follows `next` pagination URLs in the OffeneGesetze API (`https://api.offenegesetze.de/v1/veroeffentlichung/`), resolving the constant-zero issue on `deu2018quiet` and harvesting 206 real historical publications.
+- **Explicit `source_down` Failure Handling (`gazette_cadence.py`, `navarea.py`, `cbr.py`):**
+  - Replaced pre-filled zero dictionaries with explicit `source_down_days` tracking on HTTP timeouts, non-200 responses, and JSON/XML parse errors, preventing failed harvests from masquerading as quiet observations.
+- **Actor-Appropriate Gazette Sources:**
+  - Disabled `gazette_cadence` on Russian scenarios (`ukraine2022`, `rus2021apr`) to eliminate leaking unfiltered US Federal Register document counts into the Russian bureaucratic domain.
+- **CBR Interbank Spread Validation (`src/wsf/connectors/cbr.py`):**
+  - Requires policy key rate data before computing RUONIA funding spreads, marking missing key rate dates as `source_down` instead of silently returning 0.0.
+- **Comprehensive Connector Unit Tests (`tests/test_new_connectors.py`):**
+  - Added assertions on HTTP transport calls, parsed non-zero values, multi-page DEU pagination, and HTTP 503 `source_down` branches across all new connectors.
+- **Documentation & ID Alignment (`FINDINGS.md`, `COUPLING_EVALUATION.md`, `scripts/run_coupling_analysis.py`):**
+  - Synchronized active collection/measurement IDs with on-disk state (`status.json`).
+  - Updated permutation p-values and episode counts across all documents, reflecting the empirical results ($p_{\text{episodes}} \approx 0.43$–$0.44$).
+  - Clarified that tasking orders are a derived operational triage rule rather than proof of unusual precursor coupling.
 
 ### Added (Previous)
 

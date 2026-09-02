@@ -257,7 +257,23 @@ def _live_items(
         futures = {pool.submit(harvest_source, source): source for source in selected}
         for future in as_completed(futures):
             collected.update(future.result())
-    return [collected[(source, window.id)] for source, window in jobs]
+
+    # Copy unselected enabled sources from parent collection so existing data (VIIRS, SAR, GDELT, etc.) is preserved
+    if parent_items:
+        for key, parent_item in parent_items.items():
+            source, _win = key
+            if source not in selected and key not in collected:
+                progress.line(f"collect {source}/{_win} copy from parent")
+                collected[key] = _copy_parent_item(parent_dir, directory, parent_item)
+
+    all_keys = [
+        (source, window.id)
+        for source, config in scenario.sources.items()
+        if config.enabled
+        for window in windows
+        if (source, window.id) in collected
+    ]
+    return [collected[k] for k in all_keys]
 
 
 def harvest_span(window: Any) -> tuple[date, date]:

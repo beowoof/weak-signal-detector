@@ -81,7 +81,7 @@
       "enabled": true
     },
     "gazette_cadence": {
-      "enabled": true
+      "enabled": false
     },
     "gdelt": {
       "enabled": true

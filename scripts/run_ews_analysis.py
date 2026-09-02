@@ -15,7 +15,7 @@ from wsf.analysis.ews import (  # noqa: E402
 
 SCENARIOS = ["ukraine2022", "rus2021apr", "deu2018quiet", "usachn2018trade"]
 WINDOWS = ["incident", "same-period-prior-year"]
-PANELS = ["core", "extended"]
+PANELS = ["core", "costly", "extended"]
 ROLLING_WINDOWS = [14, 21]
 ROLES = {
     ("ukraine2022", "incident"): "Positive showcase (overt action)",

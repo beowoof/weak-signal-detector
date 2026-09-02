@@ -58,52 +58,58 @@ class FirmsConnector:
                 retrieved_at,
                 f"FIRMS_SENSOR {sensor!r} is not one of {sorted(ALLOWED_SENSORS)}",
             )
-        west, south, east, north = _union_bbox(request.aois)
         progress = request.log()
         counts: dict[date, float] = {}
         requests: list[dict[str, object]] = []
         # Area API: 1 MAP_KEY transaction per call. NASA currently accepts day range 1–5.
         max_span = 5
-        cursor = request.start
         down_days: set[date] = set()
-        while cursor <= request.end:
-            chunk_end = min(cursor + timedelta(days=max_span - 1), request.end)
-            span = (chunk_end - cursor).days + 1
-            url = FIRMS_AREA.format(
-                key=key,
-                sensor=sensor,
-                west=west,
-                south=south,
-                east=east,
-                north=north,
-                span=span,
-                day=chunk_end.isoformat(),
-            )
-            progress.status(f"firms {request.window_id} {cursor}..{chunk_end}")
-            response = get_with_retry(self.transport, url, timeout=60, attempts=3, sleep=0.5)
-            requests.append(
-                {
-                    "url": redact_url(url).replace(key, "REDACTED") if key else redact_url(url),
-                    "status": response.status,
-                    "bytes": len(response.body),
-                }
-            )
-            text = response.body.decode("utf-8", errors="replace")
-            chunk_days = date_range(cursor, chunk_end)
-            if response.status != 200 or text.lower().startswith("invalid"):
-                down_days.update(chunk_days)
-            else:
-                for day in chunk_days:
-                    counts.setdefault(day, 0.0)
-                reader = csv.DictReader(io.StringIO(text))
-                for row in reader:
-                    raw = row.get("acq_date") or row.get("ACQ_DATE")
-                    if not raw:
-                        continue
-                    day = date.fromisoformat(raw[:10])
-                    if day in counts:
-                        counts[day] += 1
-            cursor = chunk_end + timedelta(days=1)
+        for aoi in request.aois:
+            west, south, east, north = (float(value) for value in aoi["bbox"])
+            cursor = request.start
+            while cursor <= request.end:
+                chunk_end = min(cursor + timedelta(days=max_span - 1), request.end)
+                span = (chunk_end - cursor).days + 1
+                url = FIRMS_AREA.format(
+                    key=key,
+                    sensor=sensor,
+                    west=west,
+                    south=south,
+                    east=east,
+                    north=north,
+                    span=span,
+                    day=chunk_end.isoformat(),
+                )
+                progress.status(
+                    f"firms {request.window_id} {aoi.get('id', 'aoi')} {cursor}..{chunk_end}"
+                )
+                response = get_with_retry(self.transport, url, timeout=60, attempts=3, sleep=0.5)
+                requests.append(
+                    {
+                        "url": redact_url(url).replace(key, "REDACTED") if key else redact_url(url),
+                        "status": response.status,
+                        "bytes": len(response.body),
+                        "aoi": aoi.get("id"),
+                    }
+                )
+                text = response.body.decode("utf-8", errors="replace")
+                chunk_days = date_range(cursor, chunk_end)
+                if response.status != 200 or text.lower().startswith("invalid"):
+                    down_days.update(chunk_days)
+                else:
+                    for day in chunk_days:
+                        counts.setdefault(day, 0.0)
+                    reader = csv.DictReader(io.StringIO(text))
+                    for row in reader:
+                        raw = row.get("acq_date") or row.get("ACQ_DATE")
+                        if not raw:
+                            continue
+                        day = date.fromisoformat(raw[:10])
+                        if day in counts:
+                            counts[day] += 1
+                cursor = chunk_end + timedelta(days=1)
+        for day in down_days:
+            counts.pop(day, None)
         progress.line(
             f"firms {request.window_id} detections={sum(counts.values())} "
             f"down_days={len(down_days)}"
@@ -117,9 +123,10 @@ class FirmsConnector:
             source_down_days=down_days,
             extra={"sensor": sensor},
             notes=(
-                f"{sensor} thermal detections in the union AOI; 0 is observed zero; "
-                "HTTP/invalid responses are source_down, not zero. "
-                "NOAA-20 is the frozen FIRMS instrument (SNPP delivery ends 2026-11-01)."
+                f"{sensor} thermal detections summed over individual AOI bboxes; "
+                "0 is observed zero inside those boxes; HTTP/invalid responses are "
+                "source_down, not zero. NOAA-20 is the frozen FIRMS instrument "
+                "(SNPP delivery ends 2026-11-01)."
             ),
         )
 

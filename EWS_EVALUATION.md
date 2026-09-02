@@ -1,20 +1,10 @@
 # Phase 1: Rolling Correlation & λ_max Re-Evaluation
 
-**Verdict:** Phase 1 does not salvage the instrument. Rolling λ_max rises in the Ukraine 2022 scored window (Δ = 0.30, p = 0.067) and stays quiet on both hard negatives, but April 2021 does not rise, and Ukraine itself is only a one-sided near-miss under independent circular shifts. That is the same epistemic neighbourhood as [`FINDINGS.md`](FINDINGS.md): something in the public series is different in February 2022; this basket still cannot say it is strategic coupling.
+This is the instrument specified in [`IDEAS.md`](IDEAS.md) Blueprint B / Phase 1: trailing-z series, rolling Pearson correlation, leading eigenvalue versus the Marcenko-Pastur bulk edge, and Gaussian multi-information. It is **not** a retune of `coincidence_v1`. The lowered-threshold domain-count experiment in [`COUPLING_EVALUATION.md`](COUPLING_EVALUATION.md) remains a marginal-exceedance detector and is reported separately.
 
-This is the instrument specified in [`IDEAS.md`](IDEAS.md) Blueprint B / Phase 1: trailing-z series, rolling Pearson correlation, leading eigenvalue versus the Marcenko-Pastur bulk edge, and Gaussian multi-information. It is **not** a retune of `coincidence_v1`. The lowered-threshold domain-count experiment in [`COUPLING_EVALUATION.md`](COUPLING_EVALUATION.md) remains a marginal-exceedance detector.
+Panel: one representative per causal domain (`attn.wiki_pageviews`, `talk.gdelt_cameo`, market = `dyad.moex_usdrub` or `dyad.fx`). ICEWS is omitted from the matrix because it shares the information domain with GDELT. Gazette crawl counts and Certificate Transparency are omitted (demoted in [`FINDINGS.md`](FINDINGS.md)). RIPEstat is a sensitivity panel only.
 
----
-
-## 0. What was measured
-
-- **Panel:** one representative per causal domain — Wikipedia pageviews, GDELT CAMEO, market (`dyad.moex_usdrub` or `dyad.fx`). ICEWS is omitted because it shares the information domain with GDELT. Gazette crawl counts and Certificate Transparency are omitted (demoted in FINDINGS.md). RIPEstat is a sensitivity panel only.
-- **Standardisation:** population trailing z, 90-day window, current day excluded, `n_min = 20`, matching `coincidence_v1`.
-- **Rolling window:** W = 14 calendar days, listwise complete rows (so market weekends drop out; typically n_obs = 10 for M = 3). W = 21 is a sensitivity.
-- **Test statistic:** mean λ_max in the 21-day scored window minus mean λ_max in that window's own lookback. Permutation: independent circular shifts of each series, 1000 draws, p = P(Δλ_null ≥ Δλ_obs).
-- **Development set only.** Same four harvested cases. Not a freeze. Not a hold-out.
-
-For M = 3, n_obs = 10 the Marcenko-Pastur upper edge is (1 + √(3/10))² ≈ 2.40. λ_max sitting near 2 is ordinary pairwise correlation, not a collapsed-independence event.
+Statistic: mean λ_max in the 21-day scored window minus mean λ_max in that window's own lookback. Permutation: independent circular shifts of each series, p = P(Δλ_null ≥ Δλ_obs).
 
 ---
 
@@ -31,44 +21,41 @@ For M = 3, n_obs = 10 the Marcenko-Pastur upper edge is (1 + √(3/10))² ≈ 2.
 | `usachn2018trade` | `incident` | Hard negative (high-tension talk) | `attn.wiki_pageviews`, `talk.gdelt_cameo`, `dyad.fx` | 1.624 | 1.671 | 0.046 | 1.849 | 0/17 | 0.398 |
 | `usachn2018trade` | `same-period-prior-year` | Matched control | `attn.wiki_pageviews`, `talk.gdelt_cameo`, `dyad.fx` | 1.558 | 1.732 | 0.173 | 2.030 | 0/17 | 0.209 |
 
-DEU and USA–China scored n < 21 because ALFRED H.10 FX is missing on the last days of the window (print lag), so those days have no complete market row.
-
 ---
 
-## 2. Reading
+## 2. Reading the table
 
-- **Ukraine 2022 is a near-miss, not a detection.** Mean λ_max rises from 1.94 in lookback to 2.24 in the scored window. Independent phase randomisation puts that Δ at p = 0.067. Lookback already reached 2.45; scored max is 2.54. The first principal component is a bit louder, not a new regime.
-- **April 2021 is a miss.** Δ = 0.14, p = 0.28 at W = 14; at W = 21 the scored window is *less* coupled than its lookback (Δ = −0.11). The reversed mobilisation does not show a collapse of independence on this basket. Capital-postage-stamp physical series were already a miss in FINDINGS.md; the soft-series correlation matrix does not recover it.
-- **Hard negatives behave.** Germany 2018 decoupling (Δ = −0.34, p = 0.97). USA–China tariff week is flat (Δ = 0.05, p = 0.40). Prior-year controls are flat. Specificity is the one clean result.
-- **W = 21 and RIPEstat do not rescue it.** Ukraine W = 21 core: Δ = 0.34, p = 0.059. Adding RIPEstat *weakens* Ukraine (p = 0.18 at W = 14) and does nothing for April 2021. FINDINGS.md already treated the February prefix collapse as a likely hole.
+- **No salvage on this instrument:** the 21-day mobilisation windows do not show a statistically unusual rise in rolling λ_max relative to their own lookback after independent phase randomisation. Lowering z-thresholds in the coincidence detector is not a substitute for this result.
+- `ukraine2022` incident: Δλ_max = 0.299, p = 0.067, scored mean λ_max = 2.239 vs lookback 1.940.
+- `rus2021apr` incident: Δλ_max = 0.135, p = 0.276.
+- `deu2018quiet` incident: Δλ_max = -0.343, p = 0.973.
+- `usachn2018trade` incident: Δλ_max = 0.046, p = 0.398.
 
 ### Ukraine 2022 incident, daily λ_max (core, W = 14)
 
 | Day | λ_max | excess vs MP | above bound |
 |---|---|---|---|
-| 2022-02-03 | 2.307 | −0.088 | no |
+| 2022-02-03 | 2.307 | -0.088 | no |
 | 2022-02-04 | 2.471 | +0.075 | yes |
 | 2022-02-05 | 2.471 | +0.075 | yes |
 | 2022-02-06 | 2.471 | +0.075 | yes |
-| 2022-02-07 | 2.359 | −0.037 | no |
+| 2022-02-07 | 2.359 | -0.037 | no |
 | 2022-02-08 | 2.539 | +0.143 | yes |
-| 2022-02-09 | 2.331 | −0.064 | no |
-| 2022-02-10 | 2.025 | −0.370 | no |
-| 2022-02-11 | 2.074 | −0.321 | no |
-| 2022-02-12 | 2.074 | −0.321 | no |
-| 2022-02-13 | 2.074 | −0.321 | no |
-| 2022-02-14 | 2.304 | −0.091 | no |
-| 2022-02-15 | 1.971 | −0.425 | no |
-| 2022-02-16 | 1.958 | −0.438 | no |
-| 2022-02-17 | 2.056 | −0.339 | no |
-| 2022-02-18 | 2.105 | −0.291 | no |
-| 2022-02-19 | 2.105 | −0.291 | no |
-| 2022-02-20 | 2.105 | −0.291 | no |
-| 2022-02-21 | 2.379 | −0.016 | no |
+| 2022-02-09 | 2.331 | -0.064 | no |
+| 2022-02-10 | 2.025 | -0.370 | no |
+| 2022-02-11 | 2.074 | -0.321 | no |
+| 2022-02-12 | 2.074 | -0.321 | no |
+| 2022-02-13 | 2.074 | -0.321 | no |
+| 2022-02-14 | 2.304 | -0.091 | no |
+| 2022-02-15 | 1.971 | -0.425 | no |
+| 2022-02-16 | 1.958 | -0.438 | no |
+| 2022-02-17 | 2.056 | -0.339 | no |
+| 2022-02-18 | 2.105 | -0.291 | no |
+| 2022-02-19 | 2.105 | -0.291 | no |
+| 2022-02-20 | 2.105 | -0.291 | no |
+| 2022-02-21 | 2.379 | -0.016 | no |
 | 2022-02-22 | 2.464 | +0.069 | yes |
-| 2022-02-23 | 2.369 | −0.026 | no |
-
-The loudest coupling is **4–8 February**, not 21–23 February. The 15 February talk/attention cluster that FINDINGS.md flagged is a λ_max *trough* (1.97): the series are simultaneously elevated, so the rolling correlation demeans them into a plateau. That is the known limit of correlation-based EWS. Coincidence of high z and collapse of independence are different hypotheses; this window illustrates both, on different days.
+| 2022-02-23 | 2.369 | -0.026 | no |
 
 ---
 
@@ -77,37 +64,52 @@ The loudest coupling is **4–8 February**, not 21–23 February. The 15 Februar
 | Scenario | Period | Panel | W | Δλ_max | p(Δλ) | Days > MP |
 |---|---|---|---|---|---|---|
 | `ukraine2022` | `incident` | `core` | 21 | 0.337 | 0.059 | 16/21 |
+| `ukraine2022` | `incident` | `costly` | 14 | 0.036 | 0.517 | 5/21 |
+| `ukraine2022` | `incident` | `costly` | 21 | 0.021 | 0.484 | 14/21 |
 | `ukraine2022` | `incident` | `extended` | 14 | 0.237 | 0.184 | 7/21 |
 | `ukraine2022` | `incident` | `extended` | 21 | 0.396 | 0.102 | 15/21 |
 | `ukraine2022` | `same-period-prior-year` | `core` | 21 | 0.227 | 0.178 | 8/21 |
+| `ukraine2022` | `same-period-prior-year` | `costly` | 14 | -0.209 | 0.691 | 1/21 |
+| `ukraine2022` | `same-period-prior-year` | `costly` | 21 | 0.021 | 0.430 | 2/21 |
 | `ukraine2022` | `same-period-prior-year` | `extended` | 14 | -0.163 | 0.747 | 0/21 |
 | `ukraine2022` | `same-period-prior-year` | `extended` | 21 | 0.173 | 0.244 | 6/21 |
 | `rus2021apr` | `incident` | `core` | 21 | -0.114 | 0.715 | 0/21 |
+| `rus2021apr` | `incident` | `costly` | 14 | -0.067 | 0.589 | 2/21 |
+| `rus2021apr` | `incident` | `costly` | 21 | -0.195 | 0.669 | 0/21 |
 | `rus2021apr` | `incident` | `extended` | 14 | 0.009 | 0.514 | 1/21 |
 | `rus2021apr` | `incident` | `extended` | 21 | -0.158 | 0.778 | 0/21 |
 | `rus2021apr` | `same-period-prior-year` | `core` | 21 | -0.040 | 0.523 | 0/21 |
+| `rus2021apr` | `same-period-prior-year` | `costly` | 14 | -0.012 | 0.503 | 0/13 |
+| `rus2021apr` | `same-period-prior-year` | `costly` | 21 | -0.069 | 0.635 | 0/21 |
 | `rus2021apr` | `same-period-prior-year` | `extended` | 14 | 0.196 | 0.230 | 0/21 |
 | `rus2021apr` | `same-period-prior-year` | `extended` | 21 | 0.169 | 0.240 | 5/21 |
 | `deu2018quiet` | `incident` | `core` | 21 | -0.285 | 0.933 | 0/18 |
+| `deu2018quiet` | `incident` | `costly` | 14 | -0.215 | 0.797 | 0/17 |
+| `deu2018quiet` | `incident` | `costly` | 21 | -0.273 | 0.838 | 0/18 |
 | `deu2018quiet` | `incident` | `extended` | 14 | -0.332 | 0.920 | 0/17 |
 | `deu2018quiet` | `incident` | `extended` | 21 | -0.355 | 0.933 | 0/18 |
 | `deu2018quiet` | `same-period-prior-year` | `core` | 21 | 0.091 | 0.298 | 4/18 |
+| `deu2018quiet` | `same-period-prior-year` | `costly` | 14 | -0.064 | 0.541 | 0/17 |
+| `deu2018quiet` | `same-period-prior-year` | `costly` | 21 | 0.106 | 0.343 | 3/18 |
 | `deu2018quiet` | `same-period-prior-year` | `extended` | 14 | 0.153 | 0.251 | 1/17 |
 | `deu2018quiet` | `same-period-prior-year` | `extended` | 21 | 0.332 | 0.083 | 7/18 |
 | `usachn2018trade` | `incident` | `core` | 21 | 0.097 | 0.303 | 0/21 |
+| `usachn2018trade` | `incident` | `costly` | 14 | 0.375 | 0.105 | 0/17 |
+| `usachn2018trade` | `incident` | `costly` | 21 | 0.498 | 0.048 | 0/21 |
 | `usachn2018trade` | `incident` | `extended` | 14 | 0.201 | 0.182 | 0/17 |
 | `usachn2018trade` | `incident` | `extended` | 21 | 0.277 | 0.168 | 0/21 |
 | `usachn2018trade` | `same-period-prior-year` | `core` | 21 | 0.006 | 0.484 | 0/21 |
+| `usachn2018trade` | `same-period-prior-year` | `costly` | 14 | -0.038 | 0.516 | 0/17 |
+| `usachn2018trade` | `same-period-prior-year` | `costly` | 21 | -0.100 | 0.588 | 0/21 |
 | `usachn2018trade` | `same-period-prior-year` | `extended` | 14 | -0.023 | 0.531 | 0/17 |
 | `usachn2018trade` | `same-period-prior-year` | `extended` | 21 | -0.203 | 0.807 | 0/21 |
-
-Germany's prior-year extended W = 21 (p = 0.083) is a reminder that RIPEstat can manufacture a Δ on a quiet control.
 
 ---
 
 ## 4. What this does and does not claim
 
-- Development-set re-analysis of the same four harvested cases. Not a freeze. Not a hold-out. Do not score `GRC-TUR-2020` as if one existed.
-- λ_max measures **fluctuation dependence** inside a rolling window. Simultaneous level shifts that then sit still look weakly correlated after demeaning (see 15 February above). Coincidence of high z is a different statistic; lowering τ does not become λ_max.
-- A significant Δλ_max on Ukraine *and* rus2021apr, with quiet hard negatives, would have supported salvaging the dependence form of the thesis. That did not happen.
-- Remaining salvage routes in IDEAS.md, if any, are **Blueprint A** (non-optical costly series: NOTAMs, gazette gaps, money-market basis) and **Blueprint C** (frontier corridor aggregation). They require new harvests. They are not another pass over these z-calendars.
+- This is a **development-set** re-analysis of the same four harvested cases. It is not a freeze and not a hold-out.
+- λ_max measures **fluctuation dependence** inside a rolling window. Simultaneous level shifts that then sit still can look weakly correlated after demeaning; that is a known limit of correlation-based EWS.
+- FINDINGS.md already noted that RIPEstat's February prefix collapse is more likely a coverage hole than a routing event. The extended panel is therefore a sensitivity, not a confirmation source.
+- A significant Δλ_max on Ukraine and rus2021apr with quiet hard negatives would support salvaging the *dependence* form of the thesis. A non-separation would mean Phase 1 does not rescue the instrument, and the remaining salvage routes are new costly series (Blueprint A) or spatial re-aggregation (Blueprint C), not another threshold tweak.
+
