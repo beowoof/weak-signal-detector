@@ -101,6 +101,10 @@ def test_validate_and_harvest_write_into_packet(tmp_path: Path, monkeypatch) -> 
         "wsf.collect._fetch_declared",
         lambda *args, **kwargs: ([], ["declared posture skipped in unit test"], None),
     )
+    monkeypatch.setattr(
+        "wsf.collect.search_catalogue",
+        lambda *args, **kwargs: ([], ["catalogue skipped in unit test"]),
+    )
     payload = run_collection(
         tmp_path,
         "desk-case",
@@ -167,6 +171,26 @@ def test_physical_plan_names_staging_aois(tmp_path: Path, monkeypatch) -> None:
     config_dir.joinpath("facilities.yaml").write_text(
         facilities.read_text(encoding="utf-8"), encoding="utf-8"
     )
+    monkeypatch.setattr(
+        "wsf.collect.search_catalogue",
+        lambda *args, **kwargs: (
+            [
+                {
+                    "kind": "catalogue_granule",
+                    "votes": False,
+                    "collection": "SENTINEL-1",
+                    "product_type": "GRDH",
+                    "name": "S1A_IW_GRDH_1SDV_20220211T040250.SAFE",
+                    "aoi_id": "RUS-yelnya",
+                    "aoi_name": "Yelnya",
+                    "sensing_date": "2022-02-11",
+                    "knowable": True,
+                    "url": "https://catalogue.dataspace.copernicus.eu/odata/v1/Products(x)",
+                }
+            ],
+            ["catalogue stub"],
+        ),
+    )
     result = run_collection(
         tmp_path, "desk-case", "notice-abc", kinds=[PHYSICAL], replay=True
     )
@@ -177,3 +201,7 @@ def test_physical_plan_names_staging_aois(tmp_path: Path, monkeypatch) -> None:
     assert "Dzhankoi" in names
     firms = next(row for row in plan["sources"] if row["id"] == "tempo.firms_thermal")
     assert "combined set" in firms["answers"]
+    cat = next(row for row in plan["sources"] if row["id"] == "copernicus_catalogue")
+    assert cat["role"] == "desk"
+    assert cat["status"] == "knowable"
+    assert any(item.get("kind") == "catalogue_granule" for item in result["tasks"][0]["items"])

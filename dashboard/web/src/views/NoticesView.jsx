@@ -216,28 +216,70 @@ function CollectionPanel({ collection, busy, onRun }) {
             </div>
           ) : null}
           {task.kind === "refresh_physical" && task.items?.length ? (
-            <div className="brief-table-wrap">
-              <table className="brief-table">
-                <thead>
-                  <tr>
-                    <th>Source</th>
-                    <th>Day</th>
-                    <th>Status</th>
-                    <th>Value</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {task.items.map((row) => (
-                    <tr key={`${row.label}-${row.day}`}>
-                      <td>{row.label}</td>
-                      <td>{row.day}</td>
-                      <td>{row.knowable ? row.quality : "awaiting"}</td>
-                      <td>{row.knowable ? number(row.value) : "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              {task.items.some((row) => row.label && row.kind !== "catalogue_granule") ? (
+                <div className="brief-table-wrap">
+                  <table className="brief-table">
+                    <thead>
+                      <tr>
+                        <th>Source</th>
+                        <th>Day</th>
+                        <th>Status</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {task.items
+                        .filter((row) => row.label && row.kind !== "catalogue_granule")
+                        .map((row) => (
+                          <tr key={`${row.label}-${row.day}`}>
+                            <td>{row.label}</td>
+                            <td>{row.day}</td>
+                            <td>{row.knowable ? row.quality : "awaiting"}</td>
+                            <td>{row.knowable ? number(row.value) : "—"}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+              {task.items.some((row) => row.kind === "catalogue_granule") ? (
+                <div className="brief-table-wrap">
+                  <table className="brief-table">
+                    <thead>
+                      <tr>
+                        <th>AOI</th>
+                        <th>Sensor</th>
+                        <th>Sensing</th>
+                        <th>At cutoff</th>
+                        <th>Product</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {task.items
+                        .filter((row) => row.kind === "catalogue_granule")
+                        .map((row) => (
+                          <tr key={`${row.aoi_id}-${row.name}`}>
+                            <td>{row.aoi_name}</td>
+                            <td>{row.collection === "SENTINEL-1" ? "S1 GRD" : "S2 L1C"}</td>
+                            <td>{row.sensing_date}</td>
+                            <td>{row.knowable ? "knowable" : "not yet"}</td>
+                            <td>
+                              {row.url ? (
+                                <a href={row.url} target="_blank" rel="noreferrer">
+                                  {row.name}
+                                </a>
+                              ) : (
+                                row.name
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
           ) : null}
           {task.kind === "official_pack" && task.items?.length ? (
             <>
