@@ -11,6 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from wsf.connectors.base import PullRequest
+from wsf.connectors.copernicus_catalogue import search_catalogue
 from wsf.connectors.declared_posture import DeclaredPostureConnector, state_at_cutoff
 from wsf.connectors.http import UrllibTransport
 from wsf.notice import (
@@ -23,6 +24,7 @@ from wsf.notice import (
     save_notice,
 )
 from wsf.packet import (
+    CollectionLogEntry,
     Packet,
     _as_dt,
     _fmt_num,
@@ -208,15 +210,15 @@ PHYSICAL_SOURCES = (
     },
     {
         "id": "copernicus_catalogue",
-        "name": "Copernicus / commercial EO catalogue",
-        "role": "open",
+        "name": "Copernicus catalogue (S1 GRD / S2 L1C)",
+        "role": "desk",
         "answers": (
-            "Whether imagery exists over named AOIs on admissible dates, cloud cover, "
-            "and what a tasked look would show."
+            "Whether public Sentinel-1 GRD or Sentinel-2 L1C granules exist over named "
+            "AOIs on admissible dates. Pointers only; scenes are not downloaded."
         ),
         "query": (
-            "Catalogue search per AOI bbox, dates at or before cutoff. Desk does not "
-            "fetch scenes."
+            "CDSE OData per AOI bbox. Sensing in the episode; knowable if reconstructed "
+            "availability is at or before cutoff. Does not vote."
         ),
     },
     {
@@ -281,7 +283,15 @@ def _physical_sources(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     rows = []
     for source in PHYSICAL_SOURCES:
         row = dict(source)
-        if source["role"] == "open":
+        if source["id"] == "copernicus_catalogue":
+            hits = [item for item in items if item.get("kind") == "catalogue_granule"]
+            if any(item.get("knowable") for item in hits):
+                row["status"] = "knowable"
+            elif hits:
+                row["status"] = "awaiting_cutoff"
+            else:
+                row["status"] = "not_in_collection"
+        elif source["role"] == "open":
             row["status"] = "analyst"
         else:
             row["status"] = _series_status(items, source["id"])
@@ -572,8 +582,28 @@ def _physical(
     ]
     if sar_missing:
         notes.append("SAR/backscatter is missing or not knowable on one or more episode days.")
-    status: Literal["complete", "blocked"] = "complete" if items else "blocked"
     frame = _frame(project_root, notice.trigger.scenario_id)
+    granules, catalogue_notes = search_catalogue(
+        UrllibTransport(),
+        list(frame.get("aois") or []),
+        start=start,
+        end=end,
+        cutoff=clocks.knowledge_cutoff,
+    )
+    items.extend(granules)
+    notes.extend(catalogue_notes)
+    if granules:
+        _attach_catalogue(packet, granules)
+        packet.collection_log.append(
+            CollectionLogEntry(
+                action="physical_catalogue",
+                detail=(
+                    f"listed={len(granules)} knowable="
+                    f"{sum(1 for row in granules if row.get('knowable'))}"
+                ),
+            )
+        )
+    status: Literal["complete", "blocked"] = "complete" if items else "blocked"
     window_notes = list(notes)
     question = (
         "Is there independent physical evidence of concentration, dispersal or movement "
@@ -695,6 +725,37 @@ def _fetch_declared(
     if result.item.get("n_ok") == 0 and not events:
         notes.append("Declared-posture connector returned no knowable events.")
     return events, notes, snapshot
+
+
+def _attach_catalogue(packet: Packet, granules: list[dict[str, Any]]) -> None:
+    knowable = [row for row in granules if row.get("knowable")]
+    n_sar = sum(1 for row in knowable if row.get("collection") == "SENTINEL-1")
+    n_opt = sum(1 for row in knowable if row.get("collection") == "SENTINEL-2")
+    geo = packet.geopolitical_context or {}
+    items = [item for item in (geo.get("items") or []) if item.get("kind") != "physical_catalogue"]
+    items.append(
+        {
+            "kind": "physical_catalogue",
+            "votes": False,
+            "summary": (
+                f"{len(knowable)} Copernicus granules over named AOIs knowable at cutoff "
+                f"({n_sar} SAR, {n_opt} optical). Pointers only; do not vote."
+            ),
+            "n_knowable": len(knowable),
+            "n_listed": len(granules),
+            "granules": knowable[:40],
+        }
+    )
+    notes = list(geo.get("notes") or [])
+    notes.append(
+        "Physical catalogue is a coverage pointer. Presence of a granule is not "
+        "equipment detection or confirmation of mobilisation."
+    )
+    geo["items"] = items
+    geo["notes"] = notes
+    geo["status"] = "partial"
+    geo["votes"] = False
+    packet.geopolitical_context = geo
 
 
 def _attach_posture(packet: Packet, snapshot: dict[str, Any], events: list[dict[str, Any]]) -> None:

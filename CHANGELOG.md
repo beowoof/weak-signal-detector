@@ -6,6 +6,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **Copernicus catalogue pointers:** Physical posture harvests cutoff-safe Sentinel-1 GRD and Sentinel-2 L1C catalogue hits over named AOIs. Pointers only; scenes are not downloaded and do not vote. Sentinel-2 CDSE PublicationDate is often a later reprocess, so knowability uses reconstructed 1-day availability when publication is stale.
 - **Collection job plans:** Physical and Official tasks now state which open sources can answer the requirement, which AOIs to query, which dates are admissible at cutoff, and what observation would discriminate among the hypotheses. Wired harvest still runs; unwired sources are marked as analyst search.
 - **Analyst working assessment:** **Add Notes** on the alert and Anomaly banner opens one text box pre-filled with a packet template (`GET`/`POST /api/report`, `wsd packet report`). The desk does not draft it. Writes `scenarios/<id>/reports/<report-id>/`.
 - **Brief PDF:** `packet build` writes `brief.pdf` (A4). Desk button **Download PDF** (`GET /api/packet/pdf`). CLI `wsd packet pdf`.
