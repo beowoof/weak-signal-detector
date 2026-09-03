@@ -26,10 +26,12 @@ from wsf.packet import (
     Packet,
     _as_dt,
     _fmt_num,
+    _hypothesis_table,
     _knowable,
     _load_window_observations,
     _obs_on_days,
     _parse_extra,
+    _theatre_frame,
     build_and_save,
     packet_directory,
     packet_path,
@@ -70,6 +72,7 @@ class CollectionTask(BaseModel):
     items: list[dict[str, Any]] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
     analyst_question: str | None = None
+    plan: dict[str, Any] | None = None
 
 
 def collection_directory(project_root: Path, scenario_id: str, packet_id: str) -> Path:
@@ -93,6 +96,235 @@ def load_collection(project_root: Path, scenario_id: str, packet_id: str) -> dic
 
 def _day_of(row: Observation) -> date:
     return _as_dt(row.event_time).date()
+
+
+def _frame(project_root: Path, scenario_id: str) -> dict[str, Any]:
+    try:
+        return _theatre_frame(project_root, scenario_id)
+    except (OSError, ValueError, FileNotFoundError):
+        return {}
+
+
+def _window(
+    notice: Notice,
+    clocks,
+    *,
+    start: date | None = None,
+    extra_notes: list[str] | None = None,
+) -> dict[str, Any]:
+    return {
+        "evidence_start": (start or notice.trigger.start).isoformat(),
+        "evidence_end": notice.trigger.end.isoformat(),
+        "knowledge_cutoff": clocks.knowledge_cutoff.isoformat(),
+        "admissible": (
+            "Use only material with available_at at or before the knowledge cutoff. "
+            "Replay uses available_at; live also requires retrieved_at."
+        ),
+        "notes": list(extra_notes or []),
+    }
+
+
+def _discriminators(packet: Packet, family: str) -> list[dict[str, str]]:
+    rows = (
+        list(packet.product.hypotheses)
+        if packet.product and packet.product.hypotheses
+        else _hypothesis_table("watch")
+    )
+    physical = {
+        "Exercise / demonstration",
+        "Defensive readiness",
+        "Reversible preparation",
+        "Preparation for overt action",
+        "Measurement artefact",
+    }
+    official = {
+        "Exercise / demonstration",
+        "Defensive readiness",
+        "Reversible preparation",
+        "Preparation for overt action",
+    }
+    wanted = physical if family == "physical" else official
+    out = [
+        {"hypothesis": row["hypothesis"], "look_for": row["discriminate"]}
+        for row in rows
+        if row.get("hypothesis") in wanted
+    ]
+    if family == "official":
+        out.append(
+            {
+                "hypothesis": "Declared prior",
+                "look_for": (
+                    "Whether the quantitative cue is consistent with, ahead of, or "
+                    "divergent from contemporaneous UK/US public posture."
+                ),
+            }
+        )
+    return out
+
+
+def _series_status(items: list[dict[str, Any]], series_id: str) -> str:
+    rows = [item for item in items if item.get("series_id") == series_id]
+    if not rows:
+        return "not_in_collection"
+    if any(item.get("knowable") and item.get("quality") == "ok" for item in rows):
+        return "knowable"
+    if any(item.get("knowable") is False for item in rows):
+        return "awaiting_cutoff"
+    if any(item.get("quality") in {"missing", "source_down"} for item in rows):
+        return "missing"
+    return "present"
+
+
+PHYSICAL_SOURCES = (
+    {
+        "id": "tempo.firms_thermal",
+        "name": "FIRMS (NOAA-20 thermal)",
+        "role": "corpus",
+        "answers": (
+            "Thermal detections inside the monitored staging AOIs as a combined set. "
+            "Name an AOI only when the observation attributes it."
+        ),
+        "query": (
+            "Sum detections per day inside each AOI bbox. Do not read a combined "
+            "count as one detection in every listed place."
+        ),
+    },
+    {
+        "id": "tempo.viirs_aoi",
+        "name": "VIIRS night-time lights",
+        "role": "corpus",
+        "answers": "Brightness and concentration at named AOIs.",
+        "query": (
+            "Episode nights at each staging AOI. Reconstructed 3-day latency: a night "
+            "is inadmissible until available_at."
+        ),
+    },
+    {
+        "id": "tempo.s1_backscatter",
+        "name": "Sentinel-1 SAR backscatter",
+        "role": "corpus",
+        "answers": "All-weather change at named AOIs when optical is delayed or cloudy.",
+        "query": "Ascending IW VV on AOI bboxes for episode days knowable at cutoff.",
+    },
+    {
+        "id": "copernicus_catalogue",
+        "name": "Copernicus / commercial EO catalogue",
+        "role": "open",
+        "answers": (
+            "Whether imagery exists over named AOIs on admissible dates, cloud cover, "
+            "and what a tasked look would show."
+        ),
+        "query": (
+            "Catalogue search per AOI bbox, dates at or before cutoff. Desk does not "
+            "fetch scenes."
+        ),
+    },
+    {
+        "id": "osm_infrastructure",
+        "name": "OpenStreetMap infrastructure",
+        "role": "open",
+        "answers": "Railheads, roads, airfields and staging-area layout at named AOIs.",
+        "query": "Static map layers. Always knowable at cutoff.",
+    },
+)
+
+OFFICIAL_SOURCES = (
+    {
+        "id": "posture.travel_risk",
+        "name": "UK FCDO travel advice",
+        "role": "desk",
+        "answers": "UK-declared geographic risk, leave-now, and travel-advice escalations.",
+        "query": "FCDO change_history for theatre countries; notes dated at or before cutoff.",
+    },
+    {
+        "id": "us_state_advisories",
+        "name": "US State travel advisories",
+        "role": "desk",
+        "answers": (
+            "US-declared travel risk. Live API only when contemporaneous; otherwise "
+            "the last Wayback snapshot at or before cutoff."
+        ),
+        "query": "State CA API or Wayback CDX last snapshot at or before cutoff.",
+    },
+    {
+        "id": "nav.spatial_warnings",
+        "name": "NAVAREA maritime warnings",
+        "role": "corpus",
+        "answers": "Public maritime restrictions. Not diplomatic posture.",
+        "query": "Knowable NAVAREA counts, episode plus 30-day lookback.",
+    },
+    {
+        "id": "air.notam_restrictions",
+        "name": "NOTAM / airspace restrictions",
+        "role": "open",
+        "answers": "Airspace closures and other costly formal measures.",
+        "query": "NOTAM text for the theatre, dates at or before cutoff. Not in this corpus.",
+    },
+    {
+        "id": "official_statements",
+        "name": "Official statements and formal measures",
+        "role": "open",
+        "answers": (
+            "Signalling versus costly government action: statements, warnings, "
+            "defence announcements, diplomatic drawdowns, sanctions."
+        ),
+        "query": (
+            "Contemporaneous Russian, Ukrainian, UK, US and allied issuers. Identify "
+            "changes in declared threat assessment or costly action. Desk does not "
+            "scrape news."
+        ),
+    },
+)
+
+
+def _physical_sources(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for source in PHYSICAL_SOURCES:
+        row = dict(source)
+        if source["role"] == "open":
+            row["status"] = "analyst"
+        else:
+            row["status"] = _series_status(items, source["id"])
+        rows.append(row)
+    return rows
+
+
+def _official_sources(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    declared = any(item.get("kind") == "declared_posture" for item in items)
+    for source in OFFICIAL_SOURCES:
+        row = dict(source)
+        if source["role"] == "open":
+            row["status"] = "analyst"
+        elif source["id"] in {"posture.travel_risk", "us_state_advisories"}:
+            row["status"] = "knowable" if declared else "not_in_collection"
+        elif source["id"] == "nav.spatial_warnings":
+            row["status"] = (
+                "knowable"
+                if any(item.get("series_id") == "nav.spatial_warnings" for item in items)
+                else "not_in_collection"
+            )
+        else:
+            row["status"] = "not_in_collection"
+        rows.append(row)
+    return rows
+
+
+def _official_issuers(frame: dict[str, Any]) -> list[str]:
+    names: list[str] = []
+    adjective = frame.get("adjective") or ""
+    focal = frame.get("focal_name") or ""
+    if adjective:
+        names.append(f"{adjective} government")
+    elif focal:
+        names.append(focal)
+    counterparts = frame.get("counterpart_adjectives") or frame.get("counterpart_names") or []
+    for name in counterparts:
+        names.append(f"{name} government")
+    for extra in ("United Kingdom", "United States", "relevant allies"):
+        if extra not in names:
+            names.append(extra)
+    return names
 
 
 def _knowable_in(
@@ -296,7 +528,12 @@ def _chronology(
 
 
 def _physical(
-    packet: Packet, notice: Notice, observations: list[Observation], clocks, now: datetime
+    packet: Packet,
+    notice: Notice,
+    observations: list[Observation],
+    clocks,
+    now: datetime,
+    project_root: Path,
 ) -> CollectionTask:
     start, end = notice.trigger.start, notice.trigger.end
     items: list[dict[str, Any]] = []
@@ -336,6 +573,19 @@ def _physical(
     if sar_missing:
         notes.append("SAR/backscatter is missing or not knowable on one or more episode days.")
     status: Literal["complete", "blocked"] = "complete" if items else "blocked"
+    frame = _frame(project_root, notice.trigger.scenario_id)
+    window_notes = list(notes)
+    question = (
+        "Is there independent physical evidence of concentration, dispersal or movement "
+        "in the named staging AOIs?"
+    )
+    plan = {
+        "question": question,
+        "aois": list(frame.get("aois") or []),
+        "window": _window(notice, clocks, extra_notes=window_notes),
+        "sources": _physical_sources(items),
+        "discriminators": _discriminators(packet, "physical"),
+    }
     return CollectionTask(
         task_id=f"{packet.packet_id}:refresh_physical",
         kind=PHYSICAL,
@@ -352,10 +602,8 @@ def _physical(
         ),
         items=items,
         notes=notes,
-        analyst_question=(
-            "Is there independent physical evidence of concentration, dispersal or movement "
-            "in staging AOIs?"
-        ),
+        analyst_question=question,
+        plan=plan,
     )
 
 
@@ -549,6 +797,24 @@ def _official(
         if items or declared_events
         else "No official-posture observations knowable at cutoff."
     )
+    question = (
+        "Is the quantitative cue consistent with, ahead of, or divergent from "
+        "the contemporaneous UK/US declared prior?"
+    )
+    frame = _frame(project_root, notice.trigger.scenario_id)
+    plan = {
+        "question": question,
+        "issuers": _official_issuers(frame),
+        "aois": list(frame.get("aois") or []),
+        "window": _window(
+            notice,
+            clocks,
+            start=start,
+            extra_notes=["Lookback is 30 days through episode end, cutoff-filtered."],
+        ),
+        "sources": _official_sources(items),
+        "discriminators": _discriminators(packet, "official"),
+    }
     return CollectionTask(
         task_id=f"{packet.packet_id}:official_pack",
         kind=OFFICIAL,
@@ -560,10 +826,8 @@ def _official(
         summary=summary,
         items=items,
         notes=notes,
-        analyst_question=(
-            "Is the quantitative cue consistent with, ahead of, or divergent from "
-            "the contemporaneous UK/US declared prior?"
-        ),
+        analyst_question=question,
+        plan=plan,
     )
 
 
@@ -581,7 +845,7 @@ def _run_kind(
     if kind == CHRONOLOGY:
         return _chronology(packet, notice, observations, clocks, now)
     if kind == PHYSICAL:
-        return _physical(packet, notice, observations, clocks, now)
+        return _physical(packet, notice, observations, clocks, now, project_root)
     if kind == OFFICIAL:
         return _official(packet, notice, observations, clocks, now, project_root)
     raise ValueError(f"unknown collection task {kind}")
@@ -626,13 +890,27 @@ def run_collection(
     packet_path(project_root, scenario_id, packet.packet_id).write_text(
         packet.model_dump_json(indent=2) + "\n", encoding="utf-8"
     )
+    index_path = directory / "index.json"
+    existing: dict[str, dict[str, str]] = {}
+    if index_path.is_file():
+        try:
+            previous = json.loads(index_path.read_text(encoding="utf-8"))
+            for row in previous.get("tasks") or []:
+                if row.get("kind"):
+                    existing[row["kind"]] = row
+        except (OSError, json.JSONDecodeError, TypeError):
+            existing = {}
+    for task in tasks:
+        existing[task.kind] = {
+            "kind": task.kind,
+            "status": task.status,
+            "title": task.title,
+        }
     index = {
         "packet_id": packet.packet_id,
         "notice_id": notice.notice_id,
         "updated_at": now.isoformat(),
-        "tasks": [
-            {"kind": task.kind, "status": task.status, "title": task.title} for task in tasks
-        ],
+        "tasks": [existing[kind] for kind in ALL_KINDS if kind in existing],
     }
     (directory / "index.json").write_text(json.dumps(index, indent=2) + "\n", encoding="utf-8")
     return {

@@ -68,13 +68,13 @@ function SimpleTable({ columns, rows, rowClass }) {
 }
 
 const COLLECT_FOR = [
-  ["Physical", "refresh_physical"],
-  ["Official", "official_pack"],
-  ["Financial", "chronology"],
-  ["Information", "chronology"],
+  { prefix: "Physical", kind: "refresh_physical", ready: true },
+  { prefix: "Official", kind: "official_pack", ready: true },
+  { prefix: "Financial", kind: null, ready: false },
+  { prefix: "Information", kind: null, ready: false },
 ];
 
-export default function BriefView({ packet, notice, onCollect }) {
+export default function BriefView({ packet, notice, onCollect, collectBusy }) {
   if (!packet) {
     return (
       <section className="brief-layers">
@@ -276,13 +276,26 @@ export default function BriefView({ packet, notice, onCollect }) {
         <h3>Collection requirements</h3>
         <ol className="product-collection">
           {(product.collection || []).map((row) => {
-            const match = COLLECT_FOR.find(([prefix]) => row.title.startsWith(prefix));
+            const match = COLLECT_FOR.find((item) => row.title.startsWith(item.prefix));
+            const ready = Boolean(onCollect && match?.ready && match.kind);
             return (
               <li key={row.title}>
                 <strong>{row.title}.</strong> {row.why}{" "}
-                {onCollect && match ? (
-                  <button type="button" className="collect-inline" onClick={() => onCollect(match[1])}>
-                    Run
+                {match ? (
+                  <button
+                    type="button"
+                    className="collect-inline"
+                    disabled={!ready || collectBusy}
+                    title={
+                      ready
+                        ? "Run this collection job"
+                        : "Not wired yet — no collection job for this requirement"
+                    }
+                    onClick={() => {
+                      if (ready) onCollect(match.kind);
+                    }}
+                  >
+                    {match.ready ? "Run" : "Not wired"}
                   </button>
                 ) : null}
               </li>

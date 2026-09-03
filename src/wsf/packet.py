@@ -824,13 +824,28 @@ def _theatre_frame(project_root: Path, scenario_id: str) -> dict[str, Any]:
         geographic_frame = f"Physical AOIs: {_join_plain(places)}."
     else:
         geographic_frame = ""
+    aoi_rows = [
+        {
+            "id": str(item.get("id")),
+            "name": _place_name(str(item.get("id"))),
+            "kind": str(item.get("kind") or ""),
+            "bbox": list(item.get("bbox") or []),
+        }
+        for item in aois
+        if item.get("id")
+    ]
     return {
         "focal": focal,
         "focal_name": focal_name,
         "adjective": adjective,
         "counterpart_names": counterpart_names,
+        "counterpart_adjectives": [
+            ACTOR_ADJECTIVES.get(code, name)
+            for code, name in zip(counterparts, counterpart_names, strict=False)
+        ],
         "capital": capital,
         "places": places,
+        "aois": aoi_rows,
         "kinds": kinds,
         "keys": keys,
         "geographic_frame": geographic_frame,

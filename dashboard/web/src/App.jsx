@@ -4,6 +4,7 @@ import { seriesIds, windowsOf } from "./lib/format.js";
 import CouplingView from "./views/CouplingView.jsx";
 import NoticesView from "./views/NoticesView.jsx";
 import OperationsView from "./views/OperationsView.jsx";
+import ReportView, { NotesRead } from "./views/ReportView.jsx";
 import { AllSeriesView, CombinedView, ScatterView, SeriesView } from "./views/SeriesViews.jsx";
 
 const SURFACES = [
@@ -47,6 +48,9 @@ export default function App() {
   const [packet, setPacket] = useState(null);
   const [collection, setCollection] = useState(null);
   const [collectBusy, setCollectBusy] = useState(false);
+  const [report, setReport] = useState(null);
+  const [reportBusy, setReportBusy] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const [actionError, setActionError] = useState("");
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
@@ -195,12 +199,30 @@ export default function App() {
     const notice = notices.find((item) => item.notice_id === selectedNoticeId) || notices[0];
     const packetId = notice?.workflow?.packet_id;
     const scenario = notice?.scenario_id || notice?.trigger?.scenario_id;
-    if (!packetId || !scenario) {
+    if (!notice || !scenario) {
       setPacket(null);
       setCollection(null);
+      setReport(null);
       return undefined;
     }
     let cancelled = false;
+    fetch(
+      `/api/report?scenario=${encodeURIComponent(scenario)}&notice_id=${encodeURIComponent(notice.notice_id)}`,
+    )
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (!cancelled) setReport(payload);
+      })
+      .catch(() => {
+        if (!cancelled) setReport(null);
+      });
+    if (!packetId) {
+      setPacket(null);
+      setCollection(null);
+      return () => {
+        cancelled = true;
+      };
+    }
     fetch(`/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`)
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
@@ -293,6 +315,29 @@ export default function App() {
     } finally {
       setCollectBusy(false);
     }
+  }
+
+  async function saveReport(notice, notes) {
+    setActionError("");
+    setReportBusy(true);
+    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
+    try {
+      const payload = await postJson("/api/report", {
+        scenario,
+        notice_id: notice.notice_id,
+        notes,
+      });
+      setReport(payload);
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setReportBusy(false);
+    }
+  }
+
+  function openNotes() {
+    if (!selectedNotice) return;
+    setNotesOpen(true);
   }
 
   async function postJson(url, body) {
@@ -470,14 +515,37 @@ export default function App() {
           </section>
         )}
         {surface === "anomaly" && noticeFocus && (
-          <p className="anomaly-focus-banner">
-            Alert <strong>{noticeFocus.start} → {noticeFocus.end}</strong>
-            {noticeFocus.domains.length
-              ? ` · look at ${noticeFocus.domains.map((d) => d.replaceAll("_", " ")).join(", ")}`
-              : ""}
-            {noticeFocus.series.length ? ` · ${noticeFocus.series.join(", ")}` : ""}
-          </p>
+          <div className="anomaly-focus-banner">
+            <span>
+              Alert <strong>{noticeFocus.start} → {noticeFocus.end}</strong>
+              {noticeFocus.domains.length
+                ? ` · look at ${noticeFocus.domains.map((d) => d.replaceAll("_", " ")).join(", ")}`
+                : ""}
+              {noticeFocus.series.length ? ` · ${noticeFocus.series.join(", ")}` : ""}
+            </span>
+            {selectedNotice ? (
+              <button type="button" className="collect-inline" onClick={openNotes}>
+                {report && !report.empty ? "Edit notes" : "Add Notes"}
+              </button>
+            ) : null}
+          </div>
         )}
+        {selectedNotice && (surface === "notices" || surface === "anomaly") ? (
+          notesOpen ? (
+            <ReportView
+              report={report}
+              busy={reportBusy}
+              onSave={(notes) => saveReport(selectedNotice, notes)}
+              onClose={() => setNotesOpen(false)}
+            />
+          ) : report && !report.empty ? (
+            <NotesRead
+              notes={report.notes}
+              updatedAt={report.updated_at}
+              onEdit={openNotes}
+            />
+          ) : null
+        ) : null}
         {surface === "anomaly" && (
           <nav className="view-tabs" aria-label="Anomaly charts">
             {CHARTS.map(([id, label]) => (
@@ -506,6 +574,7 @@ export default function App() {
               collection={collection}
               collectBusy={collectBusy}
               onCollect={runCollect}
+              onAddNotes={openNotes}
               onAction={runAction}
               actionError={actionError}
             />

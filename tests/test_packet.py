@@ -4,7 +4,7 @@ from pathlib import Path
 import pytest
 
 from wsf.notice import CollectionPosture, Notice, NoticeTrigger, NoticeWorkflow, save_notice
-from wsf.packet import build_and_save, build_packet, resolve_clocks
+from wsf.packet import _theatre_frame, build_and_save, build_packet, resolve_clocks
 from wsf.scenario import create_scenario
 
 
@@ -269,6 +269,8 @@ def test_ukraine_preparatory_product_is_watch() -> None:
     assert "Ukrainian border" in packet.product.keys
     assert "Yelnya" in packet.product.keys
     assert "Belgorod" in packet.product.keys
+    frame = _theatre_frame(root, "ukraine2022")
+    assert any(row["name"] == "Yelnya" and row["bbox"] for row in frame["aois"])
     assert all("should not be counted" not in c.lower() for c in packet.product.caveats)
 
 

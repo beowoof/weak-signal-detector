@@ -23,6 +23,7 @@ from wsf.notice import (
 from wsf.packet import build_and_save
 from wsf.progress import Progress
 from wsf.register import validate_configuration
+from wsf.report import load_report, save_report
 from wsf.review import review_corpus
 from wsf.run import ensure_manifest
 from wsf.scenario import (
@@ -407,6 +408,47 @@ def packet_collect(
             request_context=request_context,
         )
     _echo(payload)
+
+
+@packet_app.command("report")
+def packet_report(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+    notes: str | None = typer.Option(None, help="Save the whole notes document."),
+    assessment: str | None = typer.Option(None, help="Dump working assessment text."),
+    hypotheses: str | None = typer.Option(None, help="Dump hypothesis notes."),
+    collected: str | None = typer.Option(None, help="Dump what you collected."),
+    findings: str | None = typer.Option(None, help="Dump findings."),
+    decision: str | None = typer.Option(None, help="Dump the decision."),
+    change: str | None = typer.Option(None, help="Dump what would change this."),
+) -> None:
+    """Load or save the analyst working notes. Prefills a template if empty."""
+    sections = {
+        key: value
+        for key, value in {
+            "assessment": assessment,
+            "hypotheses": hypotheses,
+            "collected": collected,
+            "findings": findings,
+            "decision": decision,
+            "change": change,
+        }.items()
+        if value is not None
+    }
+    with _operator_errors():
+        payload = (
+            save_report(_root(), scenario, notice, sections or None, notes=notes)
+            if notes is not None or sections
+            else load_report(_root(), scenario, notice)
+        )
+    _echo(
+        {
+            "notice_id": payload["notice_id"],
+            "report_id": payload["report_id"],
+            "empty": payload["empty"],
+            "updated_at": payload.get("updated_at"),
+        }
+    )
 
 
 @agent_app.command("run")

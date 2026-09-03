@@ -184,6 +184,10 @@ select {
 .notice-span-edge { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
 .notice-span-label { fill: var(--accent); font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
 .anomaly-focus-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem .75rem;
   margin: 0 0 1rem;
   padding: .7rem .9rem;
   border: 1px solid var(--accent);
@@ -597,6 +601,28 @@ select {
   font-size: .8rem;
   cursor: pointer;
 }
+.collect-plan { margin: .5rem 0 .75rem; }
+.collect-plan .brief-table-wrap { margin-top: .45rem; }
+.report-card { margin-top: 1rem; }
+.report-card-top { margin: 0 0 1rem; }
+.report-single {
+  width: 100%;
+  min-height: 24rem;
+  padding: .7rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  background: var(--bg);
+  color: var(--ink);
+  font: inherit;
+  line-height: 1.45;
+  resize: vertical;
+}
+.report-read {
+  margin: 0;
+  white-space: pre-wrap;
+  font: inherit;
+  line-height: 1.45;
+}
 .brief-audit summary {
   cursor: pointer;
   font-weight: 650;
@@ -622,6 +648,17 @@ select {
 }
 .notice-actions button:hover,
 .notice-actions a.notice-pdf:hover { border-color: var(--accent); }
+.notice-actions button:disabled,
+.collect-inline:disabled,
+.legend button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+.notice-actions button:disabled:hover,
+.collect-inline:disabled:hover {
+  border-color: var(--border);
+}
 .notice-intro { color: var(--muted); max-width: 46rem; }
 .notice-list { display: grid; gap: 1rem; }
 .notice-card {
