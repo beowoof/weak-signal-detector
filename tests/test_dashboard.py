@@ -128,6 +128,45 @@ def test_api_cors_allows_vite_origin(tmp_path: Path) -> None:
     assert response.headers.get("access-control-allow-origin") == "*"
 
 
+def test_api_notices_index_and_get(tmp_path: Path) -> None:
+    write_result(tmp_path, "scenario-a", "measure-002")
+    notice_dir = tmp_path / "scenario-a" / "notices" / "notice-abc"
+    notice_dir.mkdir(parents=True)
+    (notice_dir / "notice.json").write_text(
+        json.dumps(
+            {
+                "schema_id": "notice_v0",
+                "notice_id": "notice-abc",
+                "trigger": {
+                    "scenario_id": "scenario-a",
+                    "measurement_id": "measure-002",
+                    "window_id": "incident",
+                    "start": "2022-02-10",
+                    "end": "2022-02-12",
+                    "contributing_domains": ["information"],
+                    "recommended_posture": "focused",
+                },
+                "workflow": {"state": "new"},
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(api_only=True, scenarios_root=tmp_path))
+    listed = client.get("/api/notices")
+    assert listed.status_code == 200
+    body = listed.json()
+    assert len(body["notices"]) == 1
+    assert body["notices"][0]["notice_id"] == "notice-abc"
+    assert body["notices"][0]["key"] == "scenario-a/measure-002"
+
+    loaded = client.get("/api/notice", params={"scenario": "scenario-a", "notice_id": "notice-abc"})
+    assert loaded.status_code == 200
+    assert loaded.json()["trigger"]["window_id"] == "incident"
+
+    missing = client.get("/api/notice", params={"scenario": "scenario-a", "notice_id": "nope"})
+    assert missing.status_code == 404
+
+
 def test_api_health_without_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.delenv("DATABASE_URL", raising=False)
     client = TestClient(create_app(api_only=True, scenarios_root=tmp_path))

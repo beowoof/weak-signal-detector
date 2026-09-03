@@ -284,7 +284,7 @@ function renderNoticesView() {
   }
   const intro = document.createElement("p");
   intro.className = "notice-intro";
-  intro.textContent = "Immutable collection cues. Trigger facts do not change. This is not a determination of intent.";
+  intro.textContent = "A notice is an alert: the desk is interrupting you to look. It is not a brief and not a finding of intent.";
   chartRoot.append(intro);
   const list = document.createElement("div");
   list.className = "notice-list";

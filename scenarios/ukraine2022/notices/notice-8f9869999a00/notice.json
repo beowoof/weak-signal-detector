@@ -132,12 +132,12 @@
     "information_environment_snapshot_id": null
   },
   "workflow": {
-    "state": "new",
+    "state": "in_packet",
     "selected_posture": null,
     "comments": [],
-    "packet_id": null,
+    "packet_id": "packet-c9560b0d2d26",
     "report_id": null,
     "closure_rationale": null,
-    "updated_at": null
+    "updated_at": "2026-09-03T09:34:02.890519Z"
   }
 }

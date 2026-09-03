@@ -185,6 +185,43 @@ def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     }
 
 
+def list_notices_index(scenarios_root: Path = SCENARIOS_ROOT) -> dict:
+    items: list[dict] = []
+    for path in sorted(scenarios_root.glob("*/notices/*/notice.json")):
+        payload = read_json(path)
+        trigger = payload.get("trigger") or {}
+        scenario_id = trigger.get("scenario_id") or path.parents[2].name
+        measure_id = trigger.get("measurement_id")
+        items.append(
+            {
+                **payload,
+                "scenario_id": scenario_id,
+                "key": f"{scenario_id}/{measure_id}" if measure_id else None,
+            }
+        )
+    items.sort(
+        key=lambda item: (
+            (item.get("trigger") or {}).get("start") or "",
+            item.get("notice_id") or "",
+        )
+    )
+    return {"notices": items}
+
+
+def load_notice_payload(
+    scenario_id: str, notice_id: str, scenarios_root: Path = SCENARIOS_ROOT
+) -> dict:
+    path = scenarios_root / scenario_id / "notices" / notice_id / "notice.json"
+    if not path.is_file():
+        raise KeyError(f"{scenario_id}/{notice_id}")
+    payload = read_json(path)
+    trigger = payload.get("trigger") or {}
+    measure_id = trigger.get("measurement_id")
+    payload["scenario_id"] = trigger.get("scenario_id") or scenario_id
+    payload["key"] = f"{payload['scenario_id']}/{measure_id}" if measure_id else None
+    return payload
+
+
 def _notices_for_measure(scenario_id: str, measure_id: str, scenarios_root: Path) -> list[dict]:
     root = scenarios_root / scenario_id / "notices"
     if not root.is_dir():
@@ -228,6 +265,20 @@ def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = No
         payload = desk_health()
         status = 200 if payload["ok"] else 503
         return JSONResponse(payload, status_code=status)
+
+    @app.get("/api/notices")
+    def api_notices() -> dict:
+        return list_notices_index(app.state.scenarios_root)
+
+    @app.get("/api/notice")
+    def api_notice(
+        scenario: str = Query(..., min_length=1),
+        notice_id: str = Query(..., min_length=1),
+    ) -> dict:
+        try:
+            return load_notice_payload(scenario, notice_id, app.state.scenarios_root)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
 
     @app.get("/api/results")
     def api_results() -> dict:

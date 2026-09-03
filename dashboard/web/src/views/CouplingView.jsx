@@ -4,7 +4,7 @@ import LineChart from "../components/LineChart.jsx";
 import { cssSeries, number } from "../lib/format.js";
 import { extent } from "../lib/chartMath.js";
 
-export default function CouplingView({ result, windowId, onTooltip }) {
+export default function CouplingView({ result, windowId, onTooltip, focus = null }) {
   const coupling = result.coupling?.[windowId];
   if (!coupling?.daily_states?.length) {
     return <p className="empty">No multi-domain coupling data available for this window.</p>;
@@ -21,15 +21,18 @@ export default function CouplingView({ result, windowId, onTooltip }) {
     rhythm_state: st.sensor_tasking_order ? "flagged" : "normal",
   }));
   const domainsPresent = Object.keys(coupling.daily_states[0]?.domain_energies || {}).sort();
+  const focusDomains = new Set(focus?.domains || []);
   const domainSeries = domainsPresent.map((dom, idx) => ({
     id: dom.replaceAll("_", " "),
     color: cssSeries(idx),
+    muted: focusDomains.size > 0 && !focusDomains.has(dom),
     rows: coupling.daily_states.map((st) => ({
       event_day: st.date,
       domain_energy: st.domain_energies[dom] || 0.0,
       state: (st.domain_energies[dom] || 0) >= 1.5 ? "flagged" : "normal",
     })),
   }));
+  const focusSpan = focus?.start && focus?.end ? { start: focus.start, end: focus.end, label: "alert" } : null;
 
   return (
     <>
@@ -77,6 +80,7 @@ export default function CouplingView({ result, windowId, onTooltip }) {
           domainFn={(values) => extent([...values, 0, 10])}
           ariaLabel="Multi-domain anomaly energy over time"
           onTooltip={onTooltip}
+          focusSpan={focusSpan}
         />
       </ChartSection>
       {domainSeries.length > 0 && (
@@ -93,6 +97,7 @@ export default function CouplingView({ result, windowId, onTooltip }) {
             domainFn={(values) => extent([...values, 0, 3])}
             ariaLabel="Domain energy breakdown over time"
             onTooltip={onTooltip}
+            focusSpan={focusSpan}
           />
         </ChartSection>
       )}
@@ -117,6 +122,9 @@ export default function CouplingView({ result, windowId, onTooltip }) {
             </thead>
             <tbody>
               {coupling.daily_states.map((st) => {
+                const inAlert = Boolean(
+                  focusSpan && st.date >= focusSpan.start && st.date <= focusSpan.end,
+                );
                 const verdict =
                   st.verdict === "strategic_coupling_warning" ? (
                     <span className="badge badge-warning">Collect more (K={st.n_domains_z15})</span>
@@ -128,7 +136,7 @@ export default function CouplingView({ result, windowId, onTooltip }) {
                     <span className="badge badge-quiet">Quiet</span>
                   );
                 return (
-                  <tr key={st.date}>
+                  <tr key={st.date} className={inAlert ? "notice-focus-row" : undefined}>
                     <td>
                       <strong>{st.date}</strong>
                     </td>

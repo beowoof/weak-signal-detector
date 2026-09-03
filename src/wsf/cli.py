@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +13,7 @@ from wsf.agent import run_agent
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
 from wsf.notice import emit_notices_for_measurement, list_notices
+from wsf.packet import build_and_save
 from wsf.progress import Progress
 from wsf.register import validate_configuration
 from wsf.review import review_corpus
@@ -30,10 +32,12 @@ app = typer.Typer(no_args_is_help=True, help="Weak-signal detector research CLI.
 scenario_app = typer.Typer(no_args_is_help=True, help="Create and manage scenarios.")
 corpus_app = typer.Typer(no_args_is_help=True, help="Collect and review scenario corpora.")
 notice_app = typer.Typer(no_args_is_help=True, help="Emit and list collection-cue notices.")
+packet_app = typer.Typer(no_args_is_help=True, help="Build cutoff-safe evidence packets.")
 agent_app = typer.Typer(no_args_is_help=True, help="Long-running collection/measure worker.")
 app.add_typer(scenario_app, name="scenario")
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(notice_app, name="notice")
+app.add_typer(packet_app, name="packet")
 app.add_typer(agent_app, name="agent")
 
 
@@ -287,6 +291,37 @@ def notice_list(scenario: str = typer.Option(..., help="Scenario identifier.")) 
                 }
                 for item in notices
             ],
+        }
+    )
+
+
+@packet_app.command("build")
+def packet_build(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+    replay: bool = typer.Option(
+        False,
+        help="Build as of the episode end. Required for historical notices. Live default is now.",
+    ),
+    as_of: datetime | None = typer.Option(  # noqa: B008
+        None,
+        help="Knowledge cutoff (UTC). Implies replay if the date is in the past.",
+    ),
+) -> None:
+    """Assemble evidence.json. Same compiler for a live desk and a historical replay."""
+    with _operator_errors():
+        packet, path = build_and_save(_root(), scenario, notice, replay=replay, as_of=as_of)
+    _echo(
+        {
+            "scenario": scenario,
+            "notice_id": packet.notice_id,
+            "packet_id": packet.packet_id,
+            "mode": packet.clocks.mode,
+            "knowledge_cutoff": packet.clocks.knowledge_cutoff.isoformat(),
+            "knowledge_rule": packet.clocks.knowledge_rule,
+            "n_evidence": len(packet.collected_evidence),
+            "n_hypotheses": len(packet.hypotheses),
+            "path": str(path),
         }
     )
 

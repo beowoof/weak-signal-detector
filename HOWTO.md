@@ -349,6 +349,16 @@ Open <http://127.0.0.1:8000>. Use **Result set** to move between scenarios and m
 
 The server discovers ignored `scenarios/*/measurement/` outputs on each request and never changes them. Older result formats without rhythm fields remain navigable; their rhythm and scatter views state that paired values are unavailable. Treat the viewer as a diagnostic aid only: it does not change `measurement_mode`, make an exploratory result scientific, or turn missingness into a normal observation.
 
+## 6E. Build an evidence packet
+
+The compiler is the live desk path. `knowledge_cutoff` defaults to now and requires both `available_at` and `retrieved_at`. A notice whose episode ended long before it was emitted is a replay, not a live score:
+
+```bash
+wsd packet build --scenario ukraine2022 --notice notice-8f9869999a00 --replay
+```
+
+`--replay` sets cutoff to 23:59:59 UTC on the episode end date and uses `available_at` only, so a 2026 harvest cannot leak into a 2022 packet. `--as-of 2022-02-12T23:59:59Z` does the same with an explicit clock. Output is `scenarios/<id>/interpretation/<packet-id>/evidence.json`. Significance stays `unassigned`. No model, no live search.
+
 ## 7. Run the whole mocked test harness
 
 After `scenario.json` validates, Steps 4 and 5 can be run together:

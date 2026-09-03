@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { cssSeries, number } from "../lib/format.js";
-import { extent, lineSegments, ticks } from "../lib/chartMath.js";
+import { extent, lineSegments, spanXs, ticks } from "../lib/chartMath.js";
 
 export default function LineChart({
   series,
@@ -11,6 +11,7 @@ export default function LineChart({
   compact = false,
   ariaLabel,
   onTooltip,
+  focusSpan = null,
 }) {
   const ref = useRef(null);
   const [width, setWidth] = useState(720);
@@ -46,11 +47,47 @@ export default function LineChart({
       ),
     ),
   ];
+  const span =
+    focusSpan &&
+    spanXs(focusSpan.start, focusSpan.end, dates, x, margin.left, width - margin.right);
 
   return (
     <div ref={ref} className={`chart-wrap${compact ? " small" : ""}`}>
       <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label={ariaLabel || "Line chart"}>
         <title>{ariaLabel || "Line chart"}</title>
+        {span ? (
+          <g className="notice-span-group" pointerEvents="none">
+            <rect
+              x={span.x0}
+              y={margin.top}
+              width={span.x1 - span.x0}
+              height={plotHeight}
+              className="notice-span"
+            />
+            <line
+              x1={span.x0}
+              x2={span.x0}
+              y1={margin.top}
+              y2={height - margin.bottom}
+              className="notice-span-edge"
+            />
+            <line
+              x1={span.x1}
+              x2={span.x1}
+              y1={margin.top}
+              y2={height - margin.bottom}
+              className="notice-span-edge"
+            />
+            <text
+              x={(span.x0 + span.x1) / 2}
+              y={margin.top + 12}
+              textAnchor="middle"
+              className="notice-span-label"
+            >
+              {focusSpan.label || "notice"}
+            </text>
+          </g>
+        ) : null}
         {ticks(domain, 5).map((value) => (
           <g key={`y-${value}`}>
             <line
@@ -146,7 +183,14 @@ export default function LineChart({
                       `${rowIndex ? "L" : "M"}${x(row.event_day)},${y(row[valueKey])}`,
                   )
                   .join(" ");
-                return <path key={segIndex} d={d} className="series-line" stroke={color} />;
+                return (
+                  <path
+                    key={segIndex}
+                    d={d}
+                    className={`series-line${item.muted ? " series-muted" : ""}`}
+                    stroke={color}
+                  />
+                );
               })}
               {item.rows
                 .filter((row) => Number.isFinite(row[valueKey]))
