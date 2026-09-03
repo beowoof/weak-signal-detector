@@ -272,9 +272,9 @@ Output: `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus stable ci
 | Anomaly (coupling / coincidence) | Built. K≥3 episodes are the “look here” in the data. |
 | Notice (alert) | Built (`notice_v0`, inbox). Immutable trigger + workflow. |
 | Packet (brief) | Model-free product compiler. Default playback is assessment / watchlist / competing explanations / collection priorities. Analytic state `quiet → anomaly → watch → preparatory_pattern → escalation` describes observable system state, not intent. z-scores and reconstructed-latency machinery sit in an evidence drawer. |
-| Report (send up the chain) | Missing; `reports/` directories are empty |
+| Report (send up the chain) | Dump-in working assessment on the notice (`report_v0`). Template of what a sitting analyst would cover; human-owned. Not a finished send-up product. |
 | Dashboard as **inbox of notices** | Notices are the home surface (alerts). Anomaly charts are a drill-down. |
-| On-cue context harvest | Chronology / physical refresh / official pack as packet-scoped jobs. Official pack now harvests **declared UK/US posture** (FCDO travel-advice history; US State API live-only). RIMA, GKG, Copernicus catalogue, and live search are not wired. |
+| On-cue context harvest | Chronology / physical refresh / official pack as packet-scoped jobs. Physical and Official jobs carry a plan (sources, AOIs, admissible dates, discriminators). Official pack harvests **declared UK/US posture**. Copernicus, OSM, RIMA, GKG, and live search remain analyst-search rows, not votes. |
 | LLM assessment | Contract only (`intent_triage_v0`, `enabled: false`) |
 
 The measurement layer already emits `analyst_action: review_soft_correlation_and_resolve_costly_source_gap`. Nothing yet turns that into a persisted analyst object or a complete contextual workflow.

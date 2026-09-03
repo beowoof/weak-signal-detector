@@ -367,6 +367,10 @@ wsd notice act --scenario ukraine2022 --notice notice-8f9869999a00 --action ack
 
 They do not edit trigger facts. **Request more information** (or `wsd packet collect --replay --task harvest --request-context`) runs three packet-scoped jobs from the existing corpus: crisis chronology (30 days), physical refresh (FIRMS/VIIRS/SAR), and official pack (NAVAREA plus **declared UK/US posture** from FCDO travel-advice history, cutoff-filtered; US State live API or last Wayback snapshot at or before cutoff). **Validate cue** is a checklist from the packet (substrate, holes, latency) with no harvest. Jobs write to `interpretation/<packet-id>/collection/` and do not vote in the notice. Posture stays `focused` unless the analyst already chose otherwise. The travel-advice harvest is dated public history, not a live news scrape.
 
+Clicking **Physical posture** or **Official posture** on the brief runs the job *and* returns a collection plan: sources (desk harvest vs analyst search), named AOIs, dates admissible at cutoff, and what would discriminate each hypothesis. Copernicus catalogue, OSM, NOTAMs and official statements are listed as analyst search until wired; they are not extra votes.
+
+**Add Notes** (top of the alert, and on the Anomaly banner) opens one text box pre-filled with a template from the packet. Edit and save. Writes `scenarios/<id>/reports/<report-id>/report.md`. The desk does not draft it. CLI: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
+
 ## 7. Run the whole mocked test harness
 
 After `scenario.json` validates, Steps 4 and 5 can be run together:

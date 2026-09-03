@@ -22,6 +22,7 @@ from wsf.collect import HARVEST_KINDS, load_collection, run_collection
 from wsf.db import desk_health
 from wsf.notice import apply_action_at_path, emit_notices_for_measurement
 from wsf.packet import build_and_save
+from wsf.report import load_report, save_report
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -274,6 +275,13 @@ class PacketBuildBody(BaseModel):
     replay: bool = False
 
 
+class ReportBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    notice_id: str = Field(min_length=1)
+    notes: str | None = None
+    sections: dict[str, str] = Field(default_factory=dict)
+
+
 class StrictJSONResponse(JSONResponse):
     def render(self, content) -> bytes:
         return json.dumps(content, allow_nan=False, separators=(",", ":")).encode()
@@ -431,6 +439,33 @@ def create_app(
                 kinds=body.tasks,
                 replay=body.replay,
                 request_context=body.request_context,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/report")
+    def api_report_get(
+        scenario: str = Query(..., min_length=1),
+        notice_id: str = Query(..., min_length=1),
+    ) -> dict:
+        try:
+            return load_report(app.state.project_root, scenario, notice_id)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/report")
+    def api_report_save(body: ReportBody) -> dict:
+        try:
+            return save_report(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                body.sections or None,
+                notes=body.notes,
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Unknown notice") from exc

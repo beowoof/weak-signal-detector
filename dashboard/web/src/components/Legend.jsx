@@ -8,6 +8,7 @@ export default function Legend({ items, interactive = false, visible, onToggle }
             key={item.id}
             type="button"
             aria-pressed={String(pressed)}
+            disabled={!interactive}
             onClick={interactive ? () => onToggle?.(item.id) : undefined}
           >
             <span className="swatch" style={{ "--swatch": item.color }} />

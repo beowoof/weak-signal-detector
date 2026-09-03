@@ -339,5 +339,167 @@
     "Diplomatic drawdown is in effect at cutoff (embassy/dependants).",
     "Leave-now / against-all-travel advice is in effect at cutoff."
   ],
-  "analyst_question": "Is the quantitative cue consistent with, ahead of, or divergent from the contemporaneous UK/US declared prior?"
+  "analyst_question": "Is the quantitative cue consistent with, ahead of, or divergent from the contemporaneous UK/US declared prior?",
+  "plan": {
+    "question": "Is the quantitative cue consistent with, ahead of, or divergent from the contemporaneous UK/US declared prior?",
+    "issuers": [
+      "Russian government",
+      "Ukrainian government",
+      "United Kingdom",
+      "United States",
+      "relevant allies"
+    ],
+    "aois": [
+      {
+        "id": "RUS-yelnya",
+        "name": "Yelnya",
+        "kind": "staging",
+        "bbox": [
+          32.95,
+          54.35,
+          33.42,
+          54.62
+        ]
+      },
+      {
+        "id": "RUS-klintsy",
+        "name": "Klintsy",
+        "kind": "staging",
+        "bbox": [
+          32.05,
+          52.62,
+          32.48,
+          52.9
+        ]
+      },
+      {
+        "id": "RUS-belgorod",
+        "name": "Belgorod",
+        "kind": "frontier_railhead",
+        "bbox": [
+          36.35,
+          50.45,
+          36.85,
+          50.78
+        ]
+      },
+      {
+        "id": "RUS-valuyki",
+        "name": "Valuyki",
+        "kind": "frontier_railhead",
+        "bbox": [
+          37.9,
+          50.08,
+          38.32,
+          50.38
+        ]
+      },
+      {
+        "id": "RUS-boguchar",
+        "name": "Boguchar",
+        "kind": "staging",
+        "bbox": [
+          40.3,
+          49.78,
+          40.82,
+          50.12
+        ]
+      },
+      {
+        "id": "RUS-millerovo",
+        "name": "Millerovo",
+        "kind": "staging",
+        "bbox": [
+          40.15,
+          48.78,
+          40.62,
+          49.08
+        ]
+      },
+      {
+        "id": "RUS-dzhankoi",
+        "name": "Dzhankoi",
+        "kind": "staging",
+        "bbox": [
+          34.18,
+          45.55,
+          34.6,
+          45.88
+        ]
+      }
+    ],
+    "window": {
+      "evidence_start": "2022-01-11",
+      "evidence_end": "2022-02-12",
+      "knowledge_cutoff": "2022-02-12T23:59:59+00:00",
+      "admissible": "Use only material with available_at at or before the knowledge cutoff. Replay uses available_at; live also requires retrieved_at.",
+      "notes": [
+        "Lookback is 30 days through episode end, cutoff-filtered."
+      ]
+    },
+    "sources": [
+      {
+        "id": "posture.travel_risk",
+        "name": "UK FCDO travel advice",
+        "role": "desk",
+        "answers": "UK-declared geographic risk, leave-now, and travel-advice escalations.",
+        "query": "FCDO change_history for theatre countries; notes dated at or before cutoff.",
+        "status": "knowable"
+      },
+      {
+        "id": "us_state_advisories",
+        "name": "US State travel advisories",
+        "role": "desk",
+        "answers": "US-declared travel risk. Live API only when contemporaneous; otherwise the last Wayback snapshot at or before cutoff.",
+        "query": "State CA API or Wayback CDX last snapshot at or before cutoff.",
+        "status": "knowable"
+      },
+      {
+        "id": "nav.spatial_warnings",
+        "name": "NAVAREA maritime warnings",
+        "role": "corpus",
+        "answers": "Public maritime restrictions. Not diplomatic posture.",
+        "query": "Knowable NAVAREA counts, episode plus 30-day lookback.",
+        "status": "knowable"
+      },
+      {
+        "id": "air.notam_restrictions",
+        "name": "NOTAM / airspace restrictions",
+        "role": "open",
+        "answers": "Airspace closures and other costly formal measures.",
+        "query": "NOTAM text for the theatre, dates at or before cutoff. Not in this corpus.",
+        "status": "analyst"
+      },
+      {
+        "id": "official_statements",
+        "name": "Official statements and formal measures",
+        "role": "open",
+        "answers": "Signalling versus costly government action: statements, warnings, defence announcements, diplomatic drawdowns, sanctions.",
+        "query": "Contemporaneous Russian, Ukrainian, UK, US and allied issuers. Identify changes in declared threat assessment or costly action. Desk does not scrape news.",
+        "status": "analyst"
+      }
+    ],
+    "discriminators": [
+      {
+        "hypothesis": "Exercise / demonstration",
+        "look_for": "Physical activity consistent with announced exercise patterns."
+      },
+      {
+        "hypothesis": "Defensive readiness",
+        "look_for": "Persistent posture indicators without further domain broadening."
+      },
+      {
+        "hypothesis": "Reversible preparation",
+        "look_for": "Additional independent logistical, financial or spatial indicators."
+      },
+      {
+        "hypothesis": "Preparation for overt action",
+        "look_for": "Sustained multi-domain increase plus corroborating physical or official-posture evidence."
+      },
+      {
+        "hypothesis": "Declared prior",
+        "look_for": "Whether the quantitative cue is consistent with, ahead of, or divergent from contemporaneous UK/US public posture."
+      }
+    ]
+  }
 }

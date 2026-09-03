@@ -1,10 +1,14 @@
 import json
+from datetime import date
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
 from dashboard.server import create_app, discover_results, load_result, result_index
+from wsf.notice import CollectionPosture, Notice, NoticeTrigger, NoticeWorkflow, save_notice
+from wsf.packet import build_and_save
+from wsf.scenario import create_scenario
 
 
 def write_result(root: Path, scenario_id: str, measure_id: str) -> None:
@@ -208,3 +212,63 @@ def test_api_health_without_database(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert body["ok"] is True
     assert body["db"] == {"configured": False, "ok": True, "error": None}
     assert body["agent"] is None
+
+
+def test_api_report_template_and_save(tmp_path: Path) -> None:
+    create_scenario(tmp_path, "desk-case")
+    save_notice(
+        tmp_path,
+        Notice(
+            notice_id="notice-abc",
+            trigger=NoticeTrigger.model_validate(
+                {
+                    "scenario_id": "desk-case",
+                    "window_id": "incident",
+                    "collection_id": "collection-1",
+                    "measurement_id": "measure-1",
+                    "policy_id": "coupling_k3_z15_p3",
+                    "policy_params": {},
+                    "created_at": "2026-09-03T00:00:00Z",
+                    "start": date(2022, 2, 10),
+                    "end": date(2022, 2, 12),
+                    "duration_days": 3,
+                    "days_before_window_end": 11,
+                    "contributing_domains": ["information"],
+                    "contributing_series": ["talk.gdelt_cameo"],
+                    "observed": {},
+                    "derived": {},
+                    "heuristic": {},
+                    "unknowns": [],
+                    "imaging_status_by_day": {},
+                    "recommended_posture": CollectionPosture.focused,
+                    "recommended_posture_reason": "chorus_with_physical_available",
+                }
+            ),
+            workflow=NoticeWorkflow(),
+        ),
+        overwrite_trigger=True,
+    )
+    build_and_save(tmp_path, "desk-case", "notice-abc", replay=True)
+    client = TestClient(
+        create_app(
+            api_only=True,
+            project_root=tmp_path,
+            scenarios_root=tmp_path / "scenarios",
+        )
+    )
+    blank = client.get("/api/report", params={"scenario": "desk-case", "notice_id": "notice-abc"})
+    assert blank.status_code == 200
+    body = blank.json()
+    assert body["empty"] is True
+    assert "## Working assessment" in body["notes"]
+    saved = client.post(
+        "/api/report",
+        json={
+            "scenario": "desk-case",
+            "notice_id": "notice-abc",
+            "notes": "Cue is real; explanation unresolved.",
+        },
+    )
+    assert saved.status_code == 200
+    assert saved.json()["notes"].startswith("Cue is real")
+    assert saved.json()["empty"] is False

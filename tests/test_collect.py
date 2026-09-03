@@ -1,3 +1,4 @@
+import json
 from datetime import date
 from pathlib import Path
 
@@ -120,6 +121,20 @@ def test_validate_and_harvest_write_into_packet(tmp_path: Path, monkeypatch) -> 
     viirs = [item for item in kinds[PHYSICAL]["items"] if item["label"] == "VIIRS"]
     assert viirs
     assert viirs[0]["knowable"] is False
+    physical_plan = kinds[PHYSICAL]["plan"]
+    assert physical_plan["window"]["evidence_start"] == "2022-02-10"
+    assert "available_at" in physical_plan["window"]["admissible"]
+    source_ids = {row["id"] for row in physical_plan["sources"]}
+    assert "tempo.firms_thermal" in source_ids
+    assert "copernicus_catalogue" in source_ids
+    assert any(row["role"] == "open" for row in physical_plan["sources"])
+    assert any(
+        row["hypothesis"] == "Exercise / demonstration" for row in physical_plan["discriminators"]
+    )
+    official_plan = kinds[OFFICIAL]["plan"]
+    assert "United Kingdom" in official_plan["issuers"]
+    assert any(row["id"] == "official_statements" for row in official_plan["sources"])
+    assert any(row["hypothesis"] == "Declared prior" for row in official_plan["discriminators"])
     assert kinds[OFFICIAL]["status"] == "complete"
     stored = load_collection(tmp_path, "desk-case", payload["packet_id"])
     assert len(stored["tasks"]) == 4
@@ -137,3 +152,28 @@ def test_request_context_does_not_jump_to_surge(tmp_path: Path, monkeypatch) -> 
         request_context=True,
     )
     assert payload["selected_posture"] == CollectionPosture.focused.value
+
+
+def test_physical_plan_names_staging_aois(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    _write_notice(tmp_path)
+    scenario_path = tmp_path / "scenarios" / "desk-case" / "scenario.json"
+    payload = json.loads(scenario_path.read_text(encoding="utf-8"))
+    payload["actors"] = {"focal": "RUS", "counterparts": ["UKR"]}
+    scenario_path.write_text(json.dumps(payload), encoding="utf-8")
+    facilities = Path(__file__).resolve().parents[1] / "config" / "facilities.yaml"
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    config_dir.joinpath("facilities.yaml").write_text(
+        facilities.read_text(encoding="utf-8"), encoding="utf-8"
+    )
+    result = run_collection(
+        tmp_path, "desk-case", "notice-abc", kinds=[PHYSICAL], replay=True
+    )
+    plan = result["tasks"][0]["plan"]
+    names = [row["name"] for row in plan["aois"]]
+    assert "Yelnya" in names
+    assert "Belgorod" in names
+    assert "Dzhankoi" in names
+    firms = next(row for row in plan["sources"] if row["id"] == "tempo.firms_thermal")
+    assert "combined set" in firms["answers"]

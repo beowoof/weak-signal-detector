@@ -6,7 +6,7 @@
   "status": "complete",
   "posture": "focused",
   "knowledge_cutoff": "2022-02-12T23:59:59Z",
-  "ran_at": "2026-09-03T19:48:37.899941Z",
+  "ran_at": "2026-09-03T20:47:08.173884Z",
   "summary": "9 physical series-days in the episode; 6 knowable at cutoff.",
   "items": [
     {
@@ -119,10 +119,164 @@
     }
   ],
   "notes": [
-    "Coverage and values only. Imagery interpretation is the analyst.",
-    "Absence of a knowable VIIRS night is not absence of activity.",
     "VIIRS: 3 episode night(s) awaiting availability at cutoff.",
     "SAR/backscatter is missing or not knowable on one or more episode days."
   ],
-  "analyst_question": "Is there independent physical evidence of concentration, dispersal or movement in staging AOIs?"
+  "analyst_question": "Is there independent physical evidence of concentration, dispersal or movement in the named staging AOIs?",
+  "plan": {
+    "question": "Is there independent physical evidence of concentration, dispersal or movement in the named staging AOIs?",
+    "aois": [
+      {
+        "id": "RUS-yelnya",
+        "name": "Yelnya",
+        "kind": "staging",
+        "bbox": [
+          32.95,
+          54.35,
+          33.42,
+          54.62
+        ]
+      },
+      {
+        "id": "RUS-klintsy",
+        "name": "Klintsy",
+        "kind": "staging",
+        "bbox": [
+          32.05,
+          52.62,
+          32.48,
+          52.9
+        ]
+      },
+      {
+        "id": "RUS-belgorod",
+        "name": "Belgorod",
+        "kind": "frontier_railhead",
+        "bbox": [
+          36.35,
+          50.45,
+          36.85,
+          50.78
+        ]
+      },
+      {
+        "id": "RUS-valuyki",
+        "name": "Valuyki",
+        "kind": "frontier_railhead",
+        "bbox": [
+          37.9,
+          50.08,
+          38.32,
+          50.38
+        ]
+      },
+      {
+        "id": "RUS-boguchar",
+        "name": "Boguchar",
+        "kind": "staging",
+        "bbox": [
+          40.3,
+          49.78,
+          40.82,
+          50.12
+        ]
+      },
+      {
+        "id": "RUS-millerovo",
+        "name": "Millerovo",
+        "kind": "staging",
+        "bbox": [
+          40.15,
+          48.78,
+          40.62,
+          49.08
+        ]
+      },
+      {
+        "id": "RUS-dzhankoi",
+        "name": "Dzhankoi",
+        "kind": "staging",
+        "bbox": [
+          34.18,
+          45.55,
+          34.6,
+          45.88
+        ]
+      }
+    ],
+    "window": {
+      "evidence_start": "2022-02-10",
+      "evidence_end": "2022-02-12",
+      "knowledge_cutoff": "2022-02-12T23:59:59+00:00",
+      "admissible": "Use only material with available_at at or before the knowledge cutoff. Replay uses available_at; live also requires retrieved_at.",
+      "notes": [
+        "VIIRS: 3 episode night(s) awaiting availability at cutoff.",
+        "SAR/backscatter is missing or not knowable on one or more episode days."
+      ]
+    },
+    "sources": [
+      {
+        "id": "tempo.firms_thermal",
+        "name": "FIRMS (NOAA-20 thermal)",
+        "role": "corpus",
+        "answers": "Thermal detections inside the monitored staging AOIs as a combined set. Name an AOI only when the observation attributes it.",
+        "query": "Sum detections per day inside each AOI bbox. Do not read a combined count as one detection in every listed place.",
+        "status": "knowable"
+      },
+      {
+        "id": "tempo.viirs_aoi",
+        "name": "VIIRS night-time lights",
+        "role": "corpus",
+        "answers": "Brightness and concentration at named AOIs.",
+        "query": "Episode nights at each staging AOI. Reconstructed 3-day latency: a night is inadmissible until available_at.",
+        "status": "awaiting_cutoff"
+      },
+      {
+        "id": "tempo.s1_backscatter",
+        "name": "Sentinel-1 SAR backscatter",
+        "role": "corpus",
+        "answers": "All-weather change at named AOIs when optical is delayed or cloudy.",
+        "query": "Ascending IW VV on AOI bboxes for episode days knowable at cutoff.",
+        "status": "knowable"
+      },
+      {
+        "id": "copernicus_catalogue",
+        "name": "Copernicus / commercial EO catalogue",
+        "role": "open",
+        "answers": "Whether imagery exists over named AOIs on admissible dates, cloud cover, and what a tasked look would show.",
+        "query": "Catalogue search per AOI bbox, dates at or before cutoff. Desk does not fetch scenes.",
+        "status": "analyst"
+      },
+      {
+        "id": "osm_infrastructure",
+        "name": "OpenStreetMap infrastructure",
+        "role": "open",
+        "answers": "Railheads, roads, airfields and staging-area layout at named AOIs.",
+        "query": "Static map layers. Always knowable at cutoff.",
+        "status": "analyst"
+      }
+    ],
+    "discriminators": [
+      {
+        "hypothesis": "Exercise / demonstration",
+        "look_for": "Physical activity consistent with announced exercise patterns."
+      },
+      {
+        "hypothesis": "Defensive readiness",
+        "look_for": "Persistent posture indicators without further domain broadening."
+      },
+      {
+        "hypothesis": "Reversible preparation",
+        "look_for": "Additional independent logistical, financial or spatial indicators."
+      },
+      {
+        "hypothesis": "Preparation for overt action",
+        "look_for": "Sustained multi-domain increase plus corroborating physical or official-posture evidence."
+      },
+      {
+        "hypothesis": "Measurement artefact",
+        "look_for": "Anomalies disappear after source or baseline validation."
+      }
+    ]
+  }
 }

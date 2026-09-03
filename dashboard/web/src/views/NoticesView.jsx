@@ -1,14 +1,40 @@
 import { number } from "../lib/format.js";
 import BriefView from "./BriefView.jsx";
 
+const SOURCE_ROLE = {
+  corpus: "In this collection",
+  desk: "Desk harvests",
+  open: "Analyst search",
+};
+
 const TERMINAL = new Set(["dismissed", "rejected", "closed"]);
 
 const ACTIONS = [
-  { id: "ack", label: "Mark as read" },
-  { id: "reexamine", label: "Re-examine signal" },
-  { id: "request_context", label: "Request more information" },
-  { id: "ignore", label: "Ignore" },
-  { id: "reject", label: "Flag incorrect signal" },
+  {
+    id: "ack",
+    label: "Mark as read",
+    from: ["new", "watching", "context_requested", "in_packet"],
+  },
+  {
+    id: "reexamine",
+    label: "Re-examine signal",
+    from: ["new", "acked", "watching", "context_requested", "in_packet"],
+  },
+  {
+    id: "request_context",
+    label: "Request more information",
+    from: ["new", "acked", "watching", "in_packet"],
+  },
+  {
+    id: "ignore",
+    label: "Ignore",
+    from: ["new", "acked", "watching", "context_requested", "in_packet"],
+  },
+  {
+    id: "reject",
+    label: "Flag incorrect signal",
+    from: ["new", "acked", "watching", "context_requested", "in_packet"],
+  },
 ];
 
 function isLate(trigger) {
@@ -40,6 +66,88 @@ function taskKindClass(status) {
   return `collect-status collect-status-${status || "pending"}`;
 }
 
+function CollectionPlan({ plan }) {
+  if (!plan) return null;
+  const window = plan.window || {};
+  return (
+    <div className="collect-plan">
+      {plan.question ? <p className="notice-look">{plan.question}</p> : null}
+      {window.evidence_start ? (
+        <p className="notice-timing">
+          Admissible dates: {window.evidence_start} → {window.evidence_end}. Cutoff{" "}
+          {String(window.knowledge_cutoff || "").replace("T", " ").slice(0, 19)}Z.
+        </p>
+      ) : null}
+      {window.admissible ? <p className="notice-timing">{window.admissible}</p> : null}
+      {(window.notes || []).map((note) => (
+        <p key={note} className="notice-timing">
+          {note}
+        </p>
+      ))}
+      {(plan.aois || []).length ? (
+        <div className="brief-pills">
+          {plan.aois.map((aoi) => (
+            <span key={aoi.id || aoi.name} className="brief-pill">
+              {aoi.name}
+              {aoi.kind ? ` · ${aoi.kind.replaceAll("_", " ")}` : ""}
+            </span>
+          ))}
+        </div>
+      ) : null}
+      {(plan.issuers || []).length ? (
+        <p className="notice-timing">Issuers: {plan.issuers.join("; ")}.</p>
+      ) : null}
+      {(plan.sources || []).length ? (
+        <div className="brief-table-wrap">
+          <table className="brief-table">
+            <thead>
+              <tr>
+                <th>Source</th>
+                <th>Who</th>
+                <th>Status</th>
+                <th>What it answers</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.sources.map((row) => (
+                <tr key={row.id || row.name}>
+                  <th>{row.name}</th>
+                  <td>{SOURCE_ROLE[row.role] || row.role}</td>
+                  <td>{(row.status || "").replaceAll("_", " ")}</td>
+                  <td>
+                    {row.answers}
+                    {row.query ? <p className="notice-timing">{row.query}</p> : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+      {(plan.discriminators || []).length ? (
+        <div className="brief-table-wrap">
+          <table className="brief-table">
+            <thead>
+              <tr>
+                <th>Hypothesis</th>
+                <th>What would discriminate</th>
+              </tr>
+            </thead>
+            <tbody>
+              {plan.discriminators.map((row) => (
+                <tr key={row.hypothesis}>
+                  <td>{row.hypothesis}</td>
+                  <td>{row.look_for}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function CollectionPanel({ collection, busy, onRun }) {
   const tasks = collection?.tasks || [];
   if (!tasks.length && !busy) return null;
@@ -51,12 +159,17 @@ function CollectionPanel({ collection, busy, onRun }) {
       </p>
       {busy ? <p className="notice-timing">Running collection…</p> : null}
       {tasks.map((task) => (
-        <details key={task.kind || task.task_id} className="collect-task" open={task.kind === "validate"}>
+        <details
+          key={task.kind || task.task_id}
+          className="collect-task"
+          open={task.kind === "validate" || Boolean(task.plan)}
+        >
           <summary>
             <span className={taskKindClass(task.status)}>{task.status}</span> {task.title}
           </summary>
           <p>{task.summary}</p>
-          {task.analyst_question ? (
+          <CollectionPlan plan={task.plan} />
+          {!task.plan && task.analyst_question ? (
             <p className="notice-look">{task.analyst_question}</p>
           ) : null}
           {(task.notes || []).map((note) => (
@@ -201,6 +314,7 @@ function AlertDetail({
   collection,
   collectBusy,
   onCollect,
+  onAddNotes,
   onOpenAnomaly,
   onBuildPacket,
   onAction,
@@ -235,6 +349,64 @@ function AlertDetail({
       {packet?.product?.geographic_frame ? (
         <p className="notice-timing">{packet.product.geographic_frame}</p>
       ) : null}
+      <p className="notice-actions">
+        {onAddNotes ? (
+          <button type="button" onClick={() => onAddNotes(item)}>
+            Add Notes
+          </button>
+        ) : null}
+        {item.key && onOpenAnomaly ? (
+          <button type="button" onClick={() => onOpenAnomaly(item)}>
+            Open anomaly
+          </button>
+        ) : null}
+        {onBuildPacket ? (
+          <button type="button" onClick={() => onBuildPacket(item)}>
+            Build brief
+          </button>
+        ) : null}
+        {packet?.packet_id ? (
+          <a
+            className="notice-pdf"
+            href={`/api/packet/pdf?scenario=${encodeURIComponent(
+              item.scenario_id || trigger.scenario_id,
+            )}&packet_id=${encodeURIComponent(packet.packet_id)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Download PDF
+          </a>
+        ) : null}
+        {onCollect ? (
+          <button
+            type="button"
+            disabled={collectBusy}
+            onClick={() => onCollect(item, ["validate"])}
+          >
+            Validate cue
+          </button>
+        ) : null}
+        {!TERMINAL.has(workflow.state) &&
+          ACTIONS.map((action) => {
+            const allowed = action.from.includes(workflow.state || "new");
+            return (
+              <button
+                key={action.id}
+                type="button"
+                disabled={!allowed || !onAction}
+                title={allowed ? undefined : "Not available in this state"}
+                onClick={() => {
+                  if (!allowed || !onAction) return;
+                  onAction(item, action.id);
+                  if (action.id === "reexamine") onOpenAnomaly?.(item);
+                }}
+              >
+                {action.label}
+              </button>
+            );
+          })}
+      </p>
+      {actionError ? <p className="error">{actionError}</p> : null}
       <dl>
         <div>
           <dt>State</dt>
@@ -270,53 +442,6 @@ function AlertDetail({
         </div>
       </dl>
       <p className="notice-id">{item.notice_id}</p>
-      <p className="notice-actions">
-        {item.key && onOpenAnomaly ? (
-          <button type="button" onClick={() => onOpenAnomaly(item)}>
-            Open anomaly
-          </button>
-        ) : null}
-        {onBuildPacket ? (
-          <button type="button" onClick={() => onBuildPacket(item)}>
-            Build brief
-          </button>
-        ) : null}
-        {packet?.packet_id ? (
-          <a
-            className="notice-pdf"
-            href={`/api/packet/pdf?scenario=${encodeURIComponent(
-              item.scenario_id || trigger.scenario_id,
-            )}&packet_id=${encodeURIComponent(packet.packet_id)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Download PDF
-          </a>
-        ) : null}
-        {onCollect ? (
-          <button
-            type="button"
-            disabled={collectBusy}
-            onClick={() => onCollect(item, ["validate"])}
-          >
-            Validate cue
-          </button>
-        ) : null}
-        {!TERMINAL.has(workflow.state) &&
-          ACTIONS.map((action) => (
-            <button
-              key={action.id}
-              type="button"
-              onClick={() => {
-                onAction?.(item, action.id);
-                if (action.id === "reexamine") onOpenAnomaly?.(item);
-              }}
-            >
-              {action.label}
-            </button>
-          ))}
-      </p>
-      {actionError ? <p className="error">{actionError}</p> : null}
       <CollectionPanel
         collection={collection}
         busy={collectBusy}
@@ -326,6 +451,7 @@ function AlertDetail({
         packet={packet}
         notice={item}
         onCollect={onCollect ? (kind) => onCollect(item, [kind]) : undefined}
+        collectBusy={collectBusy}
       />
     </article>
   );
@@ -341,6 +467,7 @@ export default function NoticesView({
   collection,
   collectBusy,
   onCollect,
+  onAddNotes,
   onAction,
   actionError,
 }) {
@@ -373,6 +500,7 @@ export default function NoticesView({
         collection={collection}
         collectBusy={collectBusy}
         onCollect={onCollect}
+        onAddNotes={onAddNotes}
         onOpenAnomaly={onOpenAnomaly}
         onBuildPacket={onBuildPacket}
         onAction={onAction}

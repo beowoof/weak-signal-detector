@@ -136,9 +136,9 @@
     "selected_posture": null,
     "comments": [],
     "packet_id": "packet-c9560b0d2d26",
-    "report_id": null,
+    "report_id": "report-df44ed4c1231",
     "closure_rationale": "reject",
-    "updated_at": "2026-09-03T20:06:30.103341Z",
+    "updated_at": "2026-09-03T21:01:52.072429Z",
     "events": [
       {
         "at": "2026-09-03T12:37:07.527858Z",
@@ -153,6 +153,14 @@
         "action": "reject",
         "from_state": "in_packet",
         "to_state": "rejected",
+        "note": null,
+        "actor": "operator"
+      },
+      {
+        "at": "2026-09-03T20:37:27.876984Z",
+        "action": "reexamine",
+        "from_state": "in_packet",
+        "to_state": "watching",
         "note": null,
         "actor": "operator"
       }
