@@ -297,5 +297,62 @@
   collector: central bank
   subject_controls_signal: partly
   notes: Measures domestic banking balance-sheet stress and liquidity hoarding rather than foreign-sentiment-contaminated FX.
+- id: posture.travel_risk
+  family: official_posture
+  hypothesis: Publicly declared UK/US travel-advice level for the theatre is a contemporaneous official geographic-risk prior.
+  status: instantiated
+  cost_class: info
+  polarity: high_unusual
+  in_basket: false
+  source_system: fcdo_govuk_state_ca
+  connector: declared_posture
+  series_id: posture.travel_risk
+  causal_domain: declared_posture
+  collector: FCDO travel advice change_history; US State Travel Advisories API (live)
+  subject_controls_signal: "no"
+  notes: Does not vote. Reconstructs DECLARED_POSTURE travel_risk from dated FCDO notes (replay-safe) and current US State levels (live only). Costly travel-advice escalations outweigh rhetoric.
+- id: posture.diplomatic_posture
+  family: official_posture
+  hypothesis: Embassy drawdowns, dependant withdrawals and consular relocation are costly declared diplomatic posture.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: false
+  source_system: fcdo_govuk_state_ca
+  connector: declared_posture
+  series_id: posture.diplomatic_posture
+  causal_domain: declared_posture
+  collector: FCDO travel-advice change notes
+  subject_controls_signal: "no"
+  notes: Does not vote. Binary in-effect flag from dated public notes. Not an inference of intent.
+- id: posture.official_threat_language
+  family: official_posture
+  hypothesis: Explicit official language of incursion, invasion or force build-up is the rhetorical layer of declared posture.
+  status: instantiated
+  cost_class: soft
+  polarity: high_unusual
+  in_basket: false
+  source_system: fcdo_govuk_state_ca
+  connector: declared_posture
+  series_id: posture.official_threat_language
+  causal_domain: declared_posture
+  collector: FCDO travel-advice change notes
+  subject_controls_signal: "no"
+  notes: Does not vote. Weighted below embassy/travel-advice/action. Ministers saying they are deeply concerned are not this series; explicit military-incursion language is.
+- id: posture.government_action
+  family: official_posture
+  hypothesis: Leave-now advice, airspace closure notices and other concrete public measures are costly government action.
+  status: instantiated
+  cost_class: costly
+  polarity: high_unusual
+  in_basket: false
+  source_system: fcdo_govuk_state_ca
+  connector: declared_posture
+  series_id: posture.government_action
+  causal_domain: declared_posture
+  collector: FCDO travel-advice change notes
+  subject_controls_signal: "no"
+  notes: Does not vote. Concrete public measures, not another statement of concern.
+
 
 

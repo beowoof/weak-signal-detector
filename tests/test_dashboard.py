@@ -139,19 +139,32 @@ def test_api_notices_index_and_get(tmp_path: Path) -> None:
                 "notice_id": "notice-abc",
                 "trigger": {
                     "scenario_id": "scenario-a",
+                    "collection_id": "collection-1",
                     "measurement_id": "measure-002",
                     "window_id": "incident",
+                    "policy_id": "coupling_k3_z15_p3",
+                    "policy_params": {},
+                    "created_at": "2026-09-03T00:00:00Z",
                     "start": "2022-02-10",
                     "end": "2022-02-12",
+                    "duration_days": 3,
+                    "days_before_window_end": 11,
                     "contributing_domains": ["information"],
+                    "contributing_series": ["talk.gdelt_cameo"],
+                    "observed": {},
+                    "derived": {},
+                    "heuristic": {},
+                    "unknowns": [],
+                    "imaging_status_by_day": {},
                     "recommended_posture": "focused",
+                    "recommended_posture_reason": "chorus_with_physical_available",
                 },
                 "workflow": {"state": "new"},
             }
         ),
         encoding="utf-8",
     )
-    client = TestClient(create_app(api_only=True, scenarios_root=tmp_path))
+    client = TestClient(create_app(api_only=True, scenarios_root=tmp_path, project_root=tmp_path))
     listed = client.get("/api/notices")
     assert listed.status_code == 200
     body = listed.json()
@@ -165,6 +178,25 @@ def test_api_notices_index_and_get(tmp_path: Path) -> None:
 
     missing = client.get("/api/notice", params={"scenario": "scenario-a", "notice_id": "nope"})
     assert missing.status_code == 404
+
+    acted = client.post(
+        "/api/notice/action",
+        json={"scenario": "scenario-a", "notice_id": "notice-abc", "action": "ack"},
+    )
+    assert acted.status_code == 200
+    assert acted.json()["workflow"]["state"] == "acked"
+
+    missing_emit = client.post(
+        "/api/notice/emit",
+        json={"scenario": "missing-scenario", "measurement_id": "measure-002"},
+    )
+    assert missing_emit.status_code == 400
+
+    missing_packet = client.post(
+        "/api/packet/build",
+        json={"scenario": "scenario-a", "notice_id": "nope", "replay": True},
+    )
+    assert missing_packet.status_code in {400, 404}
 
 
 def test_api_health_without_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

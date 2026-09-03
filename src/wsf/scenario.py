@@ -112,7 +112,10 @@ def create_scenario(project_root: Path, scenario_id: str) -> Path:
         incident=WindowConfig(id="incident"),
         controls=[WindowConfig(id="same-period-prior-year")],
         sources={
-            source: SourceConfig(enabled=source not in {"wiki_edits", "osm", "brent", "sar", "ct"})
+            source: SourceConfig(
+                enabled=source
+                not in {"wiki_edits", "osm", "brent", "sar", "ct", "declared_posture"}
+            )
             for source in (
                 "gdelt",
                 "wikipedia",
@@ -128,6 +131,7 @@ def create_scenario(project_root: Path, scenario_id: str) -> Path:
                 "wiki_edits",
                 "osm",
                 "brent",
+                "declared_posture",
             )
         },
         queries=QueryConfig(),

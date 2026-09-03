@@ -319,7 +319,7 @@ From the repository root, start the desk as one Compose app:
 docker compose up --build
 ```
 
-Open <http://127.0.0.1:5173>. The API is at <http://127.0.0.1:8000/docs>. Vite proxies `/api`. The UI polls every 8s. Collect or measure with `docker compose exec agent wsd measure --scenario ukraine2022 --exploratory`.
+Open <http://127.0.0.1:5173>. Left nav: **Notices**, **Anomaly**, **Operations**. Emit notices and build briefs from Operations (or **Build brief** on an alert). The CLI remains for tests and harvests (`docker compose exec agent wsd measure …`). The API is at <http://127.0.0.1:8000/docs>.
 
 Host-only fallback (two terminals):
 
@@ -357,7 +357,15 @@ The compiler is the live desk path. `knowledge_cutoff` defaults to now and requi
 wsd packet build --scenario ukraine2022 --notice notice-8f9869999a00 --replay
 ```
 
-`--replay` sets cutoff to 23:59:59 UTC on the episode end date and uses `available_at` only, so a 2026 harvest cannot leak into a 2022 packet. `--as-of 2022-02-12T23:59:59Z` does the same with an explicit clock. Output is `scenarios/<id>/interpretation/<packet-id>/evidence.json`. Significance stays `unassigned`. No model, no live search.
+`--replay` sets cutoff to 23:59:59 UTC on the episode end date and uses `available_at` only, so a 2026 harvest cannot leak into a 2022 packet. `--as-of 2022-02-12T23:59:59Z` does the same with an explicit clock. Output is `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus `brief.md` and `brief.pdf`. Download the PDF from the notice (**Download PDF**) or `wsd packet pdf --scenario ukraine2022 --notice notice-8f9869999a00`. The sitting product is the intelligence brief (`product` in the JSON): what changed, why it is on the watchlist, competing explanations, collection next. Series-days, z-scores, and reconstructed latency are the evidence layer. Significance on individual items stays `unassigned`. No model, no live search.
+
+Operator actions on a notice (mark as read, re-examine, request more information, ignore, flag incorrect) are a human state machine:
+
+```bash
+wsd notice act --scenario ukraine2022 --notice notice-8f9869999a00 --action ack
+```
+
+They do not edit trigger facts. **Request more information** (or `wsd packet collect --replay --task harvest --request-context`) runs three packet-scoped jobs from the existing corpus: crisis chronology (30 days), physical refresh (FIRMS/VIIRS/SAR), and official pack (NAVAREA plus **declared UK/US posture** from FCDO travel-advice history, cutoff-filtered; US State live API or last Wayback snapshot at or before cutoff). **Validate cue** is a checklist from the packet (substrate, holes, latency) with no harvest. Jobs write to `interpretation/<packet-id>/collection/` and do not vote in the notice. Posture stays `focused` unless the analyst already chose otherwise. The travel-advice harvest is dated public history, not a live news scrape.
 
 ## 7. Run the whole mocked test harness
 

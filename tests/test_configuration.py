@@ -22,7 +22,7 @@ def test_rus_physical_aois_are_staging_corridors() -> None:
 
 def test_frozen_configuration_contracts_are_valid() -> None:
     result = validate_configuration(PROJECT_ROOT / "config")
-    assert result["indicator_count"] == 23
+    assert result["indicator_count"] == 27
     assert result["period_count"] == 5
     assert len(result["config_hashes"]) == 9
 

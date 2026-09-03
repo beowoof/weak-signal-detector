@@ -1,12 +1,16 @@
 from datetime import date
 from pathlib import Path
 
+import pytest
+
 from wsf.notice import (
     CollectionPosture,
     Notice,
+    NoticeAction,
     NoticeState,
     NoticeTrigger,
     NoticeWorkflow,
+    apply_action,
     list_notices,
     notice_id_for,
     save_notice,
@@ -67,3 +71,27 @@ def test_save_notice_does_not_rewrite_trigger(tmp_path: Path, monkeypatch) -> No
     loaded = list_notices(tmp_path, "desk-case")[0]
     assert loaded.trigger.derived["max_energy"] == 10.0
     assert loaded.workflow.state is NoticeState.acked
+
+
+def test_operator_actions_are_a_state_machine() -> None:
+    notice = Notice(notice_id="notice-abc", trigger=_trigger(), workflow=NoticeWorkflow())
+    apply_action(notice, NoticeAction.ack)
+    assert notice.workflow.state is NoticeState.acked
+    apply_action(notice, NoticeAction.request_context)
+    assert notice.workflow.state is NoticeState.context_requested
+    assert notice.workflow.selected_posture is CollectionPosture.focused
+    apply_action(notice, NoticeAction.reexamine)
+    assert notice.workflow.state is NoticeState.watching
+    apply_action(notice, NoticeAction.reject, note="cloud gap misread as chorus")
+    assert notice.workflow.state is NoticeState.rejected
+    assert notice.workflow.events[-1].action is NoticeAction.reject
+    with pytest.raises(ValueError, match="rejected"):
+        apply_action(notice, NoticeAction.ack)
+
+
+def test_ignore_is_terminal() -> None:
+    notice = Notice(notice_id="notice-abc", trigger=_trigger(), workflow=NoticeWorkflow())
+    apply_action(notice, "ignore")
+    assert notice.workflow.state is NoticeState.dismissed
+    with pytest.raises(ValueError):
+        apply_action(notice, "reexamine")

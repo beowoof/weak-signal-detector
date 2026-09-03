@@ -16,6 +16,7 @@ class Family(StrEnum):
     cross_domain_covariance = "cross_domain_covariance"
     dyadic_counterpart = "dyadic_counterpart"
     official_residue = "official_residue"
+    official_posture = "official_posture"
     attention_without_admission = "attention_without_admission"
     absence_as_absence = "absence_as_absence"
 
@@ -42,6 +43,7 @@ class CausalDomain(StrEnum):
     digital_infrastructure = "digital_infrastructure"
     spatial_restriction = "spatial_restriction"
     domestic_financial_conditions = "domestic_financial_conditions"
+    declared_posture = "declared_posture"
 
 
 class SubjectControl(StrEnum):
