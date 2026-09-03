@@ -4,7 +4,7 @@ const state = {
   result: null,
   windowId: null,
   seriesId: null,
-  view: "coupling",
+  view: "notices",
   visibleSeries: new Set(),
 };
 
@@ -274,6 +274,51 @@ function renderEmpty(message) {
   chartRoot.append(empty);
 }
 
+function renderNoticesView() {
+  const notices = (state.result.notices || []).filter(item => {
+    const windowId = item.trigger?.window_id;
+    return !windowId || windowId === state.windowId;
+  });
+  if (!notices.length) {
+    return renderEmpty("No persisted notices for this window. Run `wsd notice emit --scenario <id>`.");
+  }
+  const intro = document.createElement("p");
+  intro.className = "notice-intro";
+  intro.textContent = "Immutable collection cues. Trigger facts do not change. This is not a determination of intent.";
+  chartRoot.append(intro);
+  const list = document.createElement("div");
+  list.className = "notice-list";
+  notices.forEach(item => {
+    const trigger = item.trigger || {};
+    const workflow = item.workflow || {};
+    const late = (trigger.days_before_window_end ?? 99) <= 2;
+    const card = document.createElement("article");
+    card.className = `notice-card${late ? " notice-late" : " notice-early"}`;
+    const domains = (trigger.contributing_domains || []).map(d => d.replaceAll("_", " ")).join(", ");
+    const series = (trigger.contributing_series || []).join(", ");
+    card.innerHTML = `
+      <header>
+        <p class="eyebrow">${escapeHtml(trigger.policy_id || "policy")}</p>
+        <h2>${escapeHtml(trigger.start || "")} → ${escapeHtml(trigger.end || "")}</h2>
+        <p class="notice-timing">${late ? "Near window end (often information-saturated)" : `${trigger.days_before_window_end} days before window end (earlier cue)`}</p>
+      </header>
+      <dl>
+        <div><dt>State</dt><dd>${escapeHtml(workflow.state || "new")}</dd></div>
+        <div><dt>Recommended posture</dt><dd>${escapeHtml(trigger.recommended_posture || "focused")}</dd></div>
+        <div><dt>Why</dt><dd>${escapeHtml(trigger.recommended_posture_reason || "")}</dd></div>
+        <div><dt>Domains</dt><dd>${escapeHtml(domains)}</dd></div>
+        <div><dt>Peak energy</dt><dd>${number(trigger.derived?.max_energy)} σ</dd></div>
+        <div><dt>Imaging</dt><dd>${escapeHtml(Object.values(trigger.imaging_status_by_day || {}).join(", ") || "—")}</dd></div>
+        <div><dt>Unknowns</dt><dd>${escapeHtml((trigger.unknowns || []).join(", ") || "none")}</dd></div>
+        <div><dt>Series</dt><dd>${escapeHtml(series)}</dd></div>
+      </dl>
+      <p class="notice-id">${escapeHtml(item.notice_id || "")}</p>
+    `;
+    list.append(card);
+  });
+  chartRoot.append(list);
+}
+
 function renderCouplingView() {
   const coupling = state.result.coupling?.[state.windowId];
   if (!coupling || !coupling.daily_states?.length) {
@@ -439,6 +484,7 @@ function renderSummary() {
     <span>${summary.n_feature_rows ?? state.result.features.length} feature rows</span>
     <span>${seriesIds().length} series</span>
     <span class="mode-warning">${escapeHtml(mode.replaceAll("_", " "))}</span>
+    ${(state.result.notices || []).length ? `<span class="badge badge-warning" style="margin-left:.4rem">${state.result.notices.length} notice${state.result.notices.length === 1 ? "" : "s"}</span>` : ''}
     ${k3Count ? `<span class="badge badge-warning" style="margin-left:.4rem">${k3Count} collection indicator ep</span>` : ''}
     ${taskingDays ? `<span class="badge badge-tasking" style="margin-left:.4rem">${taskingDays}d collect more</span>` : ''}
     <span class="${alertCount ? "alert-count" : ""}">${alertCount} alert episode${alertCount === 1 ? "" : "s"}</span>
@@ -452,7 +498,8 @@ function render() {
   seriesControl.hidden = state.view !== "series";
   document.querySelectorAll("[data-view]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.view === state.view)));
   renderSummary();
-  if (state.view === "coupling") renderCouplingView();
+  if (state.view === "notices") renderNoticesView();
+  else if (state.view === "coupling") renderCouplingView();
   else if (state.view === "series") renderSeriesView();
   else if (state.view === "all") renderAllView();
   else if (state.view === "combined") renderCombinedView();

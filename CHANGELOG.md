@@ -4,6 +4,12 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ## Unreleased
 
+### Added
+
+- **FastAPI desk API** (`dashboard/server.py`): stdlib `ThreadingHTTPServer` replaced with FastAPI + uvicorn. `--reload` is on by default; `--api-only` pairs with Vite. OpenAPI at `/docs`.
+- **React/Vite desk UI** (`dashboard/web/`): like-for-like port of the results viewer with HMR. `python dashboard/server.py --api-only` plus `npm run dev`. Polls `/api/result` every 8s so new notices appear without a UI restart.
+- **`notice_v0` desk object:** `config/notice_policy.yaml`, `src/wsf/notice.py`, `wsd notice emit|list`. K≥3 coupling episodes persist as an immutable trigger plus mutable workflow. Dashboard **Notice inbox** lists them. Re-emit does not rewrite trigger facts.
+
 ### Changed
 
 - **Collection-indicator framing:** dashboard and README treat multi-domain co-movement as a cue to collect more (news, tasked imagery), not as a determination of mobilisation or intent.

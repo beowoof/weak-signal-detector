@@ -12,6 +12,9 @@ dependencies = [
   "pydantic>=2.11,<3",
   "pyyaml>=6,<7",
   "typer>=0.16,<1",
+  "fastapi>=0.115,<1",
+  "uvicorn[standard]>=0.32,<1",
+  "httpx2>=2.12,<3",
   "pandas>=3.0.1",
   "earthaccess>=0.11,<1",
   "h5py>=3.11,<4",
@@ -41,6 +44,7 @@ packages = ["src/wsf"]
 [tool.pytest.ini_options]
 addopts = "-ra"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
   "live: accesses a remote source and is never selected by default",
   "model: invokes Ollama and is never selected by default",

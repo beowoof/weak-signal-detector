@@ -313,10 +313,28 @@ A future scientific freeze records both the scenario hash and the complete scien
 
 ## 6D. Plot recorded measurements locally
 
-From the repository root, start the read-only results viewer:
+From the repository root, start the data API and the Vite UI (hot reload; polls `/api` every 8s so new notices appear without restarting Python):
 
 ```bash
-python3 dashboard/server.py
+uv run python dashboard/server.py --api-only
+# FastAPI + uvicorn. --reload is on by default; Python changes under dashboard/ and src/ pick up.
+```
+
+In a second terminal:
+
+```bash
+cd dashboard/web
+npm install
+npm run dev
+```
+
+Open <http://127.0.0.1:5173>. The API stays on :8000; Vite proxies `/api`. OpenAPI is at <http://127.0.0.1:8000/docs>. Use **Refresh** or wait for the poll. React files hot-reload in Vite; `dashboard/server.py` and `src/` reload in uvicorn.
+
+To serve a production build from Python alone:
+
+```bash
+cd dashboard/web && npm run build
+uv run python dashboard/server.py
 ```
 
 Open <http://127.0.0.1:8000>. Use **Result set** to move between scenarios and measurement runs, then switch among:

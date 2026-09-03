@@ -14,7 +14,9 @@ The scientific output remains headless: a reproducible alert episode, its contri
 
 The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do move together in late February 2022; hard negatives stay quiet; that is not a proof of invasion and not a smoking-gun tripwire.
 
-Work continues as a **collection indicator**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
+Work continues as a **collection cueing desk**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
+
+The desk UI is React/Vite over a FastAPI API. Start it with [Desk API and UI](#desk-api-and-ui).
 
 The repository still contains:
 
@@ -43,10 +45,11 @@ Docker is used when a component requires a persistent process or a specific repr
 | Component | Initial boundary | Reason |
 |---|---|---|
 | Python collection, build, evaluation, and test scripts | Host process managed by `uv` | Ephemeral and easy to reproduce from `pyproject.toml` |
+| Desk API (`dashboard/server.py`) | Host process (`uv run python dashboard/server.py`) | FastAPI + uvicorn; `--reload` default |
+| Desk UI (`dashboard/web`) | Host process (`npm run dev`) | Vite; proxies `/api` to :8000 |
 | Scientific configuration | Versioned YAML | Human-readable experiment contract |
 | Raw and derived analytical data | Parquet files; DuckDB may be added for queries | Portable, immutable, tabular, no service required |
 | Ollama and `qwen3.8:27b-mlx` | Existing host service/API | MLX depends on the Mac environment; no container or token required |
-| Future API/frontend | Docker | Persistent environment-specific component |
 | Future PostgreSQL or ChromaDB | Docker, only if access patterns justify it | No database is required for the current tabular PoC |
 
 ChromaDB is not part of measurement. When an LLM later acts as a **named intelligence-analyst step** (packet interpretation, not a general-purpose aggregator and never a combiner), retrieval will go through Chroma + embeddings so the model sees a cutoff-safe cited subset rather than the raw harvest. Explicit frozen prior packets remain the audit trail.
@@ -85,10 +88,11 @@ v1 coincidence requires three distinct **causal domains** and three source syste
 
 - Python 3.12 or newer
 - [`uv`](https://docs.astral.sh/uv/)
+- Node.js 20 or newer (desk UI)
 - Ollama only when the interpretation phase is explicitly run by the project owner
 - Docker only when a persistent component is introduced
 
-The current development machine has Python 3.13, `uv`, and Docker available.
+The current development machine has Python 3.13, `uv`, Node.js, and Docker available.
 
 ## Setup
 
@@ -125,6 +129,37 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 | `OLLAMA_MODEL` | Frozen local model, `qwen3.8:27b-mlx` | Only for owner-run interpretation |
 
 Google Cloud will not be configured or used without an explicit decision after the GDELT bulk acquisition sample. Live source calls and model calls are never part of default tests.
+
+## Desk API and UI
+
+After `uv sync --extra dev`, start the API and the UI from the repository root. Two terminals:
+
+**Terminal 1 — API** (http://127.0.0.1:8000, OpenAPI at `/docs`):
+
+```bash
+uv run python dashboard/server.py --api-only
+```
+
+**Terminal 2 — UI** (http://127.0.0.1:5173; Vite proxies `/api` to the API):
+
+```bash
+cd dashboard/web
+npm install
+npm run dev
+```
+
+`npm install` is only needed the first time, or after `dashboard/web/package.json` changes.
+
+Open <http://127.0.0.1:5173>. The UI polls `/api/result` every 8s so new notices appear without a restart. React files hot-reload in Vite; Python under `dashboard/` and `src/` reloads in uvicorn. Use `--no-reload` on the API if you want it pinned.
+
+To serve a production build from Python alone:
+
+```bash
+cd dashboard/web && npm run build
+uv run python dashboard/server.py
+```
+
+Then open <http://127.0.0.1:8000>. The API discovers every local `scenarios/*/measurement/measure-*` result and does not write to those files.
 
 ## Scenario workflow
 
@@ -171,15 +206,7 @@ The report records `measurement_mode: exploratory_unfrozen` and `scientific_resu
 
 ### Visualising local measurement results
 
-Start the dependency-free, read-only viewer from the repository root:
-
-```bash
-python3 dashboard/server.py
-```
-
-Then open <http://127.0.0.1:8000>. The viewer discovers every local `scenarios/*/measurement/measure-*` result and provides individual raw/z-score charts, all-series small multiples, combined trailing and rhythm z-score charts, and a trailing-versus-rhythm scatter plot. Result files remain ignored, immutable inputs; the server does not write to them.
-
-These plots are diagnostic views of the recorded result labels. In particular, `exploratory_unfrozen` remains non-scientific, missing values remain unknown, and plotting does not satisfy the investment gate.
+See [Desk API and UI](#desk-api-and-ui). The plots are diagnostic views of recorded result labels. In particular, `exploratory_unfrozen` remains non-scientific, missing values remain unknown, and plotting does not satisfy the investment gate.
 
 ## Running a scenario experiment
 
