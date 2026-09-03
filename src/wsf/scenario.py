@@ -100,7 +100,7 @@ def scenario_directory(project_root: Path, scenario_id: str) -> Path:
 def create_scenario(project_root: Path, scenario_id: str) -> Path:
     directory = scenario_directory(project_root, scenario_id)
     directory.mkdir(parents=True, exist_ok=False)
-    for relative in ("corpus", "reviews", "measurement", "interpretation", "reports"):
+    for relative in ("corpus", "reviews", "measurement", "interpretation", "reports", "notices"):
         (directory / relative).mkdir()
 
     scenario = ScenarioConfig(
@@ -162,7 +162,7 @@ def prepare_scenario_workspace(project_root: Path, scenario_id: str) -> Path:
     scenario_path = directory / "scenario.json"
     if not scenario_path.is_file():
         raise ValueError(f"missing scenario contract: {scenario_path}")
-    for relative in ("corpus", "reviews", "measurement", "interpretation", "reports"):
+    for relative in ("corpus", "reviews", "measurement", "interpretation", "reports", "notices"):
         (directory / relative).mkdir(exist_ok=True)
     status_path = directory / "status.json"
     if not status_path.is_file():

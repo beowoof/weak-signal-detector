@@ -10,6 +10,7 @@ import typer
 
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
+from wsf.notice import emit_notices_for_measurement, list_notices
 from wsf.progress import Progress
 from wsf.register import validate_configuration
 from wsf.review import review_corpus
@@ -27,8 +28,10 @@ from wsf.scenario import (
 app = typer.Typer(no_args_is_help=True, help="Weak-signal detector research CLI.")
 scenario_app = typer.Typer(no_args_is_help=True, help="Create and manage scenarios.")
 corpus_app = typer.Typer(no_args_is_help=True, help="Collect and review scenario corpora.")
+notice_app = typer.Typer(no_args_is_help=True, help="Emit and list collection-cue notices.")
 app.add_typer(scenario_app, name="scenario")
 app.add_typer(corpus_app, name="corpus")
+app.add_typer(notice_app, name="notice")
 
 
 def _root() -> Path:
@@ -224,6 +227,63 @@ def measure(
             "verdict_counts": summary["verdict_counts"],
             "rhythm_verdict_counts": summary.get("rhythm_verdict_counts"),
             "permutation": summary.get("permutation"),
+        }
+    )
+
+
+@notice_app.command("emit")
+def notice_emit(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    measure_id: str | None = typer.Option(None, help="Measurement id; default is active."),
+    policy: str | None = typer.Option(
+        None, help="Notice policy id; default is coupling_k3_z15_p3."
+    ),
+) -> None:
+    """Persist K≥3 coupling episodes as immutable notices. Does not rewrite existing triggers."""
+    with _operator_errors():
+        notices = emit_notices_for_measurement(
+            _root(), scenario, measurement_id=measure_id, policy_id=policy
+        )
+    _echo(
+        {
+            "scenario": scenario,
+            "n_notices": len(notices),
+            "notices": [
+                {
+                    "notice_id": item.notice_id,
+                    "window_id": item.trigger.window_id,
+                    "start": item.trigger.start.isoformat(),
+                    "end": item.trigger.end.isoformat(),
+                    "days_before_window_end": item.trigger.days_before_window_end,
+                    "domains": item.trigger.contributing_domains,
+                    "posture": item.trigger.recommended_posture.value,
+                    "state": item.workflow.state.value,
+                }
+                for item in notices
+            ],
+        }
+    )
+
+
+@notice_app.command("list")
+def notice_list(scenario: str = typer.Option(..., help="Scenario identifier.")) -> None:
+    """List persisted notices for a scenario."""
+    with _operator_errors():
+        notices = list_notices(_root(), scenario)
+    _echo(
+        {
+            "scenario": scenario,
+            "n_notices": len(notices),
+            "notices": [
+                {
+                    "notice_id": item.notice_id,
+                    "window_id": item.trigger.window_id,
+                    "start": item.trigger.start.isoformat(),
+                    "end": item.trigger.end.isoformat(),
+                    "state": item.workflow.state.value,
+                }
+                for item in notices
+            ],
         }
     )
 

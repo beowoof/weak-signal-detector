@@ -1,0 +1,39 @@
+# Operational cueing policies. Not part of frozen coincidence_v1.
+# A notice is an immutable event plus mutable workflow. Trigger facts never edit.
+
+schema: notice_policy_v0
+
+postures:
+  routine:
+    meaning: normal geopolitical background
+    additional_collection: fixed quantitative basket only
+  heightened:
+    meaning: public rhetoric or reporting environment has materially shifted
+    additional_collection: broader official and source-balanced news collection
+    note: effort, not a higher threat rung
+  focused:
+    meaning: a quantitative cue exists or attention has become geographically specific
+    additional_collection: AOI maps, public EO catalogues, regional reporting, maritime/aviation context
+  surge_review:
+    meaning: concentrated examination; may be chosen because evidence is contradictory
+    additional_collection: refresh relevant public sources and produce a full evidence packet
+    note: non-monotonic — greater effort, not greater concern
+
+policies:
+  - id: coupling_k3_z15_p3
+    kind: quantitative_convergence
+    description: >
+      Persistent co-movement across at least three causal domains at z ≥ 1.5
+      for three consecutive scored days. Opens a collection cue, not a detector alert.
+    threshold_z: 1.5
+    min_domains: 3
+    persistence_days: 3
+    recommended_posture: focused
+    default: true
+  - id: information_environment_heightened
+    kind: information_environment
+    description: >
+      Rhetoric or reporting environment has materially shifted without requiring
+      a quantitative chorus. Separate policy; not implemented in notice_v0 emit.
+    recommended_posture: heightened
+    implemented: false

@@ -1,20 +1,29 @@
 #!/usr/bin/env python3
-"""Serve a read-only dashboard over local Weak Signal Fusion measurements."""
+"""FastAPI desk API over local Weak Signal Fusion measurements."""
 
 from __future__ import annotations
 
 import argparse
 import json
-import mimetypes
+import os
+import sys
 from dataclasses import dataclass
-from http import HTTPStatus
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+from wsf.analysis.coupling import evaluate_window_coupling
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
+
 DASHBOARD_ROOT = Path(__file__).resolve().parent
 SCENARIOS_ROOT = PROJECT_ROOT / "scenarios"
+DIST_ROOT = DASHBOARD_ROOT / "web" / "dist"
 
 
 @dataclass(frozen=True)
@@ -94,71 +103,63 @@ def result_index(scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     return {"results": items, "scenarios": scenarios}
 
 
-from wsf.analysis.coupling import evaluate_window_coupling
-
-
 def compute_coupling_for_windows(scenario_id: str, features: list[dict]) -> dict[str, dict]:
     windows = sorted({r["window_id"] for r in features if r.get("window_id")})
     result: dict[str, dict] = {}
-    for w in windows:
+    for window_id in windows:
         try:
-            w_res = evaluate_window_coupling(scenario_id, w, features, threshold_z=1.5, persistence_days=3, run_permutation=False)
-            result[w] = {
-                "dates": w_res.dates,
-                "daily_states": [
-                    {
-                        "date": st.date,
-                        "window_id": st.window_id,
-                        "domain_energies": st.domain_energies,
-                        "total_energy": st.total_energy,
-                        "active_domains_z15": st.active_domains_z15,
-                        "active_domains_z20": st.active_domains_z20,
-                        "n_domains_z15": st.n_domains_z15,
-                        "n_domains_z20": st.n_domains_z20,
-                        "costly_status": st.costly_status,
-                        "verdict": st.verdict,
-                        "sensor_tasking_order": st.sensor_tasking_order,
-                        "series_z": st.series_z,
-                    }
-                    for st in w_res.daily_states
-                ],
-                "episodes_k3": [
-                    {
-                        "level": ep.level,
-                        "start_date": ep.start_date,
-                        "end_date": ep.end_date,
-                        "duration_days": ep.duration_days,
-                        "contributing_domains": ep.contributing_domains,
-                        "contributing_series": ep.contributing_series,
-                        "tasking_order_days": ep.tasking_order_days,
-                        "mean_energy": ep.mean_energy,
-                        "max_energy": ep.max_energy,
-                    }
-                    for ep in w_res.episodes_k3
-                ],
-                "episodes_k2": [
-                    {
-                        "level": ep.level,
-                        "start_date": ep.start_date,
-                        "end_date": ep.end_date,
-                        "duration_days": ep.duration_days,
-                        "contributing_domains": ep.contributing_domains,
-                        "contributing_series": ep.contributing_series,
-                        "tasking_order_days": ep.tasking_order_days,
-                        "mean_energy": ep.mean_energy,
-                        "max_energy": ep.max_energy,
-                    }
-                    for ep in w_res.episodes_k2
-                ],
-                "max_energy": w_res.max_energy,
-                "mean_energy": w_res.mean_energy,
-                "days_ge3_domains_z15": w_res.days_ge3_domains_z15,
-                "days_ge2_domains_z15": w_res.days_ge2_domains_z15,
-                "tasking_order_days": w_res.tasking_order_days,
-            }
-        except Exception:
-            pass
+            window = evaluate_window_coupling(
+                scenario_id,
+                window_id,
+                features,
+                threshold_z=1.5,
+                persistence_days=3,
+                run_permutation=False,
+            )
+        except ValueError:
+            continue
+        result[window_id] = {
+            "dates": window.dates,
+            "daily_states": [
+                {
+                    "date": state.date,
+                    "window_id": state.window_id,
+                    "domain_energies": state.domain_energies,
+                    "total_energy": state.total_energy,
+                    "active_domains_z15": state.active_domains_z15,
+                    "active_domains_z20": state.active_domains_z20,
+                    "n_domains_z15": state.n_domains_z15,
+                    "n_domains_z20": state.n_domains_z20,
+                    "costly_status": state.costly_status,
+                    "verdict": state.verdict,
+                    "sensor_tasking_order": state.sensor_tasking_order,
+                    "series_z": state.series_z,
+                }
+                for state in window.daily_states
+            ],
+            "episodes_k3": [_episode_payload(episode) for episode in window.episodes_k3],
+            "episodes_k2": [_episode_payload(episode) for episode in window.episodes_k2],
+            "max_energy": window.max_energy,
+            "mean_energy": window.mean_energy,
+            "days_ge3_domains_z15": window.days_ge3_domains_z15,
+            "days_ge2_domains_z15": window.days_ge2_domains_z15,
+            "tasking_order_days": window.tasking_order_days,
+        }
     return result
+
+
+def _episode_payload(episode) -> dict:
+    return {
+        "level": episode.level,
+        "start_date": episode.start_date,
+        "end_date": episode.end_date,
+        "duration_days": episode.duration_days,
+        "contributing_domains": episode.contributing_domains,
+        "contributing_series": episode.contributing_series,
+        "tasking_order_days": episode.tasking_order_days,
+        "mean_energy": episode.mean_energy,
+        "max_energy": episode.max_energy,
+    }
 
 
 def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
@@ -171,6 +172,7 @@ def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
     days_path = ref.directory / "days.jsonl"
     days = read_jsonl(days_path) if days_path.is_file() else []
     coupling = compute_coupling_for_windows(ref.scenario_id, features)
+    notices = _notices_for_measure(ref.scenario_id, ref.measure_id, scenarios_root)
     return {
         "key": ref.key,
         "scenario": scenario_metadata(ref.scenario_id, scenarios_root),
@@ -178,80 +180,133 @@ def load_result(key: str, scenarios_root: Path = SCENARIOS_ROOT) -> dict:
         "features": features,
         "days": days,
         "coupling": coupling,
+        "notices": notices,
     }
 
 
-class DashboardHandler(BaseHTTPRequestHandler):
-    server_version = "WeakSignalDashboard/1.0"
+def _notices_for_measure(scenario_id: str, measure_id: str, scenarios_root: Path) -> list[dict]:
+    root = scenarios_root / scenario_id / "notices"
+    if not root.is_dir():
+        return []
+    items: list[dict] = []
+    for path in sorted(root.glob("*/notice.json")):
+        payload = read_json(path)
+        trigger = payload.get("trigger") or {}
+        if trigger.get("measurement_id") != measure_id:
+            continue
+        items.append(payload)
+    items.sort(
+        key=lambda item: (
+            (item.get("trigger") or {}).get("start") or "",
+            item.get("notice_id") or "",
+        )
+    )
+    return items
 
-    def do_GET(self) -> None:  # noqa: N802
-        parsed = urlparse(self.path)
+
+class StrictJSONResponse(JSONResponse):
+    def render(self, content) -> bytes:
+        return json.dumps(content, allow_nan=False, separators=(",", ":")).encode()
+
+
+def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = None) -> FastAPI:
+    if api_only is None:
+        api_only = os.environ.get("WSD_API_ONLY", "").lower() in {"1", "true", "yes"}
+    root = Path(scenarios_root) if scenarios_root is not None else SCENARIOS_ROOT
+    app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
+    app.state.scenarios_root = root
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_methods=["GET", "HEAD", "OPTIONS"],
+        allow_headers=["*"],
+    )
+
+    @app.get("/api/results")
+    def api_results() -> dict:
+        return result_index(app.state.scenarios_root)
+
+    @app.get("/api/result")
+    def api_result(key: str = Query(..., min_length=1)) -> dict:
         try:
-            if parsed.path == "/api/results":
-                self.send_json(result_index())
-                return
-            if parsed.path == "/api/result":
-                key = parse_qs(parsed.query).get("key", [""])[0]
-                if not key:
-                    self.send_error(HTTPStatus.BAD_REQUEST, "Missing result key")
-                    return
-                self.send_json(load_result(key))
-                return
-            self.send_static(parsed.path)
-        except KeyError:
-            self.send_error(HTTPStatus.NOT_FOUND, "Unknown result set")
-        except (OSError, ValueError, json.JSONDecodeError) as exc:
-            self.send_error(HTTPStatus.INTERNAL_SERVER_ERROR, str(exc))
+            return load_result(key, app.state.scenarios_root)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown result set") from exc
+        except ValueError as exc:
+            raise HTTPException(status_code=500, detail=str(exc)) from exc
 
-    def send_json(self, payload: dict) -> None:
-        body = json.dumps(payload, separators=(",", ":"), allow_nan=False).encode()
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(body)
+    if api_only:
+        return app
 
-    def send_static(self, request_path: str) -> None:
-        relative = "index.html" if request_path in {"", "/"} else request_path.lstrip("/")
-        candidate = (DASHBOARD_ROOT / relative).resolve()
-        if DASHBOARD_ROOT not in candidate.parents and candidate != DASHBOARD_ROOT:
-            self.send_error(HTTPStatus.FORBIDDEN)
-            return
-        if not candidate.is_file():
-            self.send_error(HTTPStatus.NOT_FOUND)
-            return
-        body = candidate.read_bytes()
-        content_type = mimetypes.guess_type(candidate.name)[0] or "application/octet-stream"
-        self.send_response(HTTPStatus.OK)
-        self.send_header("Content-Type", f"{content_type}; charset=utf-8")
-        self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-cache")
-        self.end_headers()
-        self.wfile.write(body)
+    dist_ready = (DIST_ROOT / "index.html").is_file()
+    static_root = DIST_ROOT if dist_ready else DASHBOARD_ROOT
 
-    def log_message(self, format: str, *args: object) -> None:
-        print(f"{self.address_string()} - {format % args}")
+    @app.get("/")
+    def index() -> FileResponse:
+        return FileResponse(static_root / "index.html")
+
+    if dist_ready:
+        assets = DIST_ROOT / "assets"
+        if assets.is_dir():
+            app.mount("/assets", StaticFiles(directory=assets), name="assets")
+    else:
+
+        @app.get("/app.js")
+        def legacy_js() -> FileResponse:
+            return FileResponse(DASHBOARD_ROOT / "app.js")
+
+        @app.get("/styles.css")
+        def legacy_css() -> FileResponse:
+            return FileResponse(DASHBOARD_ROOT / "styles.css")
+
+    return app
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument(
+        "--api-only",
+        action="store_true",
+        help="Serve /api only. Pair with `npm run dev` in dashboard/web.",
+    )
+    parser.add_argument(
+        "--reload",
+        dest="reload",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Reload on Python changes (default on). Use --no-reload to disable.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    server = ThreadingHTTPServer((args.host, args.port), DashboardHandler)
-    print(f"Weak Signal dashboard: http://{args.host}:{args.port}")
-    print("Press Ctrl-C to stop.")
-    try:
-        server.serve_forever()
-    except KeyboardInterrupt:
-        print("\nStopping dashboard.")
-    finally:
-        server.server_close()
+    os.environ["WSD_API_ONLY"] = "1" if args.api_only else "0"
+    import uvicorn
+
+    print(f"WSD API: http://{args.host}:{args.port}/api")
+    if args.api_only:
+        print("UI: cd dashboard/web && npm run dev  →  http://127.0.0.1:5173")
+    else:
+        print(f"UI: http://{args.host}:{args.port}")
+    run_kwargs: dict[str, object] = {
+        "app": "dashboard.server:create_app",
+        "factory": True,
+        "host": args.host,
+        "port": args.port,
+        "reload": args.reload,
+    }
+    if args.reload:
+        run_kwargs["reload_dirs"] = [str(DASHBOARD_ROOT), str(PROJECT_ROOT / "src")]
+        run_kwargs["reload_excludes"] = [
+            "web",
+            "web/*",
+            "**/node_modules/**",
+            "**/__pycache__/**",
+        ]
+    uvicorn.run(**run_kwargs)
 
 
 if __name__ == "__main__":

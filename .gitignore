@@ -18,3 +18,8 @@ scenarios/*/reports/
 scenarios/*/status.json
 scenarios/*/history.jsonl
 scenarios/*/freeze.json
+
+# Dashboard frontend
+dashboard/web/node_modules/
+dashboard/web/dist/
+/package-lock.json

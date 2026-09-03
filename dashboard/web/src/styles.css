@@ -273,3 +273,17 @@ select {
 .notice-card dt { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; }
 .notice-card dd { margin: .15rem 0 0; }
 .notice-id { margin: 1rem 0 0; color: var(--muted); font-size: .78rem; font-family: ui-monospace, monospace; }
+
+.header-actions { display: flex; gap: .6rem; align-items: center; justify-content: flex-end; }
+.header-actions button {
+  min-height: 2.2rem;
+  padding: .35rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.header-actions button:hover { border-color: var(--accent); }
+.poll-hint { color: var(--muted); font-size: .78rem; }

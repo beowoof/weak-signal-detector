@@ -165,4 +165,16 @@ Evaluating continuous multi-domain coupled energy $E_{\text{dom}}(t) = \sum_{d} 
    - **Specificity at $K \ge 3$ holds:** No negative baseline produced a 3-day Strategic Warning episode ($p = 1.000$).
    - **Statistical rarity is moderate:** Under unconstrained circular-shift permutations of z-calendars, $p_{\text{episodes}} \approx 0.43$ for Ukraine and $p_{\text{episodes}} \approx 0.44$ for April 2021 because lowered marginal thresholds ($\tau = 1.5$) allow noisy soft series to co-occur frequently by chance.
 4. **Sensor Tasking Orders Are a Derived Operational Label:** Tasking days are triggered whenever $K \ge 2$ and physical/optical sensors are unknown. While operationally useful for sensor scheduling, tasking volume is a derived output rather than independent statistical proof of unexpected precursor coupling.
-5. **Final Verdict:** The v1 verdict stands: weak public series show co-movement in February 2022, but without higher statistical rarity or non-weather-gated primary physical verification, this stack cannot serve as a standalone strategic early-warning detector.
+5. **Final Verdict:** The v1 **detector** claim stands: this stack cannot serve as a standalone strategic early-warning tripwire. That is the wrong bar for the desk product. See [`ROADMAP.md`](ROADMAP.md).
+
+---
+
+## Staging restage (`ukraine2022`, 2026-09-02)
+
+Collection `collection-20260902T172316Z-3a7030`, measure `measure-20260902T203316Z-f05cf7` (exploratory). Frontier/staging AOIs, not Kremlin stamps.
+
+VIIRS is `ok` on **21/21** scored nights (median 6 of 7 AOIs). SAR has 12/21 days with backscatter. FIRMS is present and mostly quiet except 18 and 23 Feb. Coverage is no longer the binding constraint.
+
+Frozen `coincidence_v1`: no red episode. One basket day (23 Feb: wiki + GDELT + MOEX + FIRMS) without 3-day persistence. The old 21–23 Feb amber disappears because VIIRS is present and normal. 15 Feb is cheap talk with VIIRS quiet (z ≈ 0.3).
+
+Desk heuristic (z ≥ 1.5, K ≥ 3): two episodes, **10–12 Feb** and **21–23 Feb**. The first is the preparatory shape (CBR flags; talk climbing). The second is information-saturated (recognition of the “republics”; Wikipedia z ≈ 11 on the 22nd). Evaluating the product on whether red fired the day before the invasion is a methodological error, not a data error. `notice_v0` should be scored on whether the preparatory window opens a cue, with the eve-of-event spike labelled late.
