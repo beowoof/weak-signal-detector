@@ -126,3 +126,14 @@ def test_api_cors_allows_vite_origin(tmp_path: Path) -> None:
     response = client.get("/api/results", headers={"Origin": "http://127.0.0.1:5173"})
     assert response.status_code == 200
     assert response.headers.get("access-control-allow-origin") == "*"
+
+
+def test_api_health_without_database(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    client = TestClient(create_app(api_only=True, scenarios_root=tmp_path))
+    response = client.get("/api/health")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["ok"] is True
+    assert body["db"] == {"configured": False, "ok": True, "error": None}
+    assert body["agent"] is None

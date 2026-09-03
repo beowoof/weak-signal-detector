@@ -1,0 +1,108 @@
+name: wsd
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: wsd
+      POSTGRES_PASSWORD: wsd
+      POSTGRES_DB: wsd
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/01-desk.sql:ro
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U wsd -d wsd"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  api:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+    command:
+      [
+        "uv",
+        "run",
+        "python",
+        "dashboard/server.py",
+        "--api-only",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+      ]
+    environment:
+      DATABASE_URL: postgresql://wsd:wsd@db:5432/wsd
+      WSD_API_ONLY: "1"
+      WSD_HOST: 0.0.0.0
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./src:/app/src
+      - ./dashboard:/app/dashboard
+      - ./config:/app/config
+      - ./scenarios:/app/scenarios
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health')",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  agent:
+    build:
+      context: .
+      dockerfile: docker/python.Dockerfile
+    command: ["uv", "run", "wsd", "agent", "run"]
+    working_dir: /app
+    environment:
+      DATABASE_URL: postgresql://wsd:wsd@db:5432/wsd
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./src:/app/src
+      - ./config:/app/config
+      - ./scenarios:/app/scenarios
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./dashboard/web
+      dockerfile: Dockerfile
+    environment:
+      API_PROXY: http://api:8000
+    volumes:
+      - ./dashboard/web/src:/app/src
+      - ./dashboard/web/index.html:/app/index.html
+      - ./dashboard/web/vite.config.js:/app/vite.config.js
+    ports:
+      - "5173:5173"
+    depends_on:
+      api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  db_data:

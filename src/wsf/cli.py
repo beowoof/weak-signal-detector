@@ -8,6 +8,7 @@ from typing import Any
 
 import typer
 
+from wsf.agent import run_agent
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
 from wsf.notice import emit_notices_for_measurement, list_notices
@@ -29,9 +30,11 @@ app = typer.Typer(no_args_is_help=True, help="Weak-signal detector research CLI.
 scenario_app = typer.Typer(no_args_is_help=True, help="Create and manage scenarios.")
 corpus_app = typer.Typer(no_args_is_help=True, help="Collect and review scenario corpora.")
 notice_app = typer.Typer(no_args_is_help=True, help="Emit and list collection-cue notices.")
+agent_app = typer.Typer(no_args_is_help=True, help="Long-running collection/measure worker.")
 app.add_typer(scenario_app, name="scenario")
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(notice_app, name="notice")
+app.add_typer(agent_app, name="agent")
 
 
 def _root() -> Path:
@@ -286,6 +289,16 @@ def notice_list(scenario: str = typer.Option(..., help="Scenario identifier.")) 
             ],
         }
     )
+
+
+@agent_app.command("run")
+def agent_run(
+    interval: float = typer.Option(5.0, help="Heartbeat interval in seconds."),
+    agent_id: str = typer.Option("agent", help="Heartbeat row id."),
+) -> None:
+    """Stay up, heartbeat into Postgres, and wait for collect/measure jobs."""
+    with _operator_errors():
+        run_agent(interval=interval, agent_id=agent_id)
 
 
 if __name__ == "__main__":

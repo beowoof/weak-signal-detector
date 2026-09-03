@@ -15,6 +15,7 @@ dependencies = [
   "fastapi>=0.115,<1",
   "uvicorn[standard]>=0.32,<1",
   "httpx2>=2.12,<3",
+  "psycopg[binary]>=3.2,<4",
   "pandas>=3.0.1",
   "earthaccess>=0.11,<1",
   "h5py>=3.11,<4",

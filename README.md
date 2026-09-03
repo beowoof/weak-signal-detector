@@ -16,7 +16,7 @@ The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do 
 
 Work continues as a **collection cueing desk**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
 
-The desk UI is React/Vite over a FastAPI API. Start it with [Desk API and UI](#desk-api-and-ui).
+The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui).
 
 The repository still contains:
 
@@ -40,17 +40,16 @@ Replay of a recorded harvest is in [`HOWTO.md`](HOWTO.md). `ukraine2022` is a de
 
 ## Architecture and lifecycle boundaries
 
-Docker is used when a component requires a persistent process or a specific reproducible service environment. It is not used merely to wrap an ephemeral Python script.
+The collection cueing desk runs as Docker Compose (`compose.yaml`): Postgres, FastAPI, a collection/measure agent, and the Vite UI. Scientific harvests stay as files on a bind mount. Postgres holds desk runtime state (agent heartbeat now; jobs and websocket fan-out next). Host `uv` remains for offline tests and one-shot CLI.
 
-| Component | Initial boundary | Reason |
+| Component | Boundary | Reason |
 |---|---|---|
-| Python collection, build, evaluation, and test scripts | Host process managed by `uv` | Ephemeral and easy to reproduce from `pyproject.toml` |
-| Desk API (`dashboard/server.py`) | Host process (`uv run python dashboard/server.py`) | FastAPI + uvicorn; `--reload` default |
-| Desk UI (`dashboard/web`) | Host process (`npm run dev`) | Vite; proxies `/api` to :8000 |
+| Desk stack | `docker compose up` | `db`, `api`, `agent`, `web` as one app |
+| Scientific harvest files | Bind mount `./scenarios`, `./data` | Not ingested into Postgres |
+| Python tests and one-shot CLI | Host process managed by `uv` | Ephemeral and easy to reproduce from `pyproject.toml` |
 | Scientific configuration | Versioned YAML | Human-readable experiment contract |
-| Raw and derived analytical data | Parquet files; DuckDB may be added for queries | Portable, immutable, tabular, no service required |
+| Raw and derived analytical data | Parquet / JSONL files | Portable, immutable, tabular |
 | Ollama and `qwen3.8:27b-mlx` | Existing host service/API | MLX depends on the Mac environment; no container or token required |
-| Future PostgreSQL or ChromaDB | Docker, only if access patterns justify it | No database is required for the current tabular PoC |
 
 ChromaDB is not part of measurement. When an LLM later acts as a **named intelligence-analyst step** (packet interpretation, not a general-purpose aggregator and never a combiner), retrieval will go through Chroma + embeddings so the model sees a cutoff-safe cited subset rather than the raw harvest. Explicit frozen prior packets remain the audit trail.
 
@@ -132,34 +131,32 @@ Google Cloud will not be configured or used without an explicit decision after t
 
 ## Desk API and UI
 
-After `uv sync --extra dev`, start the API and the UI from the repository root. Two terminals:
-
-**Terminal 1 — API** (http://127.0.0.1:8000, OpenAPI at `/docs`):
+One command from the repository root:
 
 ```bash
-uv run python dashboard/server.py --api-only
+cp .env.example .env   # if you do not already have .env
+docker compose up --build
 ```
 
-**Terminal 2 — UI** (http://127.0.0.1:5173; Vite proxies `/api` to the API):
+Then open <http://127.0.0.1:5173> (UI) and <http://127.0.0.1:8000/docs> (API). `/api/health` reports Postgres and the agent heartbeat.
+
+| Service | Port | Role |
+|---|---|---|
+| `web` | 5173 | Vite UI; proxies `/api` to the API container |
+| `api` | 8000 | FastAPI over local measurement files |
+| `db` | 5432 | Postgres (`wsd` / `wsd` / `wsd`) |
+| `agent` | — | Heartbeats into Postgres; run CLI jobs with `docker compose exec` |
+
+Collect or measure inside the stack:
 
 ```bash
-cd dashboard/web
-npm install
-npm run dev
+docker compose exec agent wsd measure --scenario ukraine2022 --exploratory
+docker compose exec agent wsd notice emit --scenario ukraine2022
 ```
 
-`npm install` is only needed the first time, or after `dashboard/web/package.json` changes.
+The UI polls `/api/result` every 8s. Source under `dashboard/web/src` and `src/` is bind-mounted, so Vite and uvicorn still reload. Websocket invalidation of that poll is next.
 
-Open <http://127.0.0.1:5173>. The UI polls `/api/result` every 8s so new notices appear without a restart. React files hot-reload in Vite; Python under `dashboard/` and `src/` reloads in uvicorn. Use `--no-reload` on the API if you want it pinned.
-
-To serve a production build from Python alone:
-
-```bash
-cd dashboard/web && npm run build
-uv run python dashboard/server.py
-```
-
-Then open <http://127.0.0.1:8000>. The API discovers every local `scenarios/*/measurement/measure-*` result and does not write to those files.
+Host-only fallback (no Docker): `uv sync --extra dev`, then `uv run python dashboard/server.py --api-only` and `cd dashboard/web && npm install && npm run dev`.
 
 ## Scenario workflow
 
