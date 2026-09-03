@@ -1,0 +1,128 @@
+{
+  "schema_id": "collection_task_v0",
+  "task_id": "packet-c9560b0d2d26:refresh_physical",
+  "kind": "refresh_physical",
+  "title": "Refresh physical",
+  "status": "complete",
+  "posture": "focused",
+  "knowledge_cutoff": "2022-02-12T23:59:59Z",
+  "ran_at": "2026-09-03T19:48:37.899941Z",
+  "summary": "9 physical series-days in the episode; 6 knowable at cutoff.",
+  "items": [
+    {
+      "series_id": "tempo.firms_thermal",
+      "label": "FIRMS",
+      "day": "2022-02-10",
+      "value": 0.0,
+      "quality": "ok",
+      "knowable": true,
+      "available_at": "2022-02-10T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.firms_thermal",
+      "label": "FIRMS",
+      "day": "2022-02-11",
+      "value": 0.0,
+      "quality": "ok",
+      "knowable": true,
+      "available_at": "2022-02-11T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.firms_thermal",
+      "label": "FIRMS",
+      "day": "2022-02-12",
+      "value": 1.0,
+      "quality": "ok",
+      "knowable": true,
+      "available_at": "2022-02-12T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.viirs_aoi",
+      "label": "VIIRS",
+      "day": "2022-02-10",
+      "value": null,
+      "quality": "not_yet_available",
+      "knowable": false,
+      "available_at": "2022-02-13T00:00:00+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.viirs_aoi",
+      "label": "VIIRS",
+      "day": "2022-02-11",
+      "value": null,
+      "quality": "not_yet_available",
+      "knowable": false,
+      "available_at": "2022-02-14T00:00:00+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.viirs_aoi",
+      "label": "VIIRS",
+      "day": "2022-02-12",
+      "value": null,
+      "quality": "not_yet_available",
+      "knowable": false,
+      "available_at": "2022-02-15T00:00:00+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": null
+    },
+    {
+      "series_id": "tempo.s1_backscatter",
+      "label": "SAR",
+      "day": "2022-02-10",
+      "value": -12.626386697602143,
+      "quality": "ok",
+      "knowable": true,
+      "available_at": "2022-02-10T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": "DESCENDING"
+    },
+    {
+      "series_id": "tempo.s1_backscatter",
+      "label": "SAR",
+      "day": "2022-02-11",
+      "value": -9.721151544877499,
+      "quality": "ok",
+      "knowable": true,
+      "available_at": "2022-02-11T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": "DESCENDING"
+    },
+    {
+      "series_id": "tempo.s1_backscatter",
+      "label": "SAR",
+      "day": "2022-02-12",
+      "value": null,
+      "quality": "missing",
+      "knowable": true,
+      "available_at": "2022-02-12T23:59:59+00:00",
+      "aoi_means": null,
+      "contributing_aois": null,
+      "orbit": "DESCENDING"
+    }
+  ],
+  "notes": [
+    "Coverage and values only. Imagery interpretation is the analyst.",
+    "Absence of a knowable VIIRS night is not absence of activity.",
+    "VIIRS: 3 episode night(s) awaiting availability at cutoff.",
+    "SAR/backscatter is missing or not knowable on one or more episode days."
+  ],
+  "analyst_question": "Is there independent physical evidence of concentration, dispersal or movement in staging AOIs?"
+}

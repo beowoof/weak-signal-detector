@@ -6,6 +6,15 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **Brief PDF:** `packet build` writes `brief.pdf` (A4). Desk button **Download PDF** (`GET /api/packet/pdf`). CLI `wsd packet pdf`.
+- **Declared posture family:** non-voting `posture.travel_risk`, `diplomatic_posture`, `official_threat_language`, `government_action`. FCDO travel-advice `change_history` is cutoff-filtered (replay-safe). US State uses the live API when contemporaneous, otherwise the last Wayback snapshot at or before cutoff. Official pack harvests it and asks whether the quantitative cue is consistent with, ahead of, or divergent from the UK/US public prior. Costly signals (embassy drawdown, leave-now, travel-advice escalation) outweigh rhetoric.
+- **Collection tasks:** `Validate cue`, `Chronology (30 days)`, `Refresh physical`, and `Official pack` write into `interpretation/<packet>/collection/`. **Request more information** runs the three harvests at focused posture (not surge). Cutoff-safe; does not vote. `POST /api/packet/collect`, `wsd packet collect`.
+- **Intelligence-product brief:** default playback is assessment, translated watchlist (observation → analytic significance), can/cannot, competing explanations with coarse fit and “what would discriminate”, and collection priorities. Analytic state `quiet → anomaly → watch → preparatory pattern → escalation` labels observable system state. Audit/provenance (z-scores, latency, missingness) is an expander. VIIRS unavailability stays a prominent warning.
+- **Operations UI:** left nav (Notices / Anomaly / Operations). Emit notices and build briefs are buttons (`POST /api/notice/emit`, `POST /api/packet/build`). CLI stays for tests and harvests.
+- **Notice operator workflow:** `ack`, `reexamine`, `request_context`, `ignore`, `reject` with an append-only event log. Human state machine, not LangGraph. `POST /api/notice/action` and `wsd notice act`.
+- **Brief UI:** notice brief renders as tables, status chips, and coloured callouts (chorus rows, missing cells, not-yet-knowable), not a preformatted wall of text.
+- **Model-free brief:** `wsd packet build` / **Build brief** writes `brief.md` plus structured `brief[]` sections. Replay cutoff is binding: VIIRS 3-day latency and next-day wiki are stated as not yet knowable, not as quiet. No model, no invented geopolitics.
+- **Packet brief layers:** `evidence.json` now has `layers`, information-environment dimensions (proxy vs missing, never a vote), and a geopolitical-context slot (empty until harvest).
 - **Notice as the UI alert:** desk opens on an inbox of notices (not a results-viewer tab). `/api/notices` lists alerts across scenarios; Anomaly charts are a drill-down from the selected notice. Opening an alert marks its dates on the charts, highlights contributing series/domains, and flags the matching matrix rows.
 - **`packet_v0` compiler** (`src/wsf/packet.py`, `wsd packet build`): same command for a live desk (`knowledge_cutoff=now`, requires `available_at` and `retrieved_at`) and a historical replay (`--replay` / `--as-of`, `available_at` only). Writes `interpretation/<packet-id>/evidence.json`. Does not assign significance. Refuses to treat a years-late emit as live.
 - **Docker Compose desk** (`compose.yaml`): `db` (Postgres 16), `api` (FastAPI), `agent` (`wsd agent run`), `web` (Vite). `docker compose up --build` is the running app. Harvests stay on bind-mounted files; Postgres holds agent heartbeat and a jobs table for later queue/websocket work. `/api/health` reports both.
@@ -15,6 +24,12 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Changed
 
+- **FIRMS spatial attribution:** the watchlist states detections as a count within the monitored staging AOIs as a combined set. Named AOIs appear only in keys and physical-posture collection, not as if one detection occurred in every listed place.
+- **Assessment:** the geographic-frame sentence sits in keys only. Assessment is judgement → evidence → alternatives → decision.
+- **Official posture requirement:** a bounded collection task (contemporaneous Russian, Ukrainian, UK, US and allied statements and formal measures, including travel advice, diplomatic drawdowns, defence announcements, NOTAM/NAVAREA restrictions and sanctions). Identify changes in declared threat assessment or costly government action.
+- **Desk copy:** product headings no longer lecture the taxonomy. Inbox and header state the current surface; the brief speaks in observations and implications.
+- **Brief hedging:** the assessment states abnormal multi-domain activity. It no longer carries a “does not support mobilisation / intent / imminent attack” card. Those claims are outside the signal.
+- **PHIA language:** key judgements use the Probability Yardstick (`almost certain`, `realistic possibility`, `likely`/`unlikely`). Analytical confidence is an AnCR (Low/Moderate/High) with a rationale. Competing explanations show likelihood, not “fit”. The assessment ends on the collection decision.
 - **Collection-indicator framing:** dashboard and README treat multi-domain co-movement as a cue to collect more (news, tasked imagery), not as a determination of mobilisation or intent.
 - **RUS physical AOIs:** `config/facilities.yaml` replaces Kremlin / Sheremetyevo / MoD postage stamps with seven frontier/staging boxes (Yelnya, Klintsy, Belgorod, Valuyki, Boguchar, Millerovo, Dzhankoi). `max_aois_per_focal` is 8.
 - **FIRMS per-AOI counts:** detections are summed inside each staging box. A union bbox from Yelnya to Crimea would have ingested Donbas contact-line fires.

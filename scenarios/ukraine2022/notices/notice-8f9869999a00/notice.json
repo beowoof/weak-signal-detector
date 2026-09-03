@@ -137,7 +137,25 @@
     "comments": [],
     "packet_id": "packet-c9560b0d2d26",
     "report_id": null,
-    "closure_rationale": null,
-    "updated_at": "2026-09-03T09:34:02.890519Z"
+    "closure_rationale": "reject",
+    "updated_at": "2026-09-03T20:06:30.103341Z",
+    "events": [
+      {
+        "at": "2026-09-03T12:37:07.527858Z",
+        "action": "reexamine",
+        "from_state": "in_packet",
+        "to_state": "watching",
+        "note": null,
+        "actor": "operator"
+      },
+      {
+        "at": "2026-09-03T12:58:22.170188Z",
+        "action": "reject",
+        "from_state": "in_packet",
+        "to_state": "rejected",
+        "note": null,
+        "actor": "operator"
+      }
+    ]
   }
 }

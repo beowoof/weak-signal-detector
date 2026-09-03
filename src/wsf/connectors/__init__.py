@@ -7,6 +7,7 @@ from wsf.connectors.base import Connector
 from wsf.connectors.brent import BrentConnector
 from wsf.connectors.cbr import CbrConnector
 from wsf.connectors.ctlogs import CtConnector
+from wsf.connectors.declared_posture import DeclaredPostureConnector
 from wsf.connectors.firms import FirmsConnector
 from wsf.connectors.fred import FredConnector
 from wsf.connectors.gazette_cadence import GazetteCadenceConnector
@@ -43,6 +44,7 @@ SOURCE_SERIES = {
     "navarea": "nav.spatial_warnings",
     "notam": "air.notam_restrictions",
     "cbr": "market.cbr_funding_spread",
+    "declared_posture": "posture.travel_risk",
 }
 
 AOI_SOURCES = frozenset({"viirs", "firms", "osm", "sar"})
@@ -75,6 +77,7 @@ def default_connectors(
         "navarea": NavareaConnector(http),
         "notam": NotamConnector(http),
         "cbr": CbrConnector(http),
+        "declared_posture": DeclaredPostureConnector(http),
     }
 
 

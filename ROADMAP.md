@@ -137,9 +137,13 @@ The LLM is an optional packet drafter, not the authority. It may not create obse
 
 **Mutable workflow only:**
 
-- state (`new` / `acked` / `in_packet` / `closed`);
+- state (`new` / `acked` / `watching` / `context_requested` / `in_packet` / `dismissed` / `rejected` / `closed`);
+- operator actions: mark as read, re-examine signal, request more information, ignore, flag incorrect signal;
+- append-only event log;
 - analyst-selected posture (may differ from recommended);
 - comments, packet id, report id, closure rationale.
+
+This is a human state machine on the notice. It is not an LLM graph. Requesting more information records intent and may later enqueue a collector; it does not search the live web.
 
 If later data change the interpretation, write a subsequent assessment or a new notice. Do not rewrite history. A later measurement is a different measurement id.
 
@@ -210,7 +214,25 @@ These are not all justified as continuous detector inputs. The collection postur
 
 ## Evidence packet
 
-The packet is aggressively boring. The builder creates objects; it does **not** assign analytical significance. Support / contradict / contextualise is filled by the analyst, or later by the interpretation layer — never by the first model pass inventing classifications.
+The sitting product is an intelligence brief organised around what changed, why it is on the watchlist, what the evidence can and cannot support, competing explanations, and what to collect next. The audit record (series-days, z-scores, reconstructed latency, missingness, shared substrates) is preserved behind that product; it is not the front door.
+
+Three epistemic levels stay distinct:
+
+```text
+observation  →  analytic implication  →  assessment
+```
+
+The compiler lives in the middle. It may say “CBR funding spread reached 3.72σ” and “this is an unusually large move in domestic financial conditions.” It may not say “this is Russian preparation for military action.” Competing explanations carry PHIA Probability Yardstick likelihoods (at watch, typically `realistic possibility`; nothing is selected). Analytical confidence uses the AnCR scale (Low / Moderate / High) and states why. “What would discriminate?” turns the hypothesis set into a collection requirement.
+
+Analytic state is an observable-system label, not adversary intent:
+
+```text
+quiet → anomaly → watch → preparatory pattern → escalation
+```
+
+For the Ukraine preparatory window (10–12 February 2022) the playback is **watch: broadening multi-domain anomaly**. Absence of VIIRS at cutoff is a prominent availability warning, not a quiet physical panel.
+
+The packet is aggressively boring about assessment. The builder creates objects; it does **not** assign analytical significance. Support / contradict / contextualise on evidence items is filled by the analyst, or later by the interpretation layer — never by the first model pass inventing classifications.
 
 ```text
 notice
@@ -249,10 +271,10 @@ Output: `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus stable ci
 | Collection posture | Missing |
 | Anomaly (coupling / coincidence) | Built. K≥3 episodes are the “look here” in the data. |
 | Notice (alert) | Built (`notice_v0`, inbox). Immutable trigger + workflow. |
-| Packet (brief) | Compiler exists; current `evidence.json` is still a restated notice. Information environment and geopolitical context are missing, so it is not a brief yet. |
+| Packet (brief) | Model-free product compiler. Default playback is assessment / watchlist / competing explanations / collection priorities. Analytic state `quiet → anomaly → watch → preparatory_pattern → escalation` describes observable system state, not intent. z-scores and reconstructed-latency machinery sit in an evidence drawer. |
 | Report (send up the chain) | Missing; `reports/` directories are empty |
 | Dashboard as **inbox of notices** | Notices are the home surface (alerts). Anomaly charts are a drill-down. |
-| On-cue context harvest | Missing; RIMA is a corpus, not triggered by a notice |
+| On-cue context harvest | Chronology / physical refresh / official pack as packet-scoped jobs. Official pack now harvests **declared UK/US posture** (FCDO travel-advice history; US State API live-only). RIMA, GKG, Copernicus catalogue, and live search are not wired. |
 | LLM assessment | Contract only (`intent_triage_v0`, `enabled: false`) |
 
 The measurement layer already emits `analyst_action: review_soft_correlation_and_resolve_costly_source_gap`. Nothing yet turns that into a persisted analyst object or a complete contextual workflow.

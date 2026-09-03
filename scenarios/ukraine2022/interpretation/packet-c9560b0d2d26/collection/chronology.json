@@ -1,0 +1,1429 @@
+{
+  "schema_id": "collection_task_v0",
+  "task_id": "packet-c9560b0d2d26:chronology",
+  "kind": "chronology",
+  "title": "Crisis baseline (30 days)",
+  "status": "complete",
+  "posture": "focused",
+  "knowledge_cutoff": "2022-02-12T23:59:59Z",
+  "ran_at": "2026-09-03T19:49:05.348756Z",
+  "summary": "30 days with knowable observations 2022-01-11 → 2022-02-09.",
+  "items": [
+    {
+      "day": "2022-01-11",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -43.99999999999995,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 74.45,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6189.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1146.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 37681.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 9.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-12",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -42.99999999999997,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 74.7075,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6189.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1120.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 36741.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 6.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-13",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -41.000000000000014,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.2575,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6189.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1250.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 36500.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 13.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-14",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -30.00000000000007,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.21,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6308.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1380.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 48206.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 13.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-15",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6308.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 722.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 46817.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 5.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-16",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6202.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 490.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 42324.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 7.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-17",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -21.000000000000085,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.0925,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3257.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 876.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 43009.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 13.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-18",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -22.000000000000064,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.91,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3258.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1386.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 52610.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 11.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-19",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -25.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.1775,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3257.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1632.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 75849.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 14.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-20",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -24.00000000000002,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.6825,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6311.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1568.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 90769.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 5.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-21",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -21.000000000000085,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 77.425,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6317.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1983.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 98149.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 12.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-22",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6317.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1202.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 93759.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 13.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-23",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6317.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1027.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 110816.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 9.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-24",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -16.999999999999993,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 78.7625,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6317.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1695.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 182275.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 9.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-25",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -8.000000000000007,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 78.6325,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6318.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1569.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 177893.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 12.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-26",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -5.000000000000071,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 79.4175,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 6318.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1801.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 153931.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 6.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-27",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -2.999999999999936,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 77.96,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 458.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1810.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 127713.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 17.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-28",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -8.000000000000007,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 77.8,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3370.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1672.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 113654.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 21.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-29",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3370.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1023.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 108662.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 10.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-30",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3370.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 762.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 98970.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 11.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-01-31",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -22.000000000000064,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 77.315,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3370.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1462.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 80618.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 13.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-01",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -36.99999999999992,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.805,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1821.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 80128.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 4.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-02",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -33.00000000000001,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.04,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3370.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1590.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 79263.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-03",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -38.00000000000008,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 76.4475,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1551.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 72017.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 30.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-04",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -49.00000000000002,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 75.83,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1590.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 65949.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 16.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-05",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 723.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 61054.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 8.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-06",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": null,
+          "quality": "missing",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 882.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 78723.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 4.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-07",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -67.99999999999997,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 75.475,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1755.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 79032.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 4.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-08",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": -25.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 75.0075,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3369.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1748.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 75286.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 11.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    },
+    {
+      "day": "2022-02-09",
+      "series": [
+        {
+          "series_id": "market.cbr_funding_spread",
+          "value": 0.9999999999999787,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "dyad.moex_usdrub",
+          "value": 74.74,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "net.ripe_prefixes",
+          "value": 3377.0,
+          "quality": "ok",
+          "note": "asn=AS12389,AS8359,AS31133"
+        },
+        {
+          "series_id": "talk.gdelt_cameo",
+          "value": 1655.0,
+          "quality": "ok",
+          "note": "codes=01,02,04,13"
+        },
+        {
+          "series_id": "attn.wiki_pageviews",
+          "value": 60529.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "tempo.firms_thermal",
+          "value": 0.0,
+          "quality": "ok",
+          "note": null
+        },
+        {
+          "series_id": "nav.spatial_warnings",
+          "value": 14.0,
+          "quality": "ok",
+          "note": null
+        }
+      ]
+    }
+  ],
+  "notes": [
+    "Assembled from in-corpus observations knowable at cutoff. Not a live search.",
+    "RIPE prefixes 6,318 (2022-01-26) → 458 (2022-01-27).",
+    "CBR funding spread peaked at -68.00 on 2022-02-07 in the lookback-plus-episode window."
+  ],
+  "analyst_question": "Abnormal relative to what was already happening?"
+}

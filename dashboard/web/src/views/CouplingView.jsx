@@ -53,7 +53,7 @@ export default function CouplingView({ result, windowId, onTooltip, focus = null
           <div className="metric-value">
             {k2Count} ep ({k2Days}d)
           </div>
-          <div className="metric-sub">Two-domain co-movement; not a determination</div>
+          <div className="metric-sub">Two-domain co-movement</div>
         </div>
         <div className={`metric-card ${taskingDays ? "highlight-tasking" : ""}`}>
           <div className="metric-label">Collect more (optical gap)</div>

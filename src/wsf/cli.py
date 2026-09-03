@@ -10,9 +10,16 @@ from typing import Any
 import typer
 
 from wsf.agent import run_agent
+from wsf.brief_pdf import render_existing_packet
+from wsf.collect import ALL_KINDS, HARVEST_KINDS, run_collection
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
-from wsf.notice import emit_notices_for_measurement, list_notices
+from wsf.notice import (
+    apply_notice_action,
+    emit_notices_for_measurement,
+    list_notices,
+    load_notice,
+)
 from wsf.packet import build_and_save
 from wsf.progress import Progress
 from wsf.register import validate_configuration
@@ -295,6 +302,31 @@ def notice_list(scenario: str = typer.Option(..., help="Scenario identifier.")) 
     )
 
 
+@notice_app.command("act")
+def notice_act(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+    action: str = typer.Option(
+        ...,
+        help="ack | reexamine | request_context | ignore | reject | close",
+    ),
+    note: str | None = typer.Option(None, help="Optional operator note."),  # noqa: B008
+) -> None:
+    """Record an operator action on a notice. Does not edit trigger facts."""
+    with _operator_errors():
+        item = apply_notice_action(_root(), scenario, notice, action, note=note)
+    _echo(
+        {
+            "notice_id": item.notice_id,
+            "action": action,
+            "state": item.workflow.state.value,
+            "selected_posture": (
+                item.workflow.selected_posture.value if item.workflow.selected_posture else None
+            ),
+        }
+    )
+
+
 @packet_app.command("build")
 def packet_build(
     scenario: str = typer.Option(..., help="Scenario identifier."),
@@ -324,6 +356,57 @@ def packet_build(
             "path": str(path),
         }
     )
+
+
+@packet_app.command("pdf")
+def packet_pdf(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+) -> None:
+    """Write brief.pdf for the notice's current packet."""
+    with _operator_errors():
+        item = load_notice(_root(), scenario, notice)
+        packet_id = item.workflow.packet_id
+        if not packet_id:
+            raise ValueError("notice has no packet; run wsd packet build first")
+        path = render_existing_packet(_root(), scenario, packet_id)
+    _echo({"notice_id": notice, "packet_id": packet_id, "path": str(path)})
+
+
+@packet_app.command("collect")
+def packet_collect(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+    replay: bool = typer.Option(
+        False,
+        help="Use episode-end cutoff. Required for historical notices.",
+    ),
+    task: str = typer.Option(
+        "harvest",
+        help="validate | chronology | refresh_physical | official_pack | harvest | all",
+    ),
+    request_context: bool = typer.Option(
+        False,
+        help="Also set the notice to context_requested (focused posture).",
+    ),
+) -> None:
+    """Run packet-scoped collection tasks. Writes into interpretation/<packet>/collection/."""
+    if task == "harvest":
+        kinds = list(HARVEST_KINDS)
+    elif task == "all":
+        kinds = list(ALL_KINDS)
+    else:
+        kinds = [task]
+    with _operator_errors():
+        payload = run_collection(
+            _root(),
+            scenario,
+            notice,
+            kinds=kinds,
+            replay=replay,
+            request_context=request_context,
+        )
+    _echo(payload)
 
 
 @agent_app.command("run")

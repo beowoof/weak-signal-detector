@@ -1,4 +1,15 @@
 import { number } from "../lib/format.js";
+import BriefView from "./BriefView.jsx";
+
+const TERMINAL = new Set(["dismissed", "rejected", "closed"]);
+
+const ACTIONS = [
+  { id: "ack", label: "Mark as read" },
+  { id: "reexamine", label: "Re-examine signal" },
+  { id: "request_context", label: "Request more information" },
+  { id: "ignore", label: "Ignore" },
+  { id: "reject", label: "Flag incorrect signal" },
+];
 
 function isLate(trigger) {
   return (trigger.days_before_window_end ?? 99) <= 2;
@@ -25,7 +36,176 @@ function AlertRow({ item, selected, onSelect }) {
   );
 }
 
-function AlertDetail({ item, onOpenAnomaly }) {
+function taskKindClass(status) {
+  return `collect-status collect-status-${status || "pending"}`;
+}
+
+function CollectionPanel({ collection, busy, onRun }) {
+  const tasks = collection?.tasks || [];
+  if (!tasks.length && !busy) return null;
+  return (
+    <section className="brief-card collect-panel">
+      <h3>Collection tasks</h3>
+      <p className="notice-timing">
+        Packet-scoped. Cutoff-safe. Does not vote in the notice.
+      </p>
+      {busy ? <p className="notice-timing">Running collection…</p> : null}
+      {tasks.map((task) => (
+        <details key={task.kind || task.task_id} className="collect-task" open={task.kind === "validate"}>
+          <summary>
+            <span className={taskKindClass(task.status)}>{task.status}</span> {task.title}
+          </summary>
+          <p>{task.summary}</p>
+          {task.analyst_question ? (
+            <p className="notice-look">{task.analyst_question}</p>
+          ) : null}
+          {(task.notes || []).map((note) => (
+            <p key={note} className="notice-timing">
+              {note}
+            </p>
+          ))}
+          {task.kind === "validate" ? (
+            <ul className="collect-checklist">
+              {(task.items || []).map((row) => (
+                <li key={row.id} className={`collect-check collect-check-${row.status}`}>
+                  {row.text}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {task.kind === "chronology" && task.items?.length ? (
+            <div className="brief-table-wrap">
+              <table className="brief-table">
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>What was knowable</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {task.items.slice(-10).map((row) => (
+                    <tr key={row.day}>
+                      <td>{row.day}</td>
+                      <td>
+                        {(row.series || [])
+                          .map(
+                            (cell) =>
+                              `${cell.series_id.split(".").slice(-1)[0]} ${number(cell.value)}${
+                                cell.note ? ` (${cell.note})` : ""
+                              }`,
+                          )
+                          .join(" · ")}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          {task.kind === "refresh_physical" && task.items?.length ? (
+            <div className="brief-table-wrap">
+              <table className="brief-table">
+                <thead>
+                  <tr>
+                    <th>Source</th>
+                    <th>Day</th>
+                    <th>Status</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {task.items.map((row) => (
+                    <tr key={`${row.label}-${row.day}`}>
+                      <td>{row.label}</td>
+                      <td>{row.day}</td>
+                      <td>{row.knowable ? row.quality : "awaiting"}</td>
+                      <td>{row.knowable ? number(row.value) : "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : null}
+          {task.kind === "official_pack" && task.items?.length ? (
+            <>
+              {(task.items || []).some((row) => row.kind === "declared_posture") ? (
+                <div className="brief-table-wrap">
+                  <table className="brief-table">
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Issuer</th>
+                        <th>Action</th>
+                        <th>Note</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {task.items
+                        .filter((row) => row.kind === "declared_posture")
+                        .slice(-12)
+                        .map((row) => (
+                          <tr key={`${row.at}-${row.action}`}>
+                            <td>{row.date}</td>
+                            <td>
+                              {row.government} {row.country}
+                              {row.costly ? " · costly" : ""}
+                            </td>
+                            <td>{row.action}</td>
+                            <td>{row.text}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+              {(task.items || []).some((row) => row.series_id === "nav.spatial_warnings") ? (
+                <div className="brief-table-wrap">
+                  <table className="brief-table">
+                    <thead>
+                      <tr>
+                        <th>Day</th>
+                        <th>NAVAREA</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {task.items
+                        .filter((row) => row.series_id === "nav.spatial_warnings")
+                        .map((row) => (
+                          <tr key={row.day}>
+                            <td>{row.day}</td>
+                            <td>{number(row.value)}</td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : null}
+            </>
+          ) : null}
+          {onRun ? (
+            <p className="notice-actions">
+              <button type="button" onClick={() => onRun(task.kind)} disabled={busy}>
+                Re-run
+              </button>
+            </p>
+          ) : null}
+        </details>
+      ))}
+    </section>
+  );
+}
+
+function AlertDetail({
+  item,
+  packet,
+  collection,
+  collectBusy,
+  onCollect,
+  onOpenAnomaly,
+  onBuildPacket,
+  onAction,
+  actionError,
+}) {
   const trigger = item.trigger || {};
   const workflow = item.workflow || {};
   const late = isLate(trigger);
@@ -41,11 +221,20 @@ function AlertDetail({ item, onOpenAnomaly }) {
         <p className="notice-timing">
           {item.scenario_id || trigger.scenario_id} · {trigger.window_id} ·{" "}
           {late
-            ? "near window end (often information-saturated)"
+            ? "near window end"
             : `${trigger.days_before_window_end} days before window end`}
         </p>
       </header>
-      <p className="notice-look">Look here: {domains || "no domains listed"}.</p>
+      <p className="notice-look">
+        Look here:{" "}
+        {(packet?.product?.keys || []).length
+          ? packet.product.keys.join(" · ")
+          : domains || "no domains listed"}
+        .
+      </p>
+      {packet?.product?.geographic_frame ? (
+        <p className="notice-timing">{packet.product.geographic_frame}</p>
+      ) : null}
       <dl>
         <div>
           <dt>State</dt>
@@ -81,18 +270,80 @@ function AlertDetail({ item, onOpenAnomaly }) {
         </div>
       </dl>
       <p className="notice-id">{item.notice_id}</p>
-      {item.key && onOpenAnomaly ? (
-        <p className="notice-actions">
+      <p className="notice-actions">
+        {item.key && onOpenAnomaly ? (
           <button type="button" onClick={() => onOpenAnomaly(item)}>
             Open anomaly
           </button>
-        </p>
-      ) : null}
+        ) : null}
+        {onBuildPacket ? (
+          <button type="button" onClick={() => onBuildPacket(item)}>
+            Build brief
+          </button>
+        ) : null}
+        {packet?.packet_id ? (
+          <a
+            className="notice-pdf"
+            href={`/api/packet/pdf?scenario=${encodeURIComponent(
+              item.scenario_id || trigger.scenario_id,
+            )}&packet_id=${encodeURIComponent(packet.packet_id)}`}
+            target="_blank"
+            rel="noreferrer"
+          >
+            Download PDF
+          </a>
+        ) : null}
+        {onCollect ? (
+          <button
+            type="button"
+            disabled={collectBusy}
+            onClick={() => onCollect(item, ["validate"])}
+          >
+            Validate cue
+          </button>
+        ) : null}
+        {!TERMINAL.has(workflow.state) &&
+          ACTIONS.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              onClick={() => {
+                onAction?.(item, action.id);
+                if (action.id === "reexamine") onOpenAnomaly?.(item);
+              }}
+            >
+              {action.label}
+            </button>
+          ))}
+      </p>
+      {actionError ? <p className="error">{actionError}</p> : null}
+      <CollectionPanel
+        collection={collection}
+        busy={collectBusy}
+        onRun={onCollect ? (kind) => onCollect(item, [kind]) : undefined}
+      />
+      <BriefView
+        packet={packet}
+        notice={item}
+        onCollect={onCollect ? (kind) => onCollect(item, [kind]) : undefined}
+      />
     </article>
   );
 }
 
-export default function NoticesView({ notices, selectedId, onSelect, onOpenAnomaly }) {
+export default function NoticesView({
+  notices,
+  selectedId,
+  onSelect,
+  onOpenAnomaly,
+  onBuildPacket,
+  packet,
+  collection,
+  collectBusy,
+  onCollect,
+  onAction,
+  actionError,
+}) {
   if (!notices.length) {
     return (
       <p className="empty">
@@ -104,10 +355,7 @@ export default function NoticesView({ notices, selectedId, onSelect, onOpenAnoma
   return (
     <div className="alert-layout">
       <aside className="alert-inbox" aria-label="Notice inbox">
-        <p className="notice-intro">
-          A notice is an alert: the desk is interrupting you to look. It is not a brief and not a
-          finding of intent.
-        </p>
+        <p className="notice-intro">Inbox</p>
         <div className="alert-row-list">
           {notices.map((item) => (
             <AlertRow
@@ -119,7 +367,17 @@ export default function NoticesView({ notices, selectedId, onSelect, onOpenAnoma
           ))}
         </div>
       </aside>
-      <AlertDetail item={selected} onOpenAnomaly={onOpenAnomaly} />
+      <AlertDetail
+        item={selected}
+        packet={packet}
+        collection={collection}
+        collectBusy={collectBusy}
+        onCollect={onCollect}
+        onOpenAnomaly={onOpenAnomaly}
+        onBuildPacket={onBuildPacket}
+        onAction={onAction}
+        actionError={actionError}
+      />
     </div>
   );
 }

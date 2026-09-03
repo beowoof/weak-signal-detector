@@ -71,6 +71,9 @@
     "cbr": {
       "enabled": true
     },
+    "declared_posture": {
+      "enabled": true
+    },
     "ct": {
       "enabled": false
     },

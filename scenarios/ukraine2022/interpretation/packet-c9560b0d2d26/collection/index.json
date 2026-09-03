@@ -1,0 +1,12 @@
+{
+  "packet_id": "packet-c9560b0d2d26",
+  "notice_id": "notice-8f9869999a00",
+  "updated_at": "2026-09-03T20:06:39.192130+00:00",
+  "tasks": [
+    {
+      "kind": "official_pack",
+      "status": "complete",
+      "title": "Official pack"
+    }
+  ]
+}

@@ -1,12 +1,12 @@
 {
   "schema_id": "packet_v0",
-  "packet_id": "packet-c9560b0d2d26",
-  "notice_id": "notice-8f9869999a00",
+  "packet_id": "packet-5c130e1d7017",
+  "notice_id": "notice-184a38674e17",
   "scenario_id": "ukraine2022",
   "clocks": {
     "mode": "replay",
-    "knowledge_cutoff": "2022-02-12T23:59:59Z",
-    "built_at": "2026-09-03T20:30:41.983145Z",
+    "knowledge_cutoff": "2022-02-23T23:59:59Z",
+    "built_at": "2026-09-03T20:30:42.043161Z",
     "notice_emitted_at": "2026-09-03T08:19:57.441998Z",
     "knowledge_rule": "available_at"
   },
@@ -21,37 +21,37 @@
     {
       "id": "alert",
       "title": "Alert",
-      "body": "Notice notice-8f9869999a00 opened by coupling_k3_z15_p3 for 2022-02-10 → 2022-02-12 (3 days; 11 days before window end). Contributing domains: digital infrastructure, domestic financial conditions, information, public attention. Recommended posture: focused (chorus with physical available). Knowledge cutoff: 2022-02-12T23:59:59+00:00 (replay; available_at)."
+      "body": "Notice notice-184a38674e17 opened by coupling_k3_z15_p3 for 2022-02-21 → 2022-02-23 (3 days; 0 days before window end). Contributing domains: domestic financial conditions, information, market, public attention, spatial restriction. Recommended posture: focused (chorus with physical available). Knowledge cutoff: 2022-02-23T23:59:59+00:00 (replay; available_at)."
     },
     {
       "id": "what_moved",
       "title": "What moved (knowable at cutoff)",
-      "body": "attn.wiki_pageviews: 2022-02-10 ok raw=66,480; 2022-02-11 ok raw=120,857\nmarket.cbr_funding_spread: 2022-02-10 ok raw=21.00; 2022-02-11 ok raw=47.00; 2022-02-12 missing raw=—\nnet.ripe_prefixes: 2022-02-10 ok raw=463; 2022-02-11 ok raw=463; 2022-02-12 ok raw=463\ntalk.gdelt_cameo: 2022-02-10 ok raw=1,680; 2022-02-11 ok raw=1,973; 2022-02-12 ok raw=1,826\ntempo.firms_thermal: 2022-02-10 ok raw=0.00; 2022-02-11 ok raw=0.00; 2022-02-12 ok raw=1.00"
+      "body": "attn.wiki_pageviews: 2022-02-21 ok raw=375,181; 2022-02-22 ok raw=763,132\ndyad.moex_usdrub: 2022-02-21 ok raw=79.78; 2022-02-22 ok raw=78.80; 2022-02-23 ok raw=81.16\nmarket.cbr_funding_spread: 2022-02-21 ok raw=0.00; 2022-02-22 ok raw=14.00; 2022-02-23 source_down raw=—\nnav.spatial_warnings: 2022-02-21 ok raw=18.00; 2022-02-22 ok raw=18.00; 2022-02-23 ok raw=7.00\ntalk.gdelt_cameo: 2022-02-21 ok raw=2,588; 2022-02-22 ok raw=3,444; 2022-02-23 ok raw=3,225\ntalk.icews_cameo: 2022-02-21 ok raw=230; 2022-02-22 ok raw=192; 2022-02-23 ok raw=153\ntempo.firms_thermal: 2022-02-21 ok raw=0.00; 2022-02-22 ok raw=0.00; 2022-02-23 ok raw=2.00"
     },
     {
       "id": "quiet_or_unavailable",
       "title": "What was quiet, local, or not yet knowable",
-      "body": "FIRMS thermal: 2022-02-10=0.00, 2022-02-11=0.00, 2022-02-12=1.00 detections inside staging AOIs. VIIRS NTL for these nights exists in the measurement but was not yet available at cutoff (3-day reconstructed latency). Wikipedia pageviews for 2022-02-12 were not yet available at cutoff (next-day Wikimedia lag)."
+      "body": "FIRMS thermal: 2022-02-21=0.00, 2022-02-22=0.00, 2022-02-23=2.00 detections inside staging AOIs. VIIRS NTL for these nights exists in the measurement but was not yet available at cutoff (3-day reconstructed latency). Wikipedia pageviews for 2022-02-23 were not yet available at cutoff (next-day Wikimedia lag)."
     },
     {
       "id": "environment",
       "title": "Information environment",
-      "body": "reporting volume [proxy]: GDELT CAMEO event counts for the actor over the episode. This is a volume proxy from a series that already votes in the notice; it is not a GKG tone set.\n  2022-02-10: count=1,680\n  2022-02-11: count=1,973\n  2022-02-12: count=1,826\ngeographic focus [proxy]: Wikipedia title mix (Ukraine / Russia / Russian Armed Forces) as a focus proxy. Pageviews already vote in the notice; this split only shows where attention sat.\n  2022-02-10: Russia=26,222, Russian Armed Forces=5,043, Ukraine=35,215\n  2022-02-11: Russia=31,310, Russian Armed Forces=10,138, Ukraine=79,409\ntone [missing]: Tone/intensity needs GKG, Media Cloud, or RIMA. Not in this harvest.\nsource diversity [missing]: Originating-outlet diversity is not in the CAMEO count series.\nofficial posture [missing]: Declared UK/US posture (travel advice, diplomatic drawdown, leave-now, threat language) is not in this corpus. Official pack harvests it cutoff-safe from FCDO change_history.\nnarrative concentration [missing]: Competing-explanation mix is not measured yet.\nThese dimensions describe the environment. They do not add a vote.\nICEWS vs GDELT (same public_reporting substrate): ICEWS 2022-02-10=176, 2022-02-11=130, 2022-02-12=7.00; GDELT 2022-02-10=1,680, 2022-02-11=1,973, 2022-02-12=1,826. Divergence is not independent corroboration."
+      "body": "reporting volume [proxy]: GDELT CAMEO event counts for the actor over the episode. This is a volume proxy from a series that already votes in the notice; it is not a GKG tone set.\n  2022-02-21: count=2,588\n  2022-02-22: count=3,444\n  2022-02-23: count=3,225\ngeographic focus [proxy]: Wikipedia title mix (Ukraine / Russia / Russian Armed Forces) as a focus proxy. Pageviews already vote in the notice; this split only shows where attention sat.\n  2022-02-21: Russia=66,704, Russian Armed Forces=16,357, Ukraine=292,120\n  2022-02-22: Russia=125,206, Russian Armed Forces=25,006, Ukraine=612,920\ntone [missing]: Tone/intensity needs GKG, Media Cloud, or RIMA. Not in this harvest.\nsource diversity [missing]: Originating-outlet diversity is not in the CAMEO count series.\nofficial posture [missing]: Declared UK/US posture (travel advice, diplomatic drawdown, leave-now, threat language) is not in this corpus. Official pack harvests it cutoff-safe from FCDO change_history.\nnarrative concentration [missing]: Competing-explanation mix is not measured yet.\nThese dimensions describe the environment. They do not add a vote.\nICEWS vs GDELT (same public_reporting substrate): ICEWS 2022-02-21=230, 2022-02-22=192, 2022-02-23=153; GDELT 2022-02-21=2,588, 2022-02-22=3,444, 2022-02-23=3,225. Divergence is not independent corroboration."
     },
     {
       "id": "geopolitics",
       "title": "Geopolitical / official context",
-      "body": "NAVAREA counts are public maritime warnings, not diplomatic posture.\nNo declared UK/US posture series in this corpus. Run Official pack to harvest FCDO travel-advice history (cutoff-filtered).\nNGA NAVAREA warning counts for RUS areas (knowable at cutoff).\n  2022-02-10: count=14.00\n  2022-02-11: count=13.00\n  2022-02-12: count=7.00"
+      "body": "NAVAREA counts are public maritime warnings, not diplomatic posture.\nNo declared UK/US posture series in this corpus. Run Official pack to harvest FCDO travel-advice history (cutoff-filtered).\nNGA NAVAREA warning counts for RUS areas (knowable at cutoff).\n  2022-02-21: count=18.00\n  2022-02-22: count=18.00\n  2022-02-23: count=7.00"
     },
     {
       "id": "dependencies",
       "title": "Dependencies",
-      "body": "public_reporting: attn.wiki_pageviews, talk.gdelt_cameo. these series can move together because they read the same public environment"
+      "body": "public_reporting: attn.wiki_pageviews, talk.gdelt_cameo, talk.icews_cameo. these series can move together because they read the same public environment"
     },
     {
       "id": "unknowns",
       "title": "Unknowns and holes",
-      "body": "dyad.fx 2022-02-10 quality=missing\ndyad.fx 2022-02-11 quality=missing\ndyad.fx 2022-02-12 quality=missing\nmarket.cbr_funding_spread 2022-02-12 quality=missing\ndyad.moex_usdrub 2022-02-12 quality=missing\ntempo.s1_backscatter 2022-02-12 quality=missing\n4 series-days excluded as not knowable at cutoff."
+      "body": "dyad.fx 2022-02-21 quality=missing\ndyad.fx 2022-02-22 quality=missing\ndyad.fx 2022-02-23 quality=missing\nmarket.cbr_funding_spread 2022-02-23 quality=source_down\ntempo.s1_backscatter 2022-02-21 quality=missing\ntempo.s1_backscatter 2022-02-22 quality=missing\n4 series-days excluded as not knowable at cutoff."
     },
     {
       "id": "hypotheses",
@@ -66,43 +66,39 @@
   ],
   "product": {
     "headline": "Ukraine: Preparatory Activity Watch",
-    "period": "10–12 February 2022",
-    "available_by": "23:59Z, 12 February",
-    "analytic_state": "watch",
-    "analytic_state_label": "Watch",
-    "change": "Broadening multi-domain anomaly",
+    "period": "21–23 February 2022",
+    "available_by": "23:59Z, 23 February",
+    "analytic_state": "escalation",
+    "analytic_state_label": "Escalation",
+    "change": "Rapid increase in anomaly energy and domain breadth",
     "confidence": "Low",
     "confidence_rationale": "Analytical confidence is low. The information base is incomplete: independent physical reporting is not yet available; official-posture collection is missing; public-reporting series share a substrate.",
     "assessment": [
       "We assess it is almost certain that abnormal activity is present across several Russian observables with bearing on Ukraine.",
-      "Russian financial conditions (CBR, Moscow), Russian RIPEstat prefixes and public reporting on Russia and Ukraine are simultaneously elevated relative to their recent baselines. The signal is co-movement across those channels.",
-      "It is a realistic possibility that this reflects reversible preparation, defensive readiness, routine variation or exercise activity. Present reporting does not discriminate among those explanations.",
-      "The decision this supports is collection against independent physical posture on those AOIs."
+      "Russian financial conditions (CBR, Moscow), public reporting on Russia and Ukraine and maritime warnings are simultaneously elevated relative to their recent baselines. The signal is co-movement across those channels.",
+      "We assess it is likely that the abnormality has intensified: anomaly energy and domain breadth have increased.",
+      "It is a realistic possibility that this reflects heightened readiness or reversible preparation. It is unlikely to be routine variation.",
+      "The decision this supports is urgent collection against independent physical and official-posture sources on those AOIs."
     ],
     "watchlist": [
       {
         "indicator": "Russian financial conditions",
-        "observation": "CBR funding spread reached 3.72σ on 11 Feb after 2.54σ on 10 Feb",
-        "implication": "Strongest abnormality in the window; unusually large move in domestic funding conditions."
-      },
-      {
-        "indicator": "Digital infrastructure",
-        "observation": "RIPE prefixes remained 2.78–3.14σ above baseline for three days",
-        "implication": "Persistent rather than transient infrastructure anomaly."
+        "observation": "CBR funding spread reached 1.66σ on 22 Feb after 1.05σ on 21 Feb",
+        "implication": "Elevated relative to the recent baseline."
       },
       {
         "indicator": "Public reporting",
-        "observation": "GDELT reporting remained elevated; Wikipedia attention rose from 66,480 to 120,857 views",
+        "observation": "GDELT reporting remained elevated; Wikipedia attention rose from 375,181 to 763,132 views",
         "implication": "Confirms a heightened information environment; partly dependent on the same public reporting."
       },
       {
         "indicator": "Physical activity",
-        "observation": "FIRMS recorded one thermal detection within the monitored staging AOIs on 12 Feb.",
-        "implication": "Weak physical indicator."
+        "observation": "FIRMS recorded 2 thermal detections within the monitored staging AOIs on 23 Feb.",
+        "implication": "Large deviation from the recent baseline."
       },
       {
         "indicator": "Maritime warnings",
-        "observation": "NAVAREA warnings declined from 14 to 7",
+        "observation": "NAVAREA warnings declined from 18 to 7",
         "implication": "Does not reinforce the broader anomaly."
       }
     ],
@@ -116,12 +112,12 @@
     "hypotheses": [
       {
         "hypothesis": "Routine variation",
-        "fit": "Realistic possibility",
+        "fit": "Unlikely",
         "discriminate": "Anomalies decay without additional domains activating."
       },
       {
         "hypothesis": "Exercise / demonstration",
-        "fit": "Realistic possibility",
+        "fit": "Unlikely",
         "discriminate": "Physical activity consistent with announced exercise patterns."
       },
       {
@@ -141,7 +137,7 @@
       },
       {
         "hypothesis": "Measurement artefact",
-        "fit": "Unlikely",
+        "fit": "Highly unlikely",
         "discriminate": "Anomalies disappear after source or baseline validation."
       }
     ],
@@ -149,7 +145,7 @@
       {
         "rank": "1",
         "title": "Physical posture — highest priority",
-        "why": "The anomaly is strongest in financial, infrastructure and information indicators. Independent physical evidence on Yelnya, Klintsy, Belgorod, Valuyki, Boguchar, Millerovo and Dzhankoi would discriminate. VIIRS NTL not yet available at this cutoff. SAR/backscatter coverage for the last episode day is also unavailable."
+        "why": "The anomaly is strongest in financial, infrastructure and information indicators. Independent physical evidence on Yelnya, Klintsy, Belgorod, Valuyki, Boguchar, Millerovo and Dzhankoi would discriminate. VIIRS NTL not yet available at this cutoff."
       },
       {
         "rank": "2",
@@ -158,17 +154,12 @@
       },
       {
         "rank": "3",
-        "title": "Financial persistence",
-        "why": "Determine whether the abnormal CBR funding conditions persist or intensify. USD/RUB data for the last episode day are not yet available."
-      },
-      {
-        "rank": "4",
         "title": "Information-environment composition",
         "why": "Current data establish increased volume and attention, not tone, narrative concentration or source diversity."
       }
     ],
     "availability_warnings": [
-      "VIIRS NTL 2022-02-10–2022-02-12: not yet available (3-day reconstructed latency)."
+      "VIIRS NTL 2022-02-21–2022-02-23: not yet available (3-day reconstructed latency)."
     ],
     "analyst_note": "Analytical confidence is low. The information base is incomplete: independent physical reporting is not yet available; official-posture collection is missing; public-reporting series share a substrate. The key uncertainty is whether the cross-domain anomaly is a temporary response to the existing crisis environment or the early observable consequences of material preparation.",
     "keys": [
@@ -190,103 +181,106 @@
     "collection_id": "collection-20260902T172316Z-3a7030",
     "measurement_id": "measure-20260902T203316Z-f05cf7",
     "window_id": "incident",
-    "start": "2022-02-10",
-    "end": "2022-02-12",
+    "start": "2022-02-21",
+    "end": "2022-02-23",
     "contributing_domains": [
-      "digital_infrastructure",
       "domestic_financial_conditions",
       "information",
-      "public_attention"
+      "market",
+      "public_attention",
+      "spatial_restriction"
     ],
     "contributing_series": [
       "attn.wiki_pageviews",
+      "dyad.moex_usdrub",
       "market.cbr_funding_spread",
-      "net.ripe_prefixes",
+      "nav.spatial_warnings",
       "talk.gdelt_cameo",
+      "talk.icews_cameo",
       "tempo.firms_thermal"
     ],
     "observed": {
       "daily_series_z": [
         {
-          "attn.wiki_pageviews": 0.47396039162672243,
-          "dyad.moex_usdrub": 0.018873781528325924,
-          "market.cbr_funding_spread": 2.5422918626645576,
-          "nav.spatial_warnings": 0.9838326532374163,
-          "net.ripe_prefixes": 3.1378510347910753,
-          "talk.gdelt_cameo": 1.5771061377428408,
-          "talk.icews_cameo": 1.477733062961315,
-          "tempo.firms_thermal": -0.3234983196103153,
-          "tempo.s1_backscatter": -1.6866700006503021,
-          "tempo.viirs_aoi": -0.07482347303249257
-        },
-        {
-          "attn.wiki_pageviews": 2.1322800236645483,
-          "dyad.moex_usdrub": 1.3633790663307968,
-          "market.cbr_funding_spread": 3.7167270352915756,
-          "nav.spatial_warnings": 0.7403628731157018,
-          "net.ripe_prefixes": 2.94611607671563,
-          "talk.gdelt_cameo": 2.2340190456285822,
-          "talk.icews_cameo": 0.6487278881171562,
-          "tempo.firms_thermal": -0.3234983196103153,
-          "tempo.s1_backscatter": 0.3325631853239907,
-          "tempo.viirs_aoi": -0.508145500107647
-        },
-        {
-          "attn.wiki_pageviews": 4.665004663290421,
-          "dyad.moex_usdrub": 0.0,
-          "market.cbr_funding_spread": 0.0,
-          "nav.spatial_warnings": -0.6331018843045886,
-          "net.ripe_prefixes": 2.782021419506892,
-          "talk.gdelt_cameo": 1.811583347675243,
-          "talk.icews_cameo": -1.4924025877139144,
-          "tempo.firms_thermal": 1.7993521504794379,
+          "attn.wiki_pageviews": 5.802846066768428,
+          "dyad.moex_usdrub": 2.9582927371272816,
+          "market.cbr_funding_spread": 1.0534865913208744,
+          "nav.spatial_warnings": 1.84323935423191,
+          "net.ripe_prefixes": 0.878343729598187,
+          "talk.gdelt_cameo": 2.7902822926246142,
+          "talk.icews_cameo": 1.7865376079453912,
+          "tempo.firms_thermal": -0.3592106040535498,
           "tempo.s1_backscatter": 0.0,
-          "tempo.viirs_aoi": 0.2944560423269493
+          "tempo.viirs_aoi": -0.7288474357279061
+        },
+        {
+          "attn.wiki_pageviews": 11.199162883221069,
+          "dyad.moex_usdrub": 2.120295287074917,
+          "market.cbr_funding_spread": 1.6607001555948835,
+          "nav.spatial_warnings": 1.787986823162543,
+          "net.ripe_prefixes": 0.8615915530254996,
+          "talk.gdelt_cameo": 4.260790682597428,
+          "talk.icews_cameo": 1.204945885945449,
+          "tempo.firms_thermal": -0.3396291366019411,
+          "tempo.s1_backscatter": 0.0,
+          "tempo.viirs_aoi": 0.12733453380235812
+        },
+        {
+          "attn.wiki_pageviews": 4.604943110355626,
+          "dyad.moex_usdrub": 3.436445249068697,
+          "market.cbr_funding_spread": 0.0,
+          "nav.spatial_warnings": -0.677774661755819,
+          "net.ripe_prefixes": 0.8455924526364065,
+          "talk.gdelt_cameo": 3.4690226919792146,
+          "talk.icews_cameo": 0.6428568943826886,
+          "tempo.firms_thermal": 5.430450802499489,
+          "tempo.s1_backscatter": -0.6055831324809258,
+          "tempo.viirs_aoi": -0.19613323802645427
         }
       ],
       "daily_dates": [
-        "2022-02-10",
-        "2022-02-11",
-        "2022-02-12"
+        "2022-02-21",
+        "2022-02-22",
+        "2022-02-23"
       ]
     },
     "derived": {
       "domain_energies": [
         {
-          "digital_infrastructure": 3.1378510347910753,
-          "domestic_financial_conditions": 2.5422918626645576,
-          "information": 1.5771061377428408,
-          "market": 0.018873781528325924,
-          "public_attention": 0.47396039162672243,
-          "spatial_restriction": 0.9838326532374163
+          "digital_infrastructure": 0.878343729598187,
+          "domestic_financial_conditions": 1.0534865913208744,
+          "information": 2.7902822926246142,
+          "market": 2.9582927371272816,
+          "public_attention": 5.802846066768428,
+          "spatial_restriction": 1.84323935423191
         },
         {
-          "digital_infrastructure": 2.94611607671563,
-          "domestic_financial_conditions": 3.7167270352915756,
-          "information": 2.2340190456285822,
-          "market": 1.3633790663307968,
-          "public_attention": 2.1322800236645483,
-          "spatial_restriction": 0.7403628731157018
+          "digital_infrastructure": 0.8615915530254996,
+          "domestic_financial_conditions": 1.6607001555948835,
+          "information": 4.260790682597428,
+          "market": 2.120295287074917,
+          "public_attention": 11.199162883221069,
+          "spatial_restriction": 1.787986823162543
         },
         {
-          "digital_infrastructure": 2.782021419506892,
+          "digital_infrastructure": 0.8455924526364065,
           "domestic_financial_conditions": 0.0,
-          "information": 1.811583347675243,
-          "market": 0.0,
-          "public_attention": 4.665004663290421,
+          "information": 3.4690226919792146,
+          "market": 3.436445249068697,
+          "public_attention": 4.604943110355626,
           "spatial_restriction": 0.0
         }
       ],
       "total_energy": [
-        8.733915861590939,
-        13.132884120746834,
-        9.258609430472557
+        15.326490771671295,
+        21.89052738467634,
+        12.356003504039945
       ],
-      "mean_energy": 10.375136470936777,
-      "max_energy": 13.132884120746834,
+      "mean_energy": 16.524340553462526,
+      "max_energy": 21.89052738467634,
       "n_domains_z15": [
-        3,
         4,
+        5,
         3
       ]
     },
@@ -298,9 +292,9 @@
     },
     "unknowns": [],
     "imaging_status_by_day": {
-      "2022-02-10": "normal",
-      "2022-02-11": "normal",
-      "2022-02-12": "normal"
+      "2022-02-21": "normal",
+      "2022-02-22": "normal",
+      "2022-02-23": "normal"
     },
     "recommended_posture": "focused",
     "recommended_posture_reason": "chorus_with_physical_available"
@@ -323,18 +317,18 @@
         "summary": "GDELT CAMEO event counts for the actor over the episode. This is a volume proxy from a series that already votes in the notice; it is not a GKG tone set.",
         "values": [
           {
-            "day": "2022-02-10",
-            "count": 1680.0,
+            "day": "2022-02-21",
+            "count": 2588.0,
             "quality": "ok"
           },
           {
-            "day": "2022-02-11",
-            "count": 1973.0,
+            "day": "2022-02-22",
+            "count": 3444.0,
             "quality": "ok"
           },
           {
-            "day": "2022-02-12",
-            "count": 1826.0,
+            "day": "2022-02-23",
+            "count": 3225.0,
             "quality": "ok"
           }
         ]
@@ -347,38 +341,38 @@
         "summary": "Wikipedia title mix (Ukraine / Russia / Russian Armed Forces) as a focus proxy. Pageviews already vote in the notice; this split only shows where attention sat.",
         "values": [
           {
-            "day": "2022-02-10",
-            "total": 66480.0,
+            "day": "2022-02-21",
+            "total": 375181.0,
             "titles": {
               "Russia": {
                 "status": "ok",
-                "views": 26222
+                "views": 66704
               },
               "Russian Armed Forces": {
                 "status": "ok",
-                "views": 5043
+                "views": 16357
               },
               "Ukraine": {
                 "status": "ok",
-                "views": 35215
+                "views": 292120
               }
             }
           },
           {
-            "day": "2022-02-11",
-            "total": 120857.0,
+            "day": "2022-02-22",
+            "total": 763132.0,
             "titles": {
               "Russia": {
                 "status": "ok",
-                "views": 31310
+                "views": 125206
               },
               "Russian Armed Forces": {
                 "status": "ok",
-                "views": 10138
+                "views": 25006
               },
               "Ukraine": {
                 "status": "ok",
-                "views": 79409
+                "views": 612920
               }
             }
           }
@@ -402,10 +396,10 @@
       },
       {
         "id": "official_posture",
-        "status": "present",
+        "status": "missing",
         "votes": false,
         "series_id": null,
-        "summary": "UK FCDO travel-advice history (cutoff-filtered) plus US State advisories when contemporaneous. Does not vote.",
+        "summary": "Declared UK/US posture (travel advice, diplomatic drawdown, leave-now, threat language) is not in this corpus. Official pack harvests it cutoff-safe from FCDO change_history.",
         "values": null
       },
       {
@@ -430,177 +424,41 @@
         "summary": "NGA NAVAREA warning counts for RUS areas (knowable at cutoff).",
         "values": [
           {
-            "day": "2022-02-10",
-            "count": 14.0,
+            "day": "2022-02-21",
+            "count": 18.0,
             "quality": "ok"
           },
           {
-            "day": "2022-02-11",
-            "count": 13.0,
+            "day": "2022-02-22",
+            "count": 18.0,
             "quality": "ok"
           },
           {
-            "day": "2022-02-12",
+            "day": "2022-02-23",
             "count": 7.0,
             "quality": "ok"
-          }
-        ]
-      },
-      {
-        "kind": "declared_posture",
-        "votes": false,
-        "summary": "UK/US publicly declared geographic risk and diplomatic posture at cutoff.",
-        "travel_risk": {
-          "UKR": 4,
-          "RUS": 4
-        },
-        "diplomatic_drawdown": true,
-        "leave_advice": true,
-        "threat_language": false,
-        "n_costly_events": 4,
-        "events": [
-          {
-            "kind": "declared_posture",
-            "country": "RUS",
-            "government": "UK/FCDO",
-            "date": "2022-01-14",
-            "at": "2022-01-14T11:41:57+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "travel_update",
-            "text": "Updated information on PCR testing for entry to Russia ('Entry requirements' page)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-01-21",
-            "at": "2022-01-21T12:18:06+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "travel_update",
-            "text": "Addition of information on the extension of the policy for British Citizen passport holders to enter Ukraine without a visa, for visits of up to 90 days within a 180-day period, until 30 January 2023 ('Entry requirements' page)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-01-22",
-            "at": "2022-01-22T01:32:20+00:00",
-            "category": "travel_risk",
-            "severity": 3,
-            "action": "travel_update",
-            "text": "The FCDO advise against all travel to Donetsk oblast, Luhansk oblast and Crimea. The FCDO advises against all but essential travel to the rest of Ukraine. British Nationals are advised to register their presence in Ukraine.(’Summary' page)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-01-24",
-            "at": "2022-01-24T07:58:46+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "diplomatic_drawdown",
-            "text": "Some Embassy staff and dependants are being withdrawn from Kyiv in response to growing threat from Russia. The British Embassy remains open and will continue to carry out essential work. (see ’Summary' page)",
-            "costly": true
-          },
-          {
-            "kind": "declared_posture",
-            "country": "RUS",
-            "government": "US/State",
-            "date": "2022-01-27",
-            "at": "2022-01-27T09:25:08+00:00",
-            "category": "travel_risk",
-            "severity": 4,
-            "action": "travel_advisory",
-            "text": "Russia - Level 4: Do Not Travel",
-            "costly": true
-          },
-          {
-            "kind": "declared_posture",
-            "country": "RUS",
-            "government": "UK/FCDO",
-            "date": "2022-01-31",
-            "at": "2022-01-31T09:40:50+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "travel_update",
-            "text": "Updated information on health examinations for foreign workers, UK visitor statistics and road safety in Russia ('Summary', 'Safety and security' and 'Local laws and customs' pages)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-02-02",
-            "at": "2022-02-02T12:22:26+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "travel_update",
-            "text": "Updates on information relating to tensions between Russia and Ukraine (see ’Summary' page)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-02-04",
-            "at": "2022-02-04T19:32:25+00:00",
-            "category": "official_threat_language",
-            "severity": null,
-            "action": "travel_update",
-            "text": "Updates on information relating to tensions between Russia and Ukraine (see ’Summary' page)",
-            "costly": false
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "UK/FCDO",
-            "date": "2022-02-11",
-            "at": "2022-02-11T18:21:23+00:00",
-            "category": "travel_risk",
-            "severity": 4,
-            "action": "leave_advice",
-            "text": "The FCDO now advises against all travel to Ukraine. British nationals in Ukraine should leave now while commercial means are still available. ('Summary' and 'Returning to the UK' pages)",
-            "costly": true
-          },
-          {
-            "kind": "declared_posture",
-            "country": "UKR",
-            "government": "US/State",
-            "date": "2022-02-12",
-            "at": "2022-02-12T14:49:15+00:00",
-            "category": "travel_risk",
-            "severity": 4,
-            "action": "travel_advisory",
-            "text": "Ukraine - Level 4: Do Not Travel",
-            "costly": true
           }
         ]
       }
     ],
     "notes": [
       "NAVAREA counts are public maritime warnings, not diplomatic posture.",
-      "No declared UK/US posture series in this corpus. Run Official pack to harvest FCDO travel-advice history (cutoff-filtered).",
-      "Declared posture is the UK/US public prior. Compare the quantitative cue to it: consistent with, ahead of, or divergent from that prior."
+      "No declared UK/US posture series in this corpus. Run Official pack to harvest FCDO travel-advice history (cutoff-filtered)."
     ]
   },
   "collected_evidence": [
     {
-      "item_id": "obs:attn.wiki_pageviews:2022-02-10",
+      "item_id": "obs:attn.wiki_pageviews:2022-02-21",
       "kind": "observation",
       "series_id": "attn.wiki_pageviews",
       "source": "attn",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-11T00:00:00Z",
-      "available_at": "2022-02-11T00:00:00Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-22T00:00:00Z",
+      "available_at": "2022-02-22T00:00:00Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "public_attention/attn.wiki_pageviews",
-      "text": "z=0.47396039162672243; raw=66480.0; quality=ok; imaging=normal",
+      "text": "z=5.802846066768428; raw=375181.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -608,17 +466,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:dyad.moex_usdrub:2022-02-10",
+      "item_id": "obs:dyad.moex_usdrub:2022-02-21",
       "kind": "observation",
       "series_id": "dyad.moex_usdrub",
       "source": "dyad",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "market/dyad.moex_usdrub",
-      "text": "z=0.018873781528325924; raw=75.01; quality=ok; imaging=normal",
+      "text": "z=2.9582927371272816; raw=79.78; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -626,17 +484,17 @@
       "shared_information_substrate": "exchange_fixing"
     },
     {
-      "item_id": "obs:market.cbr_funding_spread:2022-02-10",
+      "item_id": "obs:market.cbr_funding_spread:2022-02-21",
       "kind": "observation",
       "series_id": "market.cbr_funding_spread",
       "source": "market",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "domestic_financial_conditions/market.cbr_funding_spread",
-      "text": "z=2.5422918626645576; raw=21.000000000000085; quality=ok; imaging=normal",
+      "text": "z=1.0534865913208744; raw=0.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -644,17 +502,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:nav.spatial_warnings:2022-02-10",
+      "item_id": "obs:nav.spatial_warnings:2022-02-21",
       "kind": "observation",
       "series_id": "nav.spatial_warnings",
       "source": "nav",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "spatial_restriction/nav.spatial_warnings",
-      "text": "z=0.9838326532374163; raw=14.0; quality=ok; imaging=normal",
+      "text": "z=1.84323935423191; raw=18.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -662,17 +520,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:net.ripe_prefixes:2022-02-10",
+      "item_id": "obs:net.ripe_prefixes:2022-02-21",
       "kind": "observation",
       "series_id": "net.ripe_prefixes",
       "source": "net",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "digital_infrastructure/net.ripe_prefixes",
-      "text": "z=3.1378510347910753; raw=463.0; quality=ok; imaging=normal",
+      "text": "z=0.878343729598187; raw=3380.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -680,17 +538,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:talk.gdelt_cameo:2022-02-10",
+      "item_id": "obs:talk.gdelt_cameo:2022-02-21",
       "kind": "observation",
       "series_id": "talk.gdelt_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.gdelt_cameo",
-      "text": "z=1.5771061377428408; raw=1680.0; quality=ok; imaging=normal",
+      "text": "z=2.7902822926246142; raw=2588.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -698,17 +556,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:talk.icews_cameo:2022-02-10",
+      "item_id": "obs:talk.icews_cameo:2022-02-21",
       "kind": "observation",
       "series_id": "talk.icews_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.icews_cameo",
-      "text": "z=1.477733062961315; raw=176.0; quality=ok; imaging=normal",
+      "text": "z=1.7865376079453912; raw=230.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -716,17 +574,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:tempo.firms_thermal:2022-02-10",
+      "item_id": "obs:tempo.firms_thermal:2022-02-21",
       "kind": "observation",
       "series_id": "tempo.firms_thermal",
       "source": "tempo",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.firms_thermal",
-      "text": "z=-0.3234983196103153; raw=0.0; quality=ok; imaging=normal",
+      "text": "z=-0.3592106040535498; raw=0.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -734,17 +592,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:tempo.s1_backscatter:2022-02-10",
-      "kind": "observation",
+      "item_id": "obs:tempo.s1_backscatter:2022-02-21",
+      "kind": "coverage_hole",
       "series_id": "tempo.s1_backscatter",
       "source": "tempo",
-      "evidence_time": "2022-02-10T00:00:00Z",
-      "knowledge_time": "2022-02-10T23:59:59Z",
-      "available_at": "2022-02-10T23:59:59Z",
+      "evidence_time": "2022-02-21T00:00:00Z",
+      "knowledge_time": "2022-02-21T23:59:59Z",
+      "available_at": "2022-02-21T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.s1_backscatter",
-      "text": "z=-1.6866700006503021; raw=-12.626386697602143; quality=ok; imaging=normal",
+      "text": "z=0.0; quality=missing; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -752,17 +610,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:attn.wiki_pageviews:2022-02-11",
+      "item_id": "obs:attn.wiki_pageviews:2022-02-22",
       "kind": "observation",
       "series_id": "attn.wiki_pageviews",
       "source": "attn",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-12T00:00:00Z",
-      "available_at": "2022-02-12T00:00:00Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-23T00:00:00Z",
+      "available_at": "2022-02-23T00:00:00Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "public_attention/attn.wiki_pageviews",
-      "text": "z=2.1322800236645483; raw=120857.0; quality=ok; imaging=normal",
+      "text": "z=11.199162883221069; raw=763132.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -770,17 +628,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:dyad.moex_usdrub:2022-02-11",
+      "item_id": "obs:dyad.moex_usdrub:2022-02-22",
       "kind": "observation",
       "series_id": "dyad.moex_usdrub",
       "source": "dyad",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "market/dyad.moex_usdrub",
-      "text": "z=1.3633790663307968; raw=77.1675; quality=ok; imaging=normal",
+      "text": "z=2.120295287074917; raw=78.8; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -788,17 +646,17 @@
       "shared_information_substrate": "exchange_fixing"
     },
     {
-      "item_id": "obs:market.cbr_funding_spread:2022-02-11",
+      "item_id": "obs:market.cbr_funding_spread:2022-02-22",
       "kind": "observation",
       "series_id": "market.cbr_funding_spread",
       "source": "market",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "domestic_financial_conditions/market.cbr_funding_spread",
-      "text": "z=3.7167270352915756; raw=47.000000000000064; quality=ok; imaging=normal",
+      "text": "z=1.6607001555948835; raw=14.000000000000057; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -806,17 +664,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:nav.spatial_warnings:2022-02-11",
+      "item_id": "obs:nav.spatial_warnings:2022-02-22",
       "kind": "observation",
       "series_id": "nav.spatial_warnings",
       "source": "nav",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "spatial_restriction/nav.spatial_warnings",
-      "text": "z=0.7403628731157018; raw=13.0; quality=ok; imaging=normal",
+      "text": "z=1.787986823162543; raw=18.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -824,17 +682,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:net.ripe_prefixes:2022-02-11",
+      "item_id": "obs:net.ripe_prefixes:2022-02-22",
       "kind": "observation",
       "series_id": "net.ripe_prefixes",
       "source": "net",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "digital_infrastructure/net.ripe_prefixes",
-      "text": "z=2.94611607671563; raw=463.0; quality=ok; imaging=normal",
+      "text": "z=0.8615915530254996; raw=3380.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -842,17 +700,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:talk.gdelt_cameo:2022-02-11",
+      "item_id": "obs:talk.gdelt_cameo:2022-02-22",
       "kind": "observation",
       "series_id": "talk.gdelt_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.gdelt_cameo",
-      "text": "z=2.2340190456285822; raw=1973.0; quality=ok; imaging=normal",
+      "text": "z=4.260790682597428; raw=3444.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -860,17 +718,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:talk.icews_cameo:2022-02-11",
+      "item_id": "obs:talk.icews_cameo:2022-02-22",
       "kind": "observation",
       "series_id": "talk.icews_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.icews_cameo",
-      "text": "z=0.6487278881171562; raw=130.0; quality=ok; imaging=normal",
+      "text": "z=1.204945885945449; raw=192.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -878,17 +736,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:tempo.firms_thermal:2022-02-11",
+      "item_id": "obs:tempo.firms_thermal:2022-02-22",
       "kind": "observation",
       "series_id": "tempo.firms_thermal",
       "source": "tempo",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.firms_thermal",
-      "text": "z=-0.3234983196103153; raw=0.0; quality=ok; imaging=normal",
+      "text": "z=-0.3396291366019411; raw=0.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -896,17 +754,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:tempo.s1_backscatter:2022-02-11",
-      "kind": "observation",
+      "item_id": "obs:tempo.s1_backscatter:2022-02-22",
+      "kind": "coverage_hole",
       "series_id": "tempo.s1_backscatter",
       "source": "tempo",
-      "evidence_time": "2022-02-11T00:00:00Z",
-      "knowledge_time": "2022-02-11T23:59:59Z",
-      "available_at": "2022-02-11T23:59:59Z",
+      "evidence_time": "2022-02-22T00:00:00Z",
+      "knowledge_time": "2022-02-22T23:59:59Z",
+      "available_at": "2022-02-22T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.s1_backscatter",
-      "text": "z=0.3325631853239907; raw=-9.721151544877499; quality=ok; imaging=normal",
+      "text": "z=0.0; quality=missing; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -914,17 +772,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:dyad.moex_usdrub:2022-02-12",
-      "kind": "coverage_hole",
+      "item_id": "obs:dyad.moex_usdrub:2022-02-23",
+      "kind": "observation",
       "series_id": "dyad.moex_usdrub",
       "source": "dyad",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "market/dyad.moex_usdrub",
-      "text": "z=0.0; quality=missing; imaging=normal",
+      "text": "z=3.436445249068697; raw=81.16; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -932,17 +790,17 @@
       "shared_information_substrate": "exchange_fixing"
     },
     {
-      "item_id": "obs:market.cbr_funding_spread:2022-02-12",
+      "item_id": "obs:market.cbr_funding_spread:2022-02-23",
       "kind": "coverage_hole",
       "series_id": "market.cbr_funding_spread",
       "source": "market",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "domestic_financial_conditions/market.cbr_funding_spread",
-      "text": "z=0.0; quality=missing; imaging=normal",
+      "text": "z=0.0; quality=source_down; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -950,17 +808,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:nav.spatial_warnings:2022-02-12",
+      "item_id": "obs:nav.spatial_warnings:2022-02-23",
       "kind": "observation",
       "series_id": "nav.spatial_warnings",
       "source": "nav",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T15:08:25.568831Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "spatial_restriction/nav.spatial_warnings",
-      "text": "z=-0.6331018843045886; raw=7.0; quality=ok; imaging=normal",
+      "text": "z=-0.677774661755819; raw=7.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -968,17 +826,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:net.ripe_prefixes:2022-02-12",
+      "item_id": "obs:net.ripe_prefixes:2022-02-23",
       "kind": "observation",
       "series_id": "net.ripe_prefixes",
       "source": "net",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "digital_infrastructure/net.ripe_prefixes",
-      "text": "z=2.782021419506892; raw=463.0; quality=ok; imaging=normal",
+      "text": "z=0.8455924526364065; raw=3379.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -986,17 +844,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:talk.gdelt_cameo:2022-02-12",
+      "item_id": "obs:talk.gdelt_cameo:2022-02-23",
       "kind": "observation",
       "series_id": "talk.gdelt_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.gdelt_cameo",
-      "text": "z=1.811583347675243; raw=1826.0; quality=ok; imaging=normal",
+      "text": "z=3.4690226919792146; raw=3225.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -1004,17 +862,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:talk.icews_cameo:2022-02-12",
+      "item_id": "obs:talk.icews_cameo:2022-02-23",
       "kind": "observation",
       "series_id": "talk.icews_cameo",
       "source": "talk",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T13:43:25.439240Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "information/talk.icews_cameo",
-      "text": "z=-1.4924025877139144; raw=7.0; quality=ok; imaging=normal",
+      "text": "z=0.6428568943826886; raw=153.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -1022,17 +880,17 @@
       "shared_information_substrate": "public_reporting"
     },
     {
-      "item_id": "obs:tempo.firms_thermal:2022-02-12",
+      "item_id": "obs:tempo.firms_thermal:2022-02-23",
       "kind": "observation",
       "series_id": "tempo.firms_thermal",
       "source": "tempo",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.firms_thermal",
-      "text": "z=1.7993521504794379; raw=1.0; quality=ok; imaging=normal",
+      "text": "z=5.430450802499489; raw=2.0; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -1040,17 +898,17 @@
       "shared_information_substrate": null
     },
     {
-      "item_id": "obs:tempo.s1_backscatter:2022-02-12",
-      "kind": "coverage_hole",
+      "item_id": "obs:tempo.s1_backscatter:2022-02-23",
+      "kind": "observation",
       "series_id": "tempo.s1_backscatter",
       "source": "tempo",
-      "evidence_time": "2022-02-12T00:00:00Z",
-      "knowledge_time": "2022-02-12T23:59:59Z",
-      "available_at": "2022-02-12T23:59:59Z",
+      "evidence_time": "2022-02-23T00:00:00Z",
+      "knowledge_time": "2022-02-23T23:59:59Z",
+      "available_at": "2022-02-23T23:59:59Z",
       "retrieved_at": "2026-09-02T17:23:16.589374Z",
       "geographic_scope": "focal=RUS counterparts=UKR",
       "relationship": "physical_activity/tempo.s1_backscatter",
-      "text": "z=0.0; quality=missing; imaging=normal",
+      "text": "z=-0.6055831324809258; raw=-11.15502522208886; quality=ok; imaging=normal",
       "significance": "unassigned",
       "originating_source_id": null,
       "syndication_cluster_id": null,
@@ -1065,7 +923,8 @@
       "shared_information_substrate": "public_reporting",
       "series": [
         "attn.wiki_pageviews",
-        "talk.gdelt_cameo"
+        "talk.gdelt_cameo",
+        "talk.icews_cameo"
       ],
       "caution": "these series can move together because they read the same public environment"
     }
@@ -1133,7 +992,7 @@
     },
     {
       "action": "cutoff",
-      "detail": "mode=replay rule=available_at cutoff=2022-02-12T23:59:59+00:00 kept=26 excluded_unknowable=4"
+      "detail": "mode=replay rule=available_at cutoff=2022-02-23T23:59:59+00:00 kept=26 excluded_unknowable=4"
     },
     {
       "action": "environment",

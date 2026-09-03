@@ -1,0 +1,343 @@
+{
+  "schema_id": "collection_task_v0",
+  "task_id": "packet-c9560b0d2d26:official_pack",
+  "kind": "official_pack",
+  "title": "Official pack",
+  "status": "complete",
+  "posture": "focused",
+  "knowledge_cutoff": "2022-02-12T23:59:59Z",
+  "ran_at": "2026-09-03T20:06:39.192130Z",
+  "summary": "33 knowable NAVAREA days; 10 dated UK/US posture events knowable at cutoff.",
+  "items": [
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-11",
+      "value": 9.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-12",
+      "value": 6.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-13",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-14",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-15",
+      "value": 5.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-16",
+      "value": 7.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-17",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-18",
+      "value": 11.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-19",
+      "value": 14.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-20",
+      "value": 5.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-21",
+      "value": 12.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-22",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-23",
+      "value": 9.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-24",
+      "value": 9.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-25",
+      "value": 12.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-26",
+      "value": 6.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-27",
+      "value": 17.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-28",
+      "value": 21.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-29",
+      "value": 10.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-30",
+      "value": 11.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-01-31",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-01",
+      "value": 4.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-02",
+      "value": 0.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-03",
+      "value": 30.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-04",
+      "value": 16.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-05",
+      "value": 8.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-06",
+      "value": 4.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-07",
+      "value": 4.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-08",
+      "value": 11.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-09",
+      "value": 14.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-10",
+      "value": 14.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-11",
+      "value": 13.0,
+      "quality": "ok"
+    },
+    {
+      "series_id": "nav.spatial_warnings",
+      "day": "2022-02-12",
+      "value": 7.0,
+      "quality": "ok"
+    },
+    {
+      "kind": "declared_posture",
+      "country": "RUS",
+      "government": "UK/FCDO",
+      "date": "2022-01-14",
+      "at": "2022-01-14T11:41:57+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "travel_update",
+      "text": "Updated information on PCR testing for entry to Russia ('Entry requirements' page)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-01-21",
+      "at": "2022-01-21T12:18:06+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "travel_update",
+      "text": "Addition of information on the extension of the policy for British Citizen passport holders to enter Ukraine without a visa, for visits of up to 90 days within a 180-day period, until 30 January 2023 ('Entry requirements' page)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-01-22",
+      "at": "2022-01-22T01:32:20+00:00",
+      "category": "travel_risk",
+      "severity": 3,
+      "action": "travel_update",
+      "text": "The FCDO advise against all travel to Donetsk oblast, Luhansk oblast and Crimea. The FCDO advises against all but essential travel to the rest of Ukraine. British Nationals are advised to register their presence in Ukraine.(’Summary' page)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-01-24",
+      "at": "2022-01-24T07:58:46+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "diplomatic_drawdown",
+      "text": "Some Embassy staff and dependants are being withdrawn from Kyiv in response to growing threat from Russia. The British Embassy remains open and will continue to carry out essential work. (see ’Summary' page)",
+      "costly": true
+    },
+    {
+      "kind": "declared_posture",
+      "country": "RUS",
+      "government": "US/State",
+      "date": "2022-01-27",
+      "at": "2022-01-27T09:25:08+00:00",
+      "category": "travel_risk",
+      "severity": 4,
+      "action": "travel_advisory",
+      "text": "Russia - Level 4: Do Not Travel",
+      "costly": true
+    },
+    {
+      "kind": "declared_posture",
+      "country": "RUS",
+      "government": "UK/FCDO",
+      "date": "2022-01-31",
+      "at": "2022-01-31T09:40:50+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "travel_update",
+      "text": "Updated information on health examinations for foreign workers, UK visitor statistics and road safety in Russia ('Summary', 'Safety and security' and 'Local laws and customs' pages)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-02-02",
+      "at": "2022-02-02T12:22:26+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "travel_update",
+      "text": "Updates on information relating to tensions between Russia and Ukraine (see ’Summary' page)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-02-04",
+      "at": "2022-02-04T19:32:25+00:00",
+      "category": "official_threat_language",
+      "severity": null,
+      "action": "travel_update",
+      "text": "Updates on information relating to tensions between Russia and Ukraine (see ’Summary' page)",
+      "costly": false
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "UK/FCDO",
+      "date": "2022-02-11",
+      "at": "2022-02-11T18:21:23+00:00",
+      "category": "travel_risk",
+      "severity": 4,
+      "action": "leave_advice",
+      "text": "The FCDO now advises against all travel to Ukraine. British nationals in Ukraine should leave now while commercial means are still available. ('Summary' and 'Returning to the UK' pages)",
+      "costly": true
+    },
+    {
+      "kind": "declared_posture",
+      "country": "UKR",
+      "government": "US/State",
+      "date": "2022-02-12",
+      "at": "2022-02-12T14:49:15+00:00",
+      "category": "travel_risk",
+      "severity": 4,
+      "action": "travel_advisory",
+      "text": "Ukraine - Level 4: Do Not Travel",
+      "costly": true
+    }
+  ],
+  "notes": [
+    "NAVAREA counts are public maritime warnings, not diplomatic posture.",
+    "No RIMA or defence-ministry statement harvest is attached to this collection.",
+    "Missing in this collection: gazette / official statements, NOTAM.",
+    "NAVAREA warnings 9.00 (2022-01-11) → 7.00 (2022-02-12).",
+    "Declared UK/US posture is the public prior.",
+    "Weight: embassy drawdown, leave-now, travel-advice escalation over rhetoric.",
+    "Travel risk in effect at cutoff: RUS level 4, UKR level 4.",
+    "Diplomatic drawdown is in effect at cutoff (embassy/dependants).",
+    "Leave-now / against-all-travel advice is in effect at cutoff."
+  ],
+  "analyst_question": "Is the quantitative cue consistent with, ahead of, or divergent from the contemporaneous UK/US declared prior?"
+}

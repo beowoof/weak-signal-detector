@@ -14,9 +14,14 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from wsf.analysis.coupling import evaluate_window_coupling
+from wsf.brief_pdf import render_existing_packet
+from wsf.collect import HARVEST_KINDS, load_collection, run_collection
 from wsf.db import desk_health
+from wsf.notice import apply_action_at_path, emit_notices_for_measurement
+from wsf.packet import build_and_save
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -242,21 +247,55 @@ def _notices_for_measure(scenario_id: str, measure_id: str, scenarios_root: Path
     return items
 
 
+class NoticeActionBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    notice_id: str = Field(min_length=1)
+    action: str = Field(min_length=1)
+    note: str | None = None
+    replay: bool = False
+
+
+class PacketCollectBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    notice_id: str = Field(min_length=1)
+    tasks: list[str] | None = None
+    replay: bool = False
+    request_context: bool = False
+
+
+class NoticeEmitBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    measurement_id: str | None = None
+
+
+class PacketBuildBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    notice_id: str = Field(min_length=1)
+    replay: bool = False
+
+
 class StrictJSONResponse(JSONResponse):
     def render(self, content) -> bytes:
         return json.dumps(content, allow_nan=False, separators=(",", ":")).encode()
 
 
-def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = None) -> FastAPI:
+def create_app(
+    *,
+    api_only: bool | None = None,
+    scenarios_root: Path | None = None,
+    project_root: Path | None = None,
+) -> FastAPI:
     if api_only is None:
         api_only = os.environ.get("WSD_API_ONLY", "").lower() in {"1", "true", "yes"}
-    root = Path(scenarios_root) if scenarios_root is not None else SCENARIOS_ROOT
+    proj = Path(project_root) if project_root is not None else PROJECT_ROOT
+    root = Path(scenarios_root) if scenarios_root is not None else proj / "scenarios"
     app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
+    app.state.project_root = proj
     app.state.scenarios_root = root
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
-        allow_methods=["GET", "HEAD", "OPTIONS"],
+        allow_methods=["GET", "HEAD", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
 
@@ -279,6 +318,124 @@ def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = No
             return load_notice_payload(scenario, notice_id, app.state.scenarios_root)
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Unknown notice") from exc
+
+    @app.post("/api/notice/action")
+    def api_notice_action(body: NoticeActionBody) -> dict:
+        path = app.state.scenarios_root / body.scenario / "notices" / body.notice_id / "notice.json"
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="Unknown notice")
+        if body.action == "request_context":
+            try:
+                collection = run_collection(
+                    app.state.project_root,
+                    body.scenario,
+                    body.notice_id,
+                    kinds=list(HARVEST_KINDS),
+                    replay=body.replay,
+                    request_context=True,
+                )
+            except (ValueError, OSError, FileNotFoundError, KeyError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            payload = load_notice_payload(
+                body.scenario, body.notice_id, app.state.scenarios_root
+            )
+            payload["collection"] = collection
+            return payload
+        try:
+            apply_action_at_path(path, body.action, note=body.note)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return load_notice_payload(body.scenario, body.notice_id, app.state.scenarios_root)
+
+    @app.post("/api/notice/emit")
+    def api_notice_emit(body: NoticeEmitBody) -> dict:
+        try:
+            notices = emit_notices_for_measurement(
+                app.state.project_root,
+                body.scenario,
+                measurement_id=body.measurement_id,
+            )
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "scenario": body.scenario,
+            "n_notices": len(notices),
+            "notice_ids": [item.notice_id for item in notices],
+        }
+
+    @app.post("/api/packet/build")
+    def api_packet_build(body: PacketBuildBody) -> dict:
+        try:
+            packet, path = build_and_save(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                replay=body.replay,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return {
+            "scenario": body.scenario,
+            "notice_id": packet.notice_id,
+            "packet_id": packet.packet_id,
+            "mode": packet.clocks.mode,
+            "layers": packet.layers,
+            "path": str(path),
+        }
+
+    @app.get("/api/packet")
+    def api_packet(
+        scenario: str = Query(..., min_length=1),
+        packet_id: str = Query(..., min_length=1),
+    ) -> dict:
+        path = app.state.scenarios_root / scenario / "interpretation" / packet_id / "evidence.json"
+        if not path.is_file():
+            raise HTTPException(status_code=404, detail="Unknown packet")
+        return read_json(path)
+
+    @app.get("/api/packet/pdf")
+    def api_packet_pdf(
+        scenario: str = Query(..., min_length=1),
+        packet_id: str = Query(..., min_length=1),
+    ) -> FileResponse:
+        if "/" in packet_id or ".." in packet_id or "/" in scenario:
+            raise HTTPException(status_code=400, detail="Invalid packet id")
+        try:
+            path = render_existing_packet(app.state.project_root, scenario, packet_id)
+        except FileNotFoundError as exc:
+            raise HTTPException(status_code=404, detail="Unknown packet") from exc
+        except (ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        return FileResponse(
+            path,
+            media_type="application/pdf",
+            filename=f"{packet_id}.pdf",
+        )
+
+    @app.get("/api/packet/collection")
+    def api_packet_collection(
+        scenario: str = Query(..., min_length=1),
+        packet_id: str = Query(..., min_length=1),
+    ) -> dict:
+        return load_collection(app.state.project_root, scenario, packet_id)
+
+    @app.post("/api/packet/collect")
+    def api_packet_collect(body: PacketCollectBody) -> dict:
+        try:
+            return run_collection(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                kinds=body.tasks,
+                replay=body.replay,
+                request_context=body.request_context,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/results")
     def api_results() -> dict:

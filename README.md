@@ -16,7 +16,7 @@ The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do 
 
 Work continues as a **collection cueing desk**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
 
-The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui). The UI opens on **notices** (alerts). Anomaly charts are a drill-down. Evidence packets are `wsd packet build` — later; a packet is a brief, not this inbox.
+The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui). Day-to-day work is the UI (Notices, Anomaly, Operations). The CLI remains for tests and harvests.
 
 The repository still contains:
 

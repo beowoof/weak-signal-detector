@@ -29,8 +29,63 @@ class CollectionPosture(StrEnum):
 class NoticeState(StrEnum):
     new = "new"
     acked = "acked"
+    watching = "watching"
+    context_requested = "context_requested"
     in_packet = "in_packet"
+    dismissed = "dismissed"
+    rejected = "rejected"
     closed = "closed"
+
+
+class NoticeAction(StrEnum):
+    ack = "ack"
+    reexamine = "reexamine"
+    request_context = "request_context"
+    ignore = "ignore"
+    reject = "reject"
+    close = "close"
+
+
+TERMINAL_STATES = {NoticeState.dismissed, NoticeState.rejected, NoticeState.closed}
+
+_OPEN = frozenset(
+    {
+        NoticeState.new,
+        NoticeState.acked,
+        NoticeState.watching,
+        NoticeState.context_requested,
+        NoticeState.in_packet,
+    }
+)
+
+ACTION_TRANSITIONS: dict[NoticeAction, tuple[NoticeState, frozenset[NoticeState]]] = {
+    NoticeAction.ack: (
+        NoticeState.acked,
+        frozenset(
+            {
+                NoticeState.new,
+                NoticeState.watching,
+                NoticeState.context_requested,
+                NoticeState.in_packet,
+            }
+        ),
+    ),
+    NoticeAction.reexamine: (NoticeState.watching, _OPEN),
+    NoticeAction.request_context: (
+        NoticeState.context_requested,
+        frozenset(
+            {
+                NoticeState.new,
+                NoticeState.acked,
+                NoticeState.watching,
+                NoticeState.in_packet,
+            }
+        ),
+    ),
+    NoticeAction.ignore: (NoticeState.dismissed, _OPEN),
+    NoticeAction.reject: (NoticeState.rejected, _OPEN),
+    NoticeAction.close: (NoticeState.closed, _OPEN),
+}
 
 
 class NoticeTrigger(BaseModel):
@@ -59,6 +114,15 @@ class NoticeTrigger(BaseModel):
     information_environment_snapshot_id: str | None = None
 
 
+class WorkflowEvent(BaseModel):
+    at: datetime
+    action: NoticeAction
+    from_state: NoticeState
+    to_state: NoticeState
+    note: str | None = None
+    actor: str = "operator"
+
+
 class NoticeWorkflow(BaseModel):
     state: NoticeState = NoticeState.new
     selected_posture: CollectionPosture | None = None
@@ -67,6 +131,7 @@ class NoticeWorkflow(BaseModel):
     report_id: str | None = None
     closure_rationale: str | None = None
     updated_at: datetime | None = None
+    events: list[WorkflowEvent] = Field(default_factory=list)
 
 
 class Notice(BaseModel):
@@ -126,6 +191,73 @@ def list_notices(project_root: Path, scenario_id: str) -> list[Notice]:
         notices.append(Notice.model_validate_json(path.read_text(encoding="utf-8")))
     notices.sort(key=lambda item: (item.trigger.start, item.trigger.end, item.notice_id))
     return notices
+
+
+def apply_action(
+    notice: Notice,
+    action: NoticeAction | str,
+    *,
+    note: str | None = None,
+    at: datetime | None = None,
+    actor: str = "operator",
+) -> Notice:
+    """Mutate workflow only. Trigger facts are never touched."""
+    action = NoticeAction(action)
+    if action not in ACTION_TRANSITIONS:
+        raise ValueError(f"unknown action {action}")
+    to_state, allowed = ACTION_TRANSITIONS[action]
+    if notice.workflow.state in TERMINAL_STATES:
+        raise ValueError(
+            f"notice {notice.notice_id} is {notice.workflow.state.value}; no further actions"
+        )
+    if notice.workflow.state not in allowed:
+        raise ValueError(f"cannot {action.value} from {notice.workflow.state.value}")
+    when = at or datetime.now(UTC)
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=UTC)
+    from_state = notice.workflow.state
+    notice.workflow.state = to_state
+    notice.workflow.updated_at = when
+    if action is NoticeAction.request_context and notice.workflow.selected_posture is None:
+        notice.workflow.selected_posture = (
+            notice.trigger.recommended_posture or CollectionPosture.focused
+        )
+    if action in {NoticeAction.ignore, NoticeAction.reject, NoticeAction.close}:
+        notice.workflow.closure_rationale = note or action.value
+    notice.workflow.events.append(
+        WorkflowEvent(
+            at=when,
+            action=action,
+            from_state=from_state,
+            to_state=to_state,
+            note=note,
+            actor=actor,
+        )
+    )
+    return notice
+
+
+def apply_action_at_path(
+    path: Path, action: NoticeAction | str, *, note: str | None = None
+) -> Notice:
+    notice = Notice.model_validate_json(path.read_text(encoding="utf-8"))
+    apply_action(notice, action, note=note)
+    path.write_text(notice.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    return notice
+
+
+def apply_notice_action(
+    project_root: Path,
+    scenario_id: str,
+    notice_id: str,
+    action: NoticeAction | str,
+    *,
+    note: str | None = None,
+) -> Notice:
+    notice = load_notice(project_root, scenario_id, notice_id)
+    apply_action(notice, action, note=note)
+    save_notice(project_root, notice, overwrite_trigger=False)
+    return load_notice(project_root, scenario_id, notice_id)
 
 
 def save_notice(project_root: Path, notice: Notice, *, overwrite_trigger: bool = False) -> Path:
