@@ -1,8 +1,22 @@
 # Analyst-desk roadmap
 
-**Product:** a regional collection cueing desk. It reproducibly identifies changes in public information and measurements, opens a cue when a configured heuristic is met, gathers additional context, and produces an evidence packet an analyst can argue with. It does not determine intent or predict that a state will act within a specified number of days.
+**Product:** a regional collection cueing desk. It does not determine intent or predict that a state will act within a specified number of days.
 
-“Indicator” is avoided as the product name: the output is a cue and an evidence assembly, not an intelligence judgement.
+Product language is not inherited from file names. The chain is:
+
+```text
+anomaly  →  notice  →  packet  →  report
+look here   alert      brief      send up the chain
+```
+
+| Object | User meaning | Not |
+|---|---|---|
+| **Anomaly** | The machine saw unusual co-movement. Look here. Coupling episode / `coincidence_v1` flag. | Not an alert. Not a brief. |
+| **Notice** | An alert in the inbox. A human is being told to look. Immutable trigger + mutable workflow. | Not the brief. Restating z-scores is still the alert. |
+| **Packet** | A brief: the anomaly, plus information environment, plus geopolitical/official context, cutoff-safe. | Not an alert with extra JSON. Not a judgement. |
+| **Report** | What you send up the chain. Analyst-owned assessment. | Not a model transcript. Not the packet. |
+
+A packet that only copies the notice’s series-days is still a notice. It becomes a brief when the information-environment snapshot and posture-bounded context are in the same object.
 
 This is a proof of concept for a multipart analytical workflow. **Weak-signal detection opens the analysis; it does not complete it.** Frozen `coincidence_v1` stays frozen. Any broader cueing rule is named, versioned, and reported separately as a heuristic notice policy.
 
@@ -12,11 +26,11 @@ Three things that must stay unentangled:
 detection of change  ≠  collection decision  ≠  assessment of meaning
 ```
 
-The quantitative machinery does the first. The heuristic plus the analyst determine the second. The evidence packet plus human reasoning do the third.
+Anomaly is the first. Notice plus posture is the second. Packet plus report is the third.
 
 All inputs are open-source information: lawfully and publicly obtainable data, documents, reporting, maps, and imagery. Public registration or an API key is an access mechanism, not a disqualifier.
 
-The quantitative detector is largely finished infrastructure. The next research object is `notice_v0` → `evidence.json` → analyst report.
+The quantitative detector is largely finished infrastructure. The next research object is a **packet that is actually a brief** (environment + context), then a report.
 
 ---
 
@@ -233,12 +247,13 @@ Output: `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus stable ci
 | CBR, NAVAREA, DEU/USA gazette as live costly/admin series | Built (RUS gazette and NOTAM still out) |
 | Information-environment baseline | Missing; existing series provide partial proxies only |
 | Collection posture | Missing |
-| `notice_v0` (immutable event + workflow) | Slice 1: persist K≥3 coupling episodes; dashboard inbox. Information-environment snapshot and packet still missing. |
-| Dashboard as **inbox of notices** | Missing; it remains a retrospective results viewer |
+| Anomaly (coupling / coincidence) | Built. K≥3 episodes are the “look here” in the data. |
+| Notice (alert) | Built (`notice_v0`, inbox). Immutable trigger + workflow. |
+| Packet (brief) | Compiler exists; current `evidence.json` is still a restated notice. Information environment and geopolitical context are missing, so it is not a brief yet. |
+| Report (send up the chain) | Missing; `reports/` directories are empty |
+| Dashboard as **inbox of notices** | Notices are the home surface (alerts). Anomaly charts are a drill-down. |
 | On-cue context harvest | Missing; RIMA is a corpus, not triggered by a notice |
-| Evidence packet | Missing; `interpretation/` directories are empty |
 | LLM assessment | Contract only (`intent_triage_v0`, `enabled: false`) |
-| Analyst report | Missing; `reports/` directories are empty |
 
 The measurement layer already emits `analyst_action: review_soft_correlation_and_resolve_costly_source_gap`. Nothing yet turns that into a persisted analyst object or a complete contextual workflow.
 

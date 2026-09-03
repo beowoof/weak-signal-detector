@@ -109,6 +109,26 @@ select {
 .tick-label, .axis-label { fill: var(--muted); font-size: 12px; }
 .axis-label { fill: var(--ink); font-weight: 500; }
 .series-line { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.series-muted { opacity: .28; }
+.notice-span { fill: color-mix(in srgb, var(--accent) 18%, transparent); }
+.notice-span-edge { stroke: var(--accent); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.notice-span-label { fill: var(--accent); font-size: 11px; font-weight: 650; letter-spacing: .04em; text-transform: uppercase; }
+.anomaly-focus-banner {
+  margin: 0 0 1rem;
+  padding: .7rem .9rem;
+  border: 1px solid var(--accent);
+  border-radius: .35rem;
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  font-size: .92rem;
+}
+.chart-block-focus {
+  outline: 2px solid var(--accent);
+  outline-offset: .4rem;
+  border-radius: .25rem;
+}
+.coupling-table tr.notice-focus-row td {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
 .series-point { stroke: var(--surface); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .missing-mark { stroke: var(--muted); stroke-width: 1.5; vector-effect: non-scaling-stroke; }
 .flag-ring { fill: none; stroke: var(--accent-2); stroke-width: 2; vector-effect: non-scaling-stroke; }
@@ -252,6 +272,50 @@ select {
   stroke-width: 2;
 }
 
+.alert-layout {
+  display: grid;
+  grid-template-columns: minmax(16rem, 22rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: start;
+}
+@media (max-width: 800px) {
+  .alert-layout { grid-template-columns: 1fr; }
+}
+.alert-inbox { min-width: 0; }
+.alert-row-list { display: grid; gap: .5rem; }
+.alert-row {
+  display: grid;
+  gap: .15rem;
+  width: 100%;
+  padding: .7rem .85rem;
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  background: var(--surface);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.alert-row:hover { border-color: var(--accent); }
+.alert-row[aria-current="true"] {
+  border-color: var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.alert-row-dates { font-weight: 600; }
+.alert-row-meta { color: var(--muted); font-size: .82rem; }
+.notice-look { margin: 0 0 1rem; font-size: 1.05rem; }
+.notice-actions { margin: 1rem 0 0; }
+.notice-actions button {
+  min-height: 2.2rem;
+  padding: .35rem .8rem;
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  background: var(--surface);
+  color: var(--ink);
+  font: inherit;
+  cursor: pointer;
+}
+.notice-actions button:hover { border-color: var(--accent); }
 .notice-intro { color: var(--muted); max-width: 46rem; }
 .notice-list { display: grid; gap: 1rem; }
 .notice-card {

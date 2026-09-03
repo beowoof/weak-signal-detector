@@ -24,6 +24,24 @@ export function ticks([min, max], count = 5) {
   return output;
 }
 
+export function spanXs(start, end, dates, xFn, plotLeft, plotRight) {
+  if (!start || !end || !dates.length) return null;
+  const indexOf = (day) => {
+    const exact = dates.indexOf(day);
+    if (exact >= 0) return exact;
+    const next = dates.findIndex((item) => item >= day);
+    if (next < 0) return dates.length - 1;
+    return next;
+  };
+  const i0 = indexOf(start);
+  const i1 = indexOf(end);
+  const dayWidth =
+    dates.length <= 1 ? plotRight - plotLeft : Math.abs(xFn(dates[Math.min(1, dates.length - 1)]) - xFn(dates[0]));
+  const x0 = Math.max(plotLeft, xFn(dates[i0]) - dayWidth / 2);
+  const x1 = Math.min(plotRight, xFn(dates[i1]) + dayWidth / 2);
+  return { x0, x1: Math.max(x1, x0 + 4) };
+}
+
 export function lineSegments(rows, valueKey) {
   const segments = [];
   let current = [];

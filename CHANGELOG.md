@@ -6,6 +6,8 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **Notice as the UI alert:** desk opens on an inbox of notices (not a results-viewer tab). `/api/notices` lists alerts across scenarios; Anomaly charts are a drill-down from the selected notice. Opening an alert marks its dates on the charts, highlights contributing series/domains, and flags the matching matrix rows.
+- **`packet_v0` compiler** (`src/wsf/packet.py`, `wsd packet build`): same command for a live desk (`knowledge_cutoff=now`, requires `available_at` and `retrieved_at`) and a historical replay (`--replay` / `--as-of`, `available_at` only). Writes `interpretation/<packet-id>/evidence.json`. Does not assign significance. Refuses to treat a years-late emit as live.
 - **Docker Compose desk** (`compose.yaml`): `db` (Postgres 16), `api` (FastAPI), `agent` (`wsd agent run`), `web` (Vite). `docker compose up --build` is the running app. Harvests stay on bind-mounted files; Postgres holds agent heartbeat and a jobs table for later queue/websocket work. `/api/health` reports both.
 - **FastAPI desk API** (`dashboard/server.py`): stdlib `ThreadingHTTPServer` replaced with FastAPI + uvicorn. `--reload` is on by default; `--api-only` pairs with Vite. OpenAPI at `/docs`.
 - **React/Vite desk UI** (`dashboard/web/`): like-for-like port of the results viewer with HMR. `python dashboard/server.py --api-only` plus `npm run dev`. Polls `/api/result` every 8s so new notices appear without a UI restart.

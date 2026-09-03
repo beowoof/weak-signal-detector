@@ -5,7 +5,7 @@ import LineChart from "../components/LineChart.jsx";
 import { cssSeries, number, seriesIds, seriesRows, rowsForWindow } from "../lib/format.js";
 import { extent, ticks } from "../lib/chartMath.js";
 
-export function SeriesView({ result, windowId, seriesId, onTooltip }) {
+export function SeriesView({ result, windowId, seriesId, onTooltip, focus = null }) {
   const rows = seriesRows(result, windowId, seriesId);
   if (!rows.length) return <p className="empty">No rows for this series and window.</p>;
   const metadata = rows[0];
@@ -18,11 +18,14 @@ export function SeriesView({ result, windowId, seriesId, onTooltip }) {
     color: item.color,
     rows: item.rows.map((row) => ({ ...row, plotted: row[item.key] })),
   }));
+  const contributed = Boolean(focus?.series?.includes(seriesId));
+  const span = focus?.start && focus?.end ? { start: focus.start, end: focus.end, label: "alert" } : null;
   return (
     <>
       <ChartSection
         title={seriesId}
-        note={`${metadata.causal_domain || metadata.family || "unclassified"} · ${metadata.source || "unknown source"}`}
+        note={`${metadata.causal_domain || metadata.family || "unclassified"} · ${metadata.source || "unknown source"}${contributed ? " · contributed to this alert" : ""}`}
+        focused={contributed}
       >
         <LineChart
           series={[{ id: seriesId, rows, color: cssSeries(0) }]}
@@ -30,6 +33,7 @@ export function SeriesView({ result, windowId, seriesId, onTooltip }) {
           yLabel="Raw measurement"
           ariaLabel={`${seriesId} raw values over time`}
           onTooltip={onTooltip}
+          focusSpan={span}
         />
       </ChartSection>
       <ChartSection title="Normalized anomaly" note="Trailing and frozen-rhythm z-scores share a scale">
@@ -42,14 +46,17 @@ export function SeriesView({ result, windowId, seriesId, onTooltip }) {
           domainFn={(values) => extent([...values, -2, 0, 2])}
           ariaLabel={`${seriesId} normalized anomaly scores`}
           onTooltip={onTooltip}
+          focusSpan={span}
         />
       </ChartSection>
     </>
   );
 }
 
-export function AllSeriesView({ result, windowId, onTooltip }) {
+export function AllSeriesView({ result, windowId, onTooltip, focus = null }) {
   const ids = seriesIds(result, windowId);
+  const span = focus?.start && focus?.end ? { start: focus.start, end: focus.end, label: "alert" } : null;
+  const contributing = new Set(focus?.series || []);
   return (
     <>
       <div className="chart-header">
@@ -61,15 +68,22 @@ export function AllSeriesView({ result, windowId, onTooltip }) {
       <div className="chart-grid">
         {ids.map((id, index) => {
           const rows = seriesRows(result, windowId, id);
+          const contributed = contributing.has(id);
           return (
-            <ChartSection key={id} title={id} note={rows[0]?.causal_domain || rows[0]?.family || ""}>
+            <ChartSection
+              key={id}
+              title={id}
+              note={`${rows[0]?.causal_domain || rows[0]?.family || ""}${contributed ? " · this alert" : ""}`}
+              focused={contributed}
+            >
               <LineChart
-                series={[{ id, rows, color: cssSeries(index) }]}
+                series={[{ id, rows, color: cssSeries(index), muted: contributing.size > 0 && !contributed }]}
                 valueKey="raw"
                 yLabel="Raw"
                 compact
                 ariaLabel={`${id} raw values over time`}
                 onTooltip={onTooltip}
+                focusSpan={span}
               />
             </ChartSection>
           );
@@ -79,13 +93,16 @@ export function AllSeriesView({ result, windowId, onTooltip }) {
   );
 }
 
-export function CombinedView({ result, windowId, visibleSeries, onToggle, onTooltip }) {
+export function CombinedView({ result, windowId, visibleSeries, onToggle, onTooltip, focus = null }) {
+  const contributing = new Set(focus?.series || []);
   const items = seriesIds(result, windowId).map((id, index) => ({
     id,
     rows: seriesRows(result, windowId, id),
     color: cssSeries(index),
+    muted: contributing.size > 0 && !contributing.has(id),
   }));
   const visible = items.filter((item) => visibleSeries.has(item.id));
+  const span = focus?.start && focus?.end ? { start: focus.start, end: focus.end, label: "alert" } : null;
   return (
     <>
       <ChartSection title="Combined trailing anomalies" note="All instruments on their comparable z-score scale">
@@ -98,6 +115,7 @@ export function CombinedView({ result, windowId, visibleSeries, onToggle, onTool
           domainFn={(values) => extent([...values, -2, 0, 2])}
           ariaLabel="Combined trailing z-scores"
           onTooltip={onTooltip}
+          focusSpan={span}
         />
       </ChartSection>
       {items.some((item) => item.rows.some((row) => Number.isFinite(row.rhythm_z))) && (
@@ -113,6 +131,7 @@ export function CombinedView({ result, windowId, visibleSeries, onToggle, onTool
             domainFn={(values) => extent([...values, -2, 0, 2])}
             ariaLabel="Combined rhythm z-scores"
             onTooltip={onTooltip}
+            focusSpan={span}
           />
         </ChartSection>
       )}

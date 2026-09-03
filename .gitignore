@@ -13,7 +13,6 @@ data/raw/
 scenarios/*/corpus/
 scenarios/*/reviews/
 scenarios/*/measurement/
-scenarios/*/interpretation/
 scenarios/*/reports/
 scenarios/*/status.json
 scenarios/*/history.jsonl
