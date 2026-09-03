@@ -16,6 +16,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from wsf.analysis.coupling import evaluate_window_coupling
+from wsf.db import desk_health
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -222,6 +223,12 @@ def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = No
         allow_headers=["*"],
     )
 
+    @app.get("/api/health")
+    def api_health() -> JSONResponse:
+        payload = desk_health()
+        status = 200 if payload["ok"] else 503
+        return JSONResponse(payload, status_code=status)
+
     @app.get("/api/results")
     def api_results() -> dict:
         return result_index(app.state.scenarios_root)
@@ -264,7 +271,7 @@ def create_app(*, api_only: bool | None = None, scenarios_root: Path | None = No
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--host", default="127.0.0.1")
+    parser.add_argument("--host", default=os.environ.get("WSD_HOST", "127.0.0.1"))
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument(
         "--api-only",

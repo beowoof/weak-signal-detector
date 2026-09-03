@@ -313,22 +313,25 @@ A future scientific freeze records both the scenario hash and the complete scien
 
 ## 6D. Plot recorded measurements locally
 
-From the repository root, start the data API and the Vite UI (hot reload; polls `/api` every 8s so new notices appear without restarting Python):
+From the repository root, start the desk as one Compose app:
+
+```bash
+docker compose up --build
+```
+
+Open <http://127.0.0.1:5173>. The API is at <http://127.0.0.1:8000/docs>. Vite proxies `/api`. The UI polls every 8s. Collect or measure with `docker compose exec agent wsd measure --scenario ukraine2022 --exploratory`.
+
+Host-only fallback (two terminals):
 
 ```bash
 uv run python dashboard/server.py --api-only
-# FastAPI + uvicorn. --reload is on by default; Python changes under dashboard/ and src/ pick up.
 ```
-
-In a second terminal:
 
 ```bash
 cd dashboard/web
 npm install
 npm run dev
 ```
-
-Open <http://127.0.0.1:5173>. The API stays on :8000; Vite proxies `/api`. OpenAPI is at <http://127.0.0.1:8000/docs>. Use **Refresh** or wait for the poll. React files hot-reload in Vite; `dashboard/server.py` and `src/` reload in uvicorn.
 
 To serve a production build from Python alone:
 

@@ -6,6 +6,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **Docker Compose desk** (`compose.yaml`): `db` (Postgres 16), `api` (FastAPI), `agent` (`wsd agent run`), `web` (Vite). `docker compose up --build` is the running app. Harvests stay on bind-mounted files; Postgres holds agent heartbeat and a jobs table for later queue/websocket work. `/api/health` reports both.
 - **FastAPI desk API** (`dashboard/server.py`): stdlib `ThreadingHTTPServer` replaced with FastAPI + uvicorn. `--reload` is on by default; `--api-only` pairs with Vite. OpenAPI at `/docs`.
 - **React/Vite desk UI** (`dashboard/web/`): like-for-like port of the results viewer with HMR. `python dashboard/server.py --api-only` plus `npm run dev`. Polls `/api/result` every 8s so new notices appear without a UI restart.
 - **`notice_v0` desk object:** `config/notice_policy.yaml`, `src/wsf/notice.py`, `wsd notice emit|list`. K≥3 coupling episodes persist as an immutable trigger plus mutable workflow. Dashboard **Notice inbox** lists them. Re-emit does not rewrite trigger facts.
