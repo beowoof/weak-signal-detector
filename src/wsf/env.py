@@ -33,4 +33,5 @@ def load_project_env(project_root: Path) -> dict[str, bool]:
         "GOOGLE_APPLICATION_CREDENTIALS": bool(os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")),
         "OLLAMA_BASE_URL": bool(os.environ.get("OLLAMA_BASE_URL")),
         "OLLAMA_MODEL": bool(os.environ.get("OLLAMA_MODEL")),
+        "TAVILY_API_KEY": bool(os.environ.get("TAVILY_API_KEY")),
     }

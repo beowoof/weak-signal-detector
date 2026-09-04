@@ -74,6 +74,7 @@ services:
     working_dir: /app
     environment:
       DATABASE_URL: postgresql://wsd:wsd@db:5432/wsd
+      WSD_API_BASE_URL: http://api:8000
     env_file:
       - path: .env
         required: false

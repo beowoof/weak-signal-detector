@@ -1,7 +1,7 @@
 {
   "packet_id": "packet-c9560b0d2d26",
   "notice_id": "notice-8f9869999a00",
-  "updated_at": "2026-09-03T21:15:10.902915+00:00",
+  "updated_at": "2026-09-04T16:46:13.758632+00:00",
   "tasks": [
     {
       "kind": "refresh_physical",
@@ -12,6 +12,11 @@
       "kind": "official_pack",
       "status": "complete",
       "title": "Official pack"
+    },
+    {
+      "kind": "open_source_search",
+      "status": "complete",
+      "title": "Open-source search"
     }
   ]
 }

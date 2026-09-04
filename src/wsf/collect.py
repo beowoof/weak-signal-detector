@@ -13,7 +13,8 @@ from pydantic import BaseModel, Field
 from wsf.connectors.base import PullRequest
 from wsf.connectors.copernicus_catalogue import search_catalogue
 from wsf.connectors.declared_posture import DeclaredPostureConnector, state_at_cutoff
-from wsf.connectors.http import UrllibTransport
+from wsf.connectors.http import HttpTransport, UrllibTransport
+from wsf.connectors.tavily import harvest_searches
 from wsf.notice import (
     CollectionPosture,
     Notice,
@@ -47,8 +48,9 @@ VALIDATE = "validate"
 CHRONOLOGY = "chronology"
 PHYSICAL = "refresh_physical"
 OFFICIAL = "official_pack"
+SEARCH = "open_source_search"
 HARVEST_KINDS = (CHRONOLOGY, PHYSICAL, OFFICIAL)
-ALL_KINDS = (VALIDATE, *HARVEST_KINDS)
+ALL_KINDS = (VALIDATE, *HARVEST_KINDS, SEARCH)
 
 SERIES_CHRONICLE = (
     "market.cbr_funding_spread",
@@ -892,6 +894,102 @@ def _official(
     )
 
 
+def _attach_search(packet: Packet, harvested: dict[str, Any]) -> None:
+    hits = harvested.get("hits") or []
+    geo = packet.geopolitical_context or {}
+    items = [item for item in (geo.get("items") or []) if item.get("kind") != "open_source_search"]
+    items.append(
+        {
+            "kind": "open_source_search",
+            "votes": False,
+            "summary": (
+                f"{len(hits)} Tavily hits published on or before cutoff. "
+                "Search does not vote."
+            ),
+            "n_hits": len(hits),
+            "dropped_n": harvested.get("dropped_n") or 0,
+            "queries": harvested.get("queries") or [],
+        }
+    )
+    notes = list(geo.get("notes") or [])
+    if harvested.get("reason"):
+        notes.append(str(harvested["reason"]))
+    packet.geopolitical_context = {
+        **geo,
+        "items": items,
+        "notes": notes,
+        "status": geo.get("status") or "partial",
+    }
+
+
+def _search(
+    packet: Packet,
+    notice: Notice,
+    clocks,
+    now: datetime,
+    project_root: Path,
+    transport: HttpTransport | None = None,
+) -> CollectionTask:
+    start = notice.trigger.start - timedelta(days=LOOKBACK_DAYS)
+    harvested = harvest_searches(
+        notice,
+        project_root,
+        start=start,
+        cutoff=clocks.knowledge_cutoff,
+        transport=transport,
+    )
+    items = list(harvested.get("hits") or [])
+    notes = [
+        "Tavily news search is dated to the packet cutoff. Hits do not vote.",
+        "Undated results and anything published after cutoff are dropped.",
+    ]
+    if harvested.get("reason"):
+        notes.append(str(harvested["reason"]))
+    notes.append(
+        f"{len(items)} kept, {harvested.get('dropped_n') or 0} dropped, "
+        f"{len(harvested.get('queries') or [])} queries."
+    )
+    unverified = sum(1 for item in items if item.get("date_unverified"))
+    if unverified:
+        notes.append(
+            f"{unverified} official-domain hits have no publish date; treat as unverified."
+        )
+    if items:
+        _attach_search(packet, harvested)
+    status: Literal["complete", "blocked"] = (
+        "blocked" if harvested.get("status") == "blocked" else "complete"
+    )
+    question = (
+        "Do contemporaneous public reports corroborate, contradict, or leave "
+        "unresolved the quantitative cue?"
+    )
+    frame = _frame(project_root, notice.trigger.scenario_id)
+    plan = {
+        "question": question,
+        "window": _window(notice, clocks, start=start),
+        "queries": harvested.get("queries") or [],
+        "aois": list(frame.get("aois") or []),
+        "discriminators": _discriminators(packet, "search"),
+    }
+    return CollectionTask(
+        task_id=f"{packet.packet_id}:open_source_search",
+        kind=SEARCH,
+        title="Open-source search",
+        status=status,
+        posture=CollectionPosture.focused.value,
+        knowledge_cutoff=clocks.knowledge_cutoff,
+        ran_at=now,
+        summary=(
+            harvested.get("reason")
+            or f"{len(items)} cutoff-safe Tavily hits."
+        ),
+        items=items,
+        notes=notes,
+        analyst_question=question,
+        plan=plan,
+    )
+
+
 def _run_kind(
     kind: str,
     packet: Packet,
@@ -900,6 +998,7 @@ def _run_kind(
     clocks,
     now: datetime,
     project_root: Path,
+    transport: HttpTransport | None = None,
 ) -> CollectionTask:
     if kind == VALIDATE:
         return _validate(packet, notice, clocks, now)
@@ -909,6 +1008,8 @@ def _run_kind(
         return _physical(packet, notice, observations, clocks, now, project_root)
     if kind == OFFICIAL:
         return _official(packet, notice, observations, clocks, now, project_root)
+    if kind == SEARCH:
+        return _search(packet, notice, clocks, now, project_root, transport)
     raise ValueError(f"unknown collection task {kind}")
 
 
@@ -920,6 +1021,7 @@ def run_collection(
     kinds: list[str] | None = None,
     replay: bool = False,
     request_context: bool = False,
+    transport: HttpTransport | None = None,
 ) -> dict[str, Any]:
     notice = load_notice(project_root, scenario_id, notice_id)
     if not notice.workflow.packet_id:
@@ -943,7 +1045,9 @@ def run_collection(
     directory.mkdir(parents=True, exist_ok=True)
     tasks: list[CollectionTask] = []
     for kind in wanted:
-        task = _run_kind(kind, packet, notice, observations, clocks, now, project_root)
+        task = _run_kind(
+            kind, packet, notice, observations, clocks, now, project_root, transport
+        )
         _task_path(directory, kind).write_text(
             task.model_dump_json(indent=2) + "\n", encoding="utf-8"
         )

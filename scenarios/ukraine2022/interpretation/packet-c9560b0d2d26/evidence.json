@@ -861,6 +861,57 @@
             "url": "https://catalogue.dataspace.copernicus.eu/odata/v1/Products(6b468f30-f39e-4bed-9b00-57d362516777)"
           }
         ]
+      },
+      {
+        "kind": "open_source_search",
+        "votes": false,
+        "summary": "6 Tavily hits published on or before cutoff. Search does not vote.",
+        "n_hits": 6,
+        "dropped_n": 30,
+        "queries": [
+          {
+            "id": "official_uk",
+            "query": "UK FCDO travel advice Ukraine 2022",
+            "n_kept": 3,
+            "n_dropped": 3,
+            "error": null
+          },
+          {
+            "id": "official_us",
+            "query": "US State Department travel advisory Ukraine 2022",
+            "n_kept": 0,
+            "n_dropped": 6,
+            "error": null
+          },
+          {
+            "id": "diplomatic",
+            "query": "Russia Ukraine embassy personnel February 2022",
+            "n_kept": 2,
+            "n_dropped": 4,
+            "error": null
+          },
+          {
+            "id": "reporting",
+            "query": "Russia Ukraine military exercises February 2022",
+            "n_kept": 1,
+            "n_dropped": 5,
+            "error": null
+          },
+          {
+            "id": "place_Yelnya",
+            "query": "Yelnya Russia troops February 2022",
+            "n_kept": 0,
+            "n_dropped": 6,
+            "error": null
+          },
+          {
+            "id": "place_Klintsy",
+            "query": "Klintsy Russia troops February 2022",
+            "n_kept": 0,
+            "n_dropped": 6,
+            "error": null
+          }
+        ]
       }
     ],
     "notes": [

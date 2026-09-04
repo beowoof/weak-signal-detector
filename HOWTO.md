@@ -15,7 +15,7 @@ Order (all development_showcase, none of them held-out):
   3. usachn2018trade   hard negative: loud 2018 tariff talk, no mobilisation
 Do not harvest GRC-TUR-2020 yet.
 
-For each scenario, one command runs validate → collect → review → measure → emit:
+For each historical scenario, one **backtest** command runs validate → collect → review → measure → emit on that closed window. The live desk (later) is continuous, scheduled, and event-driven; do not treat this batch job as that watch.
 
 ```bash
 wsd run workflow --scenario <id>
@@ -371,11 +371,76 @@ They do not edit trigger facts. **Request more information** (or `wsd packet col
 
 Clicking **Physical posture** or **Official posture** on the brief runs the job *and* returns a collection plan: sources (desk harvest vs analyst search), named AOIs, dates admissible at cutoff, and what would discriminate each hypothesis. Physical posture also searches the Copernicus catalogue for Sentinel-1 GRD and Sentinel-2 L1C granules over those AOIs. It stores pointers (product name, sensing date, knowable-at-cutoff), not scenes, and they do not vote. OSM, NOTAMs and official statements remain analyst search.
 
-**Add Notes** (top of the alert, and on the Anomaly banner) opens one text box pre-filled with a template from the packet. Edit and save. Writes `scenarios/<id>/reports/<report-id>/report.md`. The desk does not draft it. CLI: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
+**Add Notes** (top of the alert) opens one text box. **Machine draft** uses a cutoff-dated Tavily search plus Ollama (`wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay`). The model and server come from `OLLAMA_MODEL` and `OLLAMA_BASE_URL` in `.env`; exported environment values take precedence. No xAI key or hosted-model credits are required. Edit, then save. The machine write-up is a sidecar; it does not vote or overwrite a saved human report. CLI save: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
+
+To draft from already collected material without another Tavily request, add `--no-search`:
+
+```sh
+wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay --no-search
+```
+
+**Known replay limitation (4 September 2026):** undated official-source Tavily hits
+are currently admitted as unverified, including later material in this Ukraine
+packet. `--no-search` reuses those saved hits; it does not remove them or establish
+a clean replay. See ROADMAP phase 5a for the planned admission and evidence-input
+fixes. Draft completion and an empty `leakage` list are not historical validation.
+
+The [native Ollama chat API](https://docs.ollama.com/api/chat) is used with JSON output,
+model-token streaming and thinking disabled, temperature 0, and seed 42.
+If the backend explicitly rejects structured output with HTTP 501 and
+`structured output is unavailable`, the API resubmits once without `format`.
+The prompt still requires JSON and the same structure validation applies before
+saving. The sidecar records `output_mode` as `native_json` or `prompt_json`.
+Timeouts and other failures never trigger this compatibility resubmission. Desk limits default to
+900 seconds, 4096 output tokens, and 32768 context tokens; override them with
+`OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_MAX_OUTPUT_TOKENS`, and `OLLAMA_NUM_CTX`.
+Malformed, empty, and token-truncated output is rejected before replacing draft files.
+Section values returned as lists or objects are deterministically rendered as
+Markdown before schema validation (for example, hypotheses as labelled records
+and findings as bullet lists). Existing Markdown strings are unchanged. The raw
+model response and the names of converted sections are retained in the sidecar;
+format conversion does not validate the model's factual claims. Empty structures
+do not count as an assessment. Cutoff-language checks cover both notes and sections.
+The sidecar records raw model text, prompt hash, provider/model, generation settings,
+and available Ollama timing metrics. This does not establish semantic correctness;
+the analyst still reviews grounding, alternative explanations and cutoff compliance.
+The frozen interpretation protocol and its settings are unchanged.
+
+The host `wsd packet draft` command submits to `POST /api/packet/draft/stream`;
+the **Machine draft** button retains the JSON endpoint `POST /api/packet/draft`.
+Both run the same server-side drafting function. The CLI uses `WSD_API_BASE_URL` (default
+`http://127.0.0.1:8000`), not `OLLAMA_BASE_URL`. Start the Docker stack first.
+The CLI reads its API settings from the project `.env`, with exported values
+taking precedence. `WSD_API_TIMEOUT_SECONDS` defaults to 1800 seconds. It does
+not retry or fall back to local generation: after a timeout, check API logs and
+draft artefacts before resubmitting because server work may still be running.
+Returned artefact paths are server paths. Other CLI commands remain unchanged.
+Compose sets the agent container's API URL to `http://api:8000`, so the same
+draft command can be run there too (recreate an existing agent to pick this up).
+
+The CLI shows a job ID, completed-stage bar, current activity and elapsed time
+on stderr. Stages are preparation, search/context, generation, validation and
+saving. For example: `Job-abc123 [########............] 2/5 stages | Ollama generating · 1m 04s`.
+The stage bar is **not a percentage of generation or remaining time**. The API
+sends heartbeats every two seconds while waiting on the model; this confirms the
+API request is still active, not that the model is making tokens. Non-terminal
+logs print each changed stage and a heartbeat every 30 seconds. `--quiet`
+suppresses progress; stdout remains the final JSON summary. Ctrl-C stops watching,
+not server work. These are request IDs, not durable/resumable queued jobs.
+
+The API container owns model configuration and must reach Ollama:
+`localhost` refers to the container, not the Mac. Set `OLLAMA_BASE_URL` in the API
+container environment to `http://host.docker.internal:11434` (or your reachable
+Ollama server) and recreate that container after changing its environment.
+Host-shell `OLLAMA_*` overrides do not change the running API's configuration.
+
+In the UI, generated text appears as **Machine draft ready for review**. Preview
+it, then choose **Use machine draft** or **Keep my assessment**. Replacing existing
+editor text requires confirmation; the saved report changes only when you save it.
 
 ## 7. Run the whole pipeline
 
-Live desk path (validate, collect, review, exploratory measure, emit):
+Backtest path (validate, collect, review, exploratory measure, emit on a closed window). This is not the live watch:
 
 ```bash
 wsd run workflow --scenario ukraine2022

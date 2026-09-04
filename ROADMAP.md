@@ -30,7 +30,30 @@ Anomaly is the first. Notice plus posture is the second. Packet plus report is t
 
 All inputs are open-source information: lawfully and publicly obtainable data, documents, reporting, maps, and imagery. Public registration or an API key is an access mechanism, not a disqualifier.
 
-The quantitative detector is largely finished infrastructure. The next research object is a **packet that is actually a brief** (environment + context), then a report.
+The quantitative detector is largely finished infrastructure. The next research object is an **evidence-building workflow that reduces analyst labour**, not merely a more fluent draft. The human should review evidence, challenge interpretations and own the decision, rather than manually locate and assemble the foundations. See [phase 5a](#5a-evidence-building-and-analyst-labour-reduction-next-not-built).
+
+---
+
+## Two operating modes
+
+The desk has two runtimes. They share contracts (observations, both clocks, notices, packets). They do not share a control loop.
+
+| | **Backtest (now)** | **Live (later)** |
+|---|---|---|
+| Command | `wsd run workflow --scenario <id>` | Not a morning command. The process stays up. |
+| What it is | Replay a closed historical window | A sitting watch over calendar time |
+| How time moves | The operator starts a job; lookback + score window are harvested, scored, and emitted once | Time passes; sources arrive when they arrive |
+| Driver | Batch CLI | **Schedules** (per-source cadence) and **events** (observation arrived, day closed, notice opened, harvest due, source_down) |
+| Collect | One full harvest of the declared windows | Incremental append; pull only what that source is due to publish |
+| Measure / emit | Once, at the end of the harvest | On the new edge of time, when a day or series updates |
+| Notice | Opens from a finished measurement | Opens as coupling appears in the rolling present |
+| Packet cutoff | `--replay`: episode end | Live: `now`, `available_at` and `retrieved_at` |
+
+`wsd run workflow` is the **backtest operator path**. It is how we restage `rus2021apr`, `deu2018quiet`, and `usachn2018trade`. It is not a prototype of how a live desk is started each day, and it should not grow into a daemon.
+
+The [analyst loop](#analyst-loop-target) below is the live product. Today we **replay** that loop on frozen windows so a human can sit with the packet. Phase 7 is when the same objects are driven continuously.
+
+Do not confuse “we ran the pipeline without typing five commands” with “the desk is live.” Batch convenience is for backtesting. Live operations are event-driven over time.
 
 ---
 
@@ -99,9 +122,11 @@ This is the same cutoff machinery as the historical work. The packet layer makes
 
 ## Analyst loop (target)
 
+This is the **live** loop. Backtesting (`wsd run workflow`) replays it on a closed window so the packet can be judged. It does not replace schedules and events.
+
 1. **Scenario / region.** A theatre declares the focal actor, counterparts, AOIs, quantitative sources, contextual sources, and historical windows.
 2. **Information-environment baseline.** Maintain the contemporary public context: reporting volume, tone/intensity, originating-source diversity, official posture, narrative concentration, geographic focus, and change over time.
-3. **Watch.** Daily observations and derived scores land. The desk waits for configured convergence across causal domains rather than staring at raw z-plots.
+3. **Watch.** Daily observations and derived scores land as sources publish (not because an operator re-ran collect). The desk waits for configured convergence across causal domains rather than staring at raw z-plots.
 4. **Notice.** A versioned heuristic opens an **immutable event**: what moved, which domains contributed, what was unknown, what physical or administrative sources did or did not corroborate, and the prevailing information environment. Workflow state (`new` / `acked` / `in_packet` / `closed`) is mutable; the triggering facts are not.
 5. **Collection posture.** The notice recommends how much additional public-source collection is justified. The analyst may accept or change it. Posture is effort, not threat.
 6. **Context harvest.** Collect bounded, cutoff-safe news/RIMA, official statements, maps, public EO catalogues, and other public sources allowed by the posture. That material is stored outside the trigger namespace.
@@ -268,16 +293,31 @@ Output: `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus stable ci
 | Frontier/staging RUS AOIs and current physical restage | `ukraine2022` restaged and measured (`collection-20260902T172316Z-3a7030` / `measure-20260902T203316Z-f05cf7`, exploratory). `rus2021apr` restaged (`collection-20260904T095246Z-6a1a2a` / `measure-20260904T095423Z-ceca4f`): coincidence_v1 0 alerts; one K≥3 coupling notice 5–8 Apr (`notice-1e8be533f571`). DEU/USA emit 0 notices. |
 | CBR, NAVAREA, DEU/USA gazette as live costly/admin series | Built (RUS gazette and NOTAM still out) |
 | Information-environment baseline | Missing; existing series provide partial proxies only |
-| Collection posture | Missing |
+| Collection posture | Persisted notice posture and focused packet jobs exist; a complete posture-budgeted collection controller is not built. |
 | Anomaly (coupling / coincidence) | Built. K≥3 episodes are the “look here” in the data. |
 | Notice (alert) | Built (`notice_v0`, inbox). Immutable trigger + workflow. |
 | Packet (brief) | Model-free product compiler. Default playback is assessment / watchlist / competing explanations / collection priorities. Analytic state `quiet → anomaly → watch → preparatory_pattern → escalation` describes observable system state, not intent. z-scores and reconstructed-latency machinery sit in an evidence drawer. |
 | Report (send up the chain) | Dump-in working assessment on the notice (`report_v0`). Template of what a sitting analyst would cover; human-owned. Not a finished send-up product. |
 | Dashboard as **inbox of notices** | Notices are the home surface (alerts). Anomaly charts are a drill-down. |
-| On-cue context harvest | Chronology / physical refresh / official pack as packet-scoped jobs. Physical and Official jobs carry a plan (sources, AOIs, admissible dates, discriminators). Official pack harvests **declared UK/US posture**. Physical posture harvests Copernicus S1/S2 catalogue pointers (no scene download, no vote). OSM, RIMA, GKG, and live search remain analyst-search rows. |
-| LLM assessment | Contract only (`intent_triage_v0`, `enabled: false`) |
+| On-cue context harvest | Chronology / physical refresh / official pack as packet-scoped jobs. Physical and Official jobs carry a plan (sources, AOIs, admissible dates, discriminators). Official pack harvests **declared UK/US posture**. Physical posture harvests Copernicus S1/S2 catalogue pointers (no scene download, no vote). Tavily adds up to six fixed contextual searches; OSM, RIMA, GKG and investigation of public imagery/movement reporting remain unbuilt. |
+| Batch backtest CLI | Built (`wsd run workflow`: validate → collect → review → measure → emit). Retrospective only. |
+| Continuous live watch | Missing. Phase 7: schedules per source plus event-driven measure/emit. Do not grow the batch command into this. |
+| LLM assessment | Sitting desk: bounded `desk_draft_v0` (Tavily + Ollama, no vote). Host CLI delegates to Docker API with streamed stage feedback; model output is validated and structured sections normalised. Replay filtering has a known admission defect (below). Frozen experiment: `intent_triage_v0` still `enabled: false`. |
+| Evidence-building / revised assessment | Not built. Current drafting packages the cue and limited context; it does not reproduce the analyst's physical corroboration, source verification and evidence-driven hypothesis revision. |
 
-The measurement layer already emits `analyst_action: review_soft_correlation_and_resolve_costly_source_gap`. Nothing yet turns that into a persisted analyst object or a complete contextual workflow.
+The measurement layer already emits `analyst_action: review_soft_correlation_and_resolve_costly_source_gap`. Notices, collection tasks and human reports now persist parts of that workflow; the complete contextual investigation remains the gap.
+
+### 4 September 2026 checkpoint: engineering progress, not assessment completeness
+
+The owner completed a real `wsd packet draft --replay --no-search` through the Docker API to local Ollama in about 78 seconds. It reused saved Tavily results, wrote a draft with three citation entries, and left human notes and detector votes unchanged. This confirms the execution path, not citation validity, historical admissibility or analyst time saved.
+
+Comparison with the owner's manual 10–12 February assessment found:
+
+- Cue assembly and draft formatting are mostly automated; operational evidence discovery, provenance review and corroboration remain largely manual.
+- Six saved Tavily results reached the model. Three were undated official-source hits, including a January 2024 map despite the 12 February 2022 cutoff. `date_unverified` currently does not exclude a hit. Existing artefact wording such as “cutoff-safe” overstates the guarantee; retain those artefacts as the audit record, not a clean replay baseline.
+- The packet's collection has ten dated UK/US posture events and seventeen catalogue granules marked knowable, but `_user_payload` supplies official summary notes and search snippets, not the detailed official/physical collection items. Catalogue availability is not imagery interpretation or proof of deployment.
+- The prompt holds causal explanations at “realistic possibility” unless the initial packet ranked them. The interpretive layer needs to propose evidence-backed revisions without changing the original trigger or measurement.
+- No measured percentage of manual work saved has been established. The manual assessment is a workflow reference, not independently verified ground truth or a target verdict to reproduce.
 
 ---
 
@@ -326,11 +366,13 @@ This is a workflow and usefulness gate, not an invasion-prediction accuracy test
 
 ### 5. Add the draft assessment (LLM)
 
-Fill the empty interpretation layer only after the packet works for a human.
+The sitting desk now has a **bounded** drafter (`desk_draft_v0`): optional Tavily search requested against the packet cutoff, then Ollama using server-side `OLLAMA_MODEL` and `OLLAMA_BASE_URL` fills the working-assessment template. `--no-search` reuses saved search results, not a signals-only ablation. The replay-admission defect above must be fixed before a clean historical assessment. Frozen `intent_triage_v0` (Ollama, four conditions) stays disabled and separate.
 
-- Inputs: only the immutable packet. No post-cutoff material or uncited model-memory claims.
-- The model does not invent evidence items or their `significance` on first pass if the packet still has `unassigned`.
-- Output schema **requires every hypothesis**, each with:
+The current implementation is a first-pass summary, not a demonstrated 70–80% reduction in analyst work. The analyst previews a machine draft, explicitly chooses whether to use it, edits and owns the save. Phase 5a supplies the missing investigative work.
+
+- Target inputs: a versioned, frozen snapshot of the packet and admitted contextual evidence. No post-cutoff material or uncited model-memory claims. Current input is a selective summary, not that complete snapshot.
+- The model must not invent observations. Proposed evidence significance and hypothesis updates belong in a separate, attributable interpretation layer for analyst review, not in the immutable detector facts.
+- Target output schema (not yet enforced by the current free-text sections) **requires every hypothesis**, each with:
 
   ```text
   hypothesis
@@ -347,6 +389,29 @@ Fill the empty interpretation layer only after the packet works for a human.
 - Repeats and conditions in `intent_triage_v0` remain a methods experiment. The desk product is one analyst-owned report, not five hidden samples.
 - Preserve the raw model draft separately from analyst edits.
 
+### 5a. Evidence-building and analyst labour reduction (next; not built)
+
+**Outcome:** automate finding, organising and comparing evidence so the analyst operates at the top of the information pyramid. Do not optimise for a more alarming conclusion or force the machine to match the manual “send up” decision.
+
+Implement in this order:
+
+1. **Repair replay admission first.** Undated or version-unverified sources, including official domains, remain leads outside the assessment input until their pre-cutoff content is established. Exclude later maps and revised pages. Separate event, publication, retrieval and archive/version times; a date in a URL is not proof that the retrieved text existed at cutoff. Record exclusion reasons, revalidate cached hits on input, and prevent contaminated summaries from carrying excluded claims forward. Preserve original artefacts and issue a new evidence/input version rather than silently cleaning history. Retain genuinely contemporaneous warnings; forbidden-word matching alone is not temporal verification.
+2. **Use the evidence already collected.** Build an addressable input snapshot from dated official events, physical observations, catalogue availability, chronology and admitted search material. Preserve the distinction between catalogue pointers, reported imagery interpretation and directly inspected imagery. Record included/omitted item IDs, truncation and reasons so context-budget selection is visible. Persist the exact model input, hash and source versions.
+3. **Investigate collection requirements.** Turn each requirement and discriminator into bounded source/AOI/date-specific searches. Include publicly released commercial imagery reporting, geolocated movement reporting, official statements and contradictory or de-escalatory evidence where relevant. Fetch underlying documents and supporting passages when accessible; snippets are leads, not a claim of full-document review. Follow up unresolved questions within declared query, document, time and cost limits; cache results and record failed/empty searches. All inputs remain publicly obtainable OSINT; registration and API keys are allowed.
+4. **Build a claim-and-evidence ledger.** Store claims with stable IDs, source URLs, exact supporting passages/locations, clocks, geographic attribution, provenance and verification status. Link corroboration and contradiction; distinguish independently originated evidence from syndication or repetition. Represent geolocation as reported versus independently checked. Missing FIRMS attribution or unavailable imagery remains unknown, not fabricated detail.
+5. **Propose an updated interpretation.** For every retained hypothesis, show supporting and contradicting evidence IDs, dependencies, unknowns and discriminators. Explain what changed since the initial packet and why a hypothesis or confidence should rise, fall or remain unresolved. Permit proposed downweighting of routine variation and other evidence-backed revisions; do not freeze the interpretation at the original packet's likelihoods. Propose wait / collect more / send up / close, without changing detector scores, trigger facts or the human-owned report automatically.
+6. **Make review the analyst's main task.** Present the initial cue beside new findings and proposed assessment changes, with passage-level source drill-down and explicit unresolved questions. Let the analyst accept, reject or edit proposals and own escalation/sign-off. Show collection stages, sources examined, gaps, limits reached and failures; support bounded restart/resume without blindly repeating paid search or uncertain generation. Preserve rejected model output as a diagnostic artefact separate from accepted drafts.
+
+Acceptance checks before calling this analyst-work automation:
+
+- A frozen-fixture replay excludes the observed undated/2024 material while retaining legitimate pre-cutoff warnings. Cached hits and derived summaries obey the same admission rules.
+- The model receives admitted official/physical evidence or an explicit omission record, not only generic summary notes. Missing imagery is not described as inspected.
+- Each material factual assertion and proposed hypothesis change traces to an admitted source passage or declared deterministic observation. Invented or unsupported citations fail validation or remain visibly unresolved.
+- An analyst can inspect what was found, what disagrees, what was not found and why the proposed judgement changed without reopening a general web search for every foundation.
+- Compare the same research tasks with the manual workflow: active analyst minutes, manual searches/document openings, source corrections, unsupported claims and unresolved gaps. Record model/search elapsed time and cost separately; do not claim a labour-saving percentage until measured.
+- Use the Ukraine assessment to define the work to cover (physical posture, official actions, alternative explanations, judgement and next discriminators), not to tune toward a known outcome. Check independent cases, including quiet/contradictory examples and applicable hard negatives, before broader claims.
+- Human edits survive retries and navigation; model proposals never change a notice trigger or automatically send a report up the chain.
+
 ### 6. Produce the analyst report
 
 `scenarios/<id>/reports/<report-id>/` as the thing an analyst would actually send:
@@ -360,9 +425,17 @@ Fill the empty interpretation layer only after the packet works for a human.
 
 The report says: “these public channels changed together; here is the context we collected; here is how I assess it.” It never turns that configuration into a countdown prediction.
 
-### 7. Watch loop, only after phases 1–6 work retrospectively
+### 7. Continuous watch, only after phases 1–6 work retrospectively
 
-Daily score the live desk and open notices without a human running `wsd measure` by hand. This is later PoC operations, not a claim that the underlying scientific detector has been validated.
+The live desk is not `wsd run workflow` on a cron. It is a process that stays up and is driven by **time**.
+
+- **Schedules** per source: weekday CBR prints, next-day Wikimedia, 3-day VIIRS reconstructed latency, FIRMS daily, NAVAREA as published. Each source is pulled when it is due, not when a scenario job starts.
+- **Events** over time: observation arrived, expected day closed missing, source_down, coupling episode opened, notice workflow asked for context, posture harvest due. Measure and emit run on those edges.
+- **Incremental corpus:** append new days; do not re-harvest the 120-day lookback unless a revision is required.
+- **Rolling present:** notices open as coupling appears, not from a finished whole-window measurement. Packet cutoff is `now`.
+- Collection jobs already have the live shape (Physical / Official on a notice). The missing piece is the watch itself, not more batch stages.
+
+This is later PoC operations, not a claim that the underlying scientific detector has been validated. Keep the batch CLI as the backtest tool.
 
 ---
 
@@ -376,6 +449,7 @@ Daily score the live desk and open notices without a human running `wsd measure`
 6. The packet keeps observations, assumptions, heuristics, contextual evidence, and analyst judgement distinct, and can be assessed without the rest of the repository.
 7. An analyst can document routine variation, unresolved significance, or elevated concern without the interface pushing toward an alarming conclusion.
 8. Notice volume and context-harvest cost remain manageable for a single desk.
+9. The evidence-building workflow reduces measured analyst collection/assembly effort while retaining source traceability and surfacing contradictions; fluency and agreement with a retrospective conclusion are not substitutes.
 
 ---
 
@@ -390,17 +464,18 @@ Daily score the live desk and open notices without a human running `wsd measure`
 - Score `GRC-TUR-2020` as if a freeze existed.
 - Apply a source because it is available when it has no geographic or causal relevance, such as US Federal Register volume on a Russia desk.
 - Jump to a model because `evidence.json` exists.
+- Treat `wsd run workflow` (or a cron of it) as the live desk. Batch is backtesting; live is continuous, scheduled, and event-driven.
 
 ---
 
 ## Near-term order
 
-The quantitative layer is infrastructure. Spend the next effort on notice → packet → report.
+The notice inbox, model-free packet, human assessment and first Ollama draft now exist. The manual comparison exposed the investigative gap. Preserve that checkpoint, then follow phase 5a:
 
-1. Define `notice_v0` (immutable event + workflow), clocks, information-environment snapshot, dependency-graph fields, and collection-posture contracts. Give `heightened` its own policy id.
-2. Persist notices from the existing retrospective measurements and make the dashboard an inbox over them. Pin `ukraine2022` collection/measure in `desk_pin.json` (not a scientific freeze).
-3. Build **one** deterministic, model-free Ukraine packet (`evidence.json`) from the existing RIMA/official corpus plus an information-environment snapshot. If that packet cannot explain why the notice existed, what was known, what was missing, what context found, what contradicted it, and how an analyst could conclude, stop and fix the packet. Do not add connectors.
-4. Replay the notice-to-packet workflow across the other positive and hard-negative cases.
-5. Have a human write one complete assessment and report from a packet, sitting with the packet alone.
-6. Add one local-model draft (mandatory hypotheses, packet-relative confidence) and compare it with the human-only workflow.
-7. Then decide whether additional contextual connectors, a hosted model, or a daily watch loop are worth implementing.
+1. Fix replay admission and revalidate cached context before another historical assessment is treated as clean.
+2. Pass the already-collected evidence through an explicit, versioned input contract; surface missing and omitted items.
+3. Add bounded requirement-led document discovery, extraction and a claim/evidence ledger, including contradictory evidence.
+4. Draft evidence-backed changes to hypotheses, confidence and the collection decision in a separate interpretation layer.
+5. Build source-linked analyst review and measure actual collection/assembly labour saved, including correction effort.
+6. Exercise the same workflow on independent positive, quiet and contradictory cases. Continue the information-environment baseline and posture/dependency contracts; these remain incomplete.
+7. Only then consider expanding source breadth or implementing the **continuous watch** (schedules + events, not a cron of `wsd run workflow`). A hosted model is not required.

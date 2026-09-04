@@ -345,7 +345,7 @@ const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection",
 
 export default function NoticesView({
   notices, selectedId, onSelect, onOpenAnomaly, onBuildPacket, packet, collection,
-  collectBusy, onCollect, onAddNotes, onAction, actionError, activeTab, onTabChange,
+  collectBusy, onCollect, onAddNotes, onMachineDraft, onAction, actionError, activeTab, onTabChange,
   evidence, notes, loading, drafts,
 }) {
   const [query, setQuery] = useState("");
@@ -390,6 +390,9 @@ export default function NoticesView({
         <div className="notice-actions">
           <button className="primary-action" type="button" onClick={onOpenAnomaly}>Review evidence</button>
           <button type="button" onClick={onAddNotes}>Your assessment{drafts[selectedId] ? " · Draft" : ""}</button>
+          <button type="button" disabled={collectBusy} onClick={onMachineDraft}>
+            {collectBusy ? "Drafting…" : "Machine draft"}
+          </button>
           <details className="action-menu" key={selectedId}
             onKeyDown={(event) => {
               if (event.key === "Escape") {

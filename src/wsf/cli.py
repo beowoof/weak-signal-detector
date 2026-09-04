@@ -10,8 +10,9 @@ from typing import Any
 import typer
 
 from wsf.agent import run_agent
+from wsf.api_client import stream_draft_api
 from wsf.brief_pdf import render_existing_packet
-from wsf.collect import ALL_KINDS, HARVEST_KINDS, run_collection
+from wsf.collect import ALL_KINDS, HARVEST_KINDS, SEARCH, run_collection
 from wsf.connectors.viirs import prune_viirs_cache
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
@@ -22,7 +23,7 @@ from wsf.notice import (
     load_notice,
 )
 from wsf.packet import build_and_save
-from wsf.progress import Progress, load_collect_progress
+from wsf.progress import DraftProgress, Progress, load_collect_progress
 from wsf.register import validate_configuration
 from wsf.report import load_report, save_report
 from wsf.review import review_allows_cache_prune, review_corpus
@@ -421,7 +422,8 @@ def packet_collect(
     ),
     task: str = typer.Option(
         "harvest",
-        help="validate | chronology | refresh_physical | official_pack | harvest | all",
+        help="validate | chronology | refresh_physical | official_pack | "
+        "open_source_search | harvest | all",
     ),
     request_context: bool = typer.Option(
         False,
@@ -433,6 +435,8 @@ def packet_collect(
         kinds = list(HARVEST_KINDS)
     elif task == "all":
         kinds = list(ALL_KINDS)
+    elif task in {"search", SEARCH}:
+        kinds = [SEARCH]
     else:
         kinds = [task]
     with _operator_errors():
@@ -445,6 +449,81 @@ def packet_collect(
             request_context=request_context,
         )
     _echo(payload)
+
+
+@packet_app.command("draft")
+def packet_draft(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    notice: str = typer.Option(..., help="Notice id."),
+    replay: bool = typer.Option(
+        False,
+        help="Use episode-end cutoff. Required for historical notices.",
+    ),
+    search: bool = typer.Option(
+        True,
+        help="Run cutoff-dated Tavily search into the packet first.",
+    ),
+    apply: bool = typer.Option(
+        False,
+        help="Copy the draft into an empty human report. Never overwrites saved notes.",
+    ),
+    quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
+) -> None:
+    """Request a draft from the running Docker API; Ollama runs server-side."""
+    with _operator_errors():
+        display = DraftProgress(enabled=not quiet)
+        display.update({"stage": "Connecting to Docker API"})
+        try:
+            payload = stream_draft_api(
+                _root(),
+                {
+                    "scenario": scenario,
+                    "notice_id": notice,
+                    "replay": replay,
+                    "search": search,
+                    "apply": apply,
+                },
+                progress=display.update,
+            )
+        except KeyboardInterrupt:
+            typer.echo(
+                "\nStopped watching; server work may still be running. Check before retrying.",
+                err=True,
+            )
+            raise typer.Exit(code=130) from None
+        finally:
+            display.close()
+        required = {
+            "notice_id",
+            "packet_id",
+            "path",
+            "markdown",
+            "provider",
+            "model",
+            "leakage",
+            "applied",
+            "n_citations",
+        }
+        if missing := required.difference(payload):
+            raise ValueError(
+                f"Desk API draft response is missing fields: {', '.join(sorted(missing))}"
+            )
+    _echo(
+        {
+            "notice_id": payload["notice_id"],
+            "packet_id": payload["packet_id"],
+            "path": payload["path"],
+            "markdown": payload["markdown"],
+            "provider": payload["provider"],
+            "model": payload["model"],
+            "leakage": payload["leakage"],
+            "applied": payload["applied"],
+            "n_citations": payload["n_citations"],
+            "votes": False,
+        }
+    )
+    if payload.get("leakage"):
+        raise typer.Exit(code=2)
 
 
 @packet_app.command("report")

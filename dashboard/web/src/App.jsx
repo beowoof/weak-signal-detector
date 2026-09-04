@@ -48,6 +48,7 @@ export default function App() {
   const [collectBusy, setCollectBusy] = useState(false);
   const [report, setReport] = useState(null);
   const [reportBusy, setReportBusy] = useState(false);
+  const [machineSeed, setMachineSeed] = useState(null);
   const [actionError, setActionError] = useState("");
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
@@ -311,6 +312,35 @@ export default function App() {
     navigate({ surface: "notices", tab: "notes" });
   }
 
+  async function runMachineDraft(notice) {
+    setActionError("");
+    setCollectBusy(true);
+    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
+    const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
+    try {
+      const payload = await postJson("/api/packet/draft", {
+        scenario,
+        notice_id: notice.notice_id,
+        replay,
+        search: true,
+        apply: false,
+      });
+      if (selectedRef.current === notice.notice_id && payload.leakage && payload.leakage.length) {
+        setActionError(`Machine draft flagged leakage: ${payload.leakage.join(", ")}. Edit before saving.`);
+      }
+      setMachineSeed({ noticeId: notice.notice_id, notes: payload.notes || "", at: Date.now() });
+      if (payload.collection || payload.packet_id) {
+        const data = await loadNotices();
+        setNotices(data.notices || []);
+      }
+      if (selectedRef.current === notice.notice_id) openNotes();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setCollectBusy(false);
+    }
+  }
+
   async function postJson(url, body) {
     const response = await fetch(url, {
       method: "POST",
@@ -438,12 +468,14 @@ export default function App() {
         onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
         packet={currentPacket} collection={ownResources ? collection : null}
         collectBusy={collectBusy || opsBusy} onCollect={runCollect}
-        onAddNotes={openNotes} onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
+        onAddNotes={openNotes} onMachineDraft={() => selectedNotice && runMachineDraft(selectedNotice)}
+        onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
         activeTab={route.tab} onTabChange={(tab) => navigate({ tab })}
         loading={loading && !notices.length} drafts={drafts}
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
-          report={currentReport} busy={reportBusy} onDraftChange={onDraftChange}
+          report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
+          machineSeed={machineSeed}
           onSave={(notes) => saveReport(selectedNotice, notes)} />}
       />}
       {surface === "anomaly" && <>
