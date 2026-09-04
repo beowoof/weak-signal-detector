@@ -17,6 +17,13 @@ def test_progress_writes_snapshot(tmp_path: Path) -> None:
     assert payload["scenario_id"] == "rus2021apr"
     assert payload["day_index"] == 126
     assert "h22v03" in stream.getvalue()
+    log.status(
+        "download",
+        bytes=11_000_000,
+        total_bytes=22_000_000,
+        step="download",
+    )
+    assert "[############" in stream.getvalue() or "50%" in stream.getvalue()
     saved = path.read_text(encoding="utf-8")
     assert "RUS-boguchar" in saved
     log.stop_pulse()

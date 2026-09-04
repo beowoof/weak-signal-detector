@@ -38,14 +38,13 @@ class Progress:
                 else:
                     self._state[key] = value
             self._write()
+            self._redraw()
 
     def status(self, message: str, **fields: Any) -> None:
         self.update(message=message, **fields)
         if not self.enabled:
             return
         with self._lock:
-            self.stream.write("\r" + _fit(self._terminal_line()) + "\033[K")
-            self.stream.flush()
             now = time.monotonic()
             if now - self._last_line_at >= 60:
                 self.stream.write("\n")
@@ -67,9 +66,10 @@ class Progress:
         self._pulse_stop.clear()
 
         def run() -> None:
-            while not self._pulse_stop.wait(5):
+            while not self._pulse_stop.wait(2):
                 with self._lock:
                     self._write()
+                    self._redraw()
 
         self._pulse_thread = threading.Thread(target=run, name="wsd-progress", daemon=True)
         self._pulse_thread.start()
@@ -96,6 +96,12 @@ class Progress:
         }
         return payload
 
+    def _redraw(self) -> None:
+        if not self.enabled:
+            return
+        self.stream.write("\r" + _fit(self._terminal_line()) + "\033[K")
+        self.stream.flush()
+
     def _terminal_line(self) -> str:
         state = self._state
         parts = [
@@ -104,10 +110,12 @@ class Progress:
             _fraction(state.get("day_index"), state.get("day_count"), state.get("day")),
             state.get("aoi") or "",
             state.get("tile") or "",
-            state.get("step") or "",
         ]
-        if state.get("bytes"):
-            parts.append(_fmt_bytes(int(state["bytes"])))
+        bar = _bar(state.get("bytes"), state.get("total_bytes"))
+        if bar:
+            parts.append(bar)
+        elif state.get("step"):
+            parts.append(str(state["step"]))
         if state.get("stalled"):
             parts.append("STALLED")
         parts.append(format_elapsed(int(time.monotonic() - self._started)))
@@ -184,6 +192,20 @@ def _fmt_bytes(size: int) -> str:
     if size >= 1_000:
         return f"{size / 1_000:.0f}KB"
     return f"{size}B"
+
+
+def _bar(got: Any, total: Any, width: int = 26) -> str:
+    try:
+        done = int(got or 0)
+        size = int(total or 0)
+    except (TypeError, ValueError):
+        return ""
+    if size <= 0:
+        return _fmt_bytes(done) if done else ""
+    frac = min(1.0, max(0.0, done / size))
+    filled = int(round(width * frac))
+    body = "#" * filled + "." * (width - filled)
+    return f"[{body}] {int(frac * 100):3d}% {_fmt_bytes(done)}/{_fmt_bytes(size)}"
 
 
 def _fit(message: str, width: int = 140) -> str:

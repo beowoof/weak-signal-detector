@@ -17,6 +17,7 @@ scenarios/*/reports/
 scenarios/*/status.json
 scenarios/*/history.jsonl
 scenarios/*/freeze.json
+scenarios/*/collect_progress.json
 
 # Dashboard frontend
 dashboard/web/node_modules/

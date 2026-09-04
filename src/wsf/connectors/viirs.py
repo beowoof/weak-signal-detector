@@ -26,6 +26,7 @@ GRANULE_TILE = re.compile(r"h(\d{2})v(\d{2})")
 CMR_VERSION = "2"
 DOWNLOAD_TIMEOUT_S = 300
 STALL_S = 60
+KEEP_CACHE_ENV = "WSD_VIIRS_KEEP_CACHE"
 
 
 class TileArrays:
@@ -75,14 +76,16 @@ class ViirsConnector:
     def pull(self, request: PullRequest) -> ConnectorResult:
         if not request.aois:
             raise ValueError("live VIIRS collection requires at least one AOI bbox")
+        progress = request.log()
         backend = self.backend or EarthaccessViirsBackend()
+        if hasattr(backend, "progress"):
+            backend.progress = progress
         days = date_range(request.start, request.end)
         retrieved_at = request.retrieved_at or datetime.now(UTC)
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         observations: list[Observation] = []
         requests: list[dict[str, object]] = []
         n_ok = n_missing = n_source_down = 0
-        progress = request.log()
         n_days = len(days)
         for index, day in enumerate(days, start=1):
             aoi_means: dict[str, float | None] = {}
@@ -107,6 +110,8 @@ class ViirsConnector:
                         aoi=aoi_id,
                         tile=tile_id,
                         step="tile",
+                        bytes=0,
+                        total_bytes=None,
                         stalled=False,
                     )
                     stop = threading.Event()
@@ -192,6 +197,7 @@ class ViirsConnector:
                     extra=json.dumps(extra, sort_keys=True),
                 )
             )
+            forget_day(self.cache_dir, day)
 
         n_expected = len(days)
         coverage = n_ok / n_expected if n_expected else 0.0
@@ -221,6 +227,8 @@ class ViirsConnector:
 
 
 class EarthaccessViirsBackend:
+    progress: Any = None
+
     def read_tile(
         self, day: date, tile_id: str, bbox: list[float], cache_dir: Path
     ) -> TileArrays | None:
@@ -272,6 +280,11 @@ class EarthaccessViirsBackend:
                 break
         if granule is None:
             return None
+        total = granule_nbytes(granule)
+        if self.progress is not None:
+            self.progress.update(
+                step="download", bytes=0, total_bytes=total, stalled=False
+            )
         files = _download_granule(earthaccess, granule, cache_dir)
         if not files:
             return None
@@ -288,6 +301,71 @@ class EarthaccessViirsBackend:
             production_timestamp=path.name,
             tile_id=tile_id,
         )
+
+
+def keep_cache() -> bool:
+    return os.environ.get(KEEP_CACHE_ENV, "").strip().lower() in {"1", "true", "yes"}
+
+
+def granule_nbytes(item: Any) -> int | None:
+    umm = getattr(item, "umm", None)
+    if umm is None and isinstance(item, dict):
+        umm = item.get("umm")
+    infos = []
+    if isinstance(umm, dict):
+        infos = (umm.get("DataGranule") or {}).get("ArchiveAndDistributionInformation") or []
+    for info in infos:
+        if not isinstance(info, dict):
+            continue
+        if info.get("SizeInBytes"):
+            return int(float(info["SizeInBytes"]))
+        size = info.get("Size")
+        unit = str(info.get("SizeUnit") or "MB").upper()
+        if size is None:
+            continue
+        value = float(size)
+        if unit in {"KB", "KILOBYTES"}:
+            return int(value * 1000)
+        if unit in {"B", "BYTES"}:
+            return int(value)
+        return int(value * 1024 * 1024)
+    size_fn = getattr(item, "size", None)
+    if callable(size_fn):
+        try:
+            mb = float(size_fn())
+        except Exception:  # noqa: BLE001
+            mb = 0.0
+        if mb > 0:
+            return int(mb * 1024 * 1024)
+    return None
+
+
+def forget_day(cache_dir: Path, day: date) -> int:
+    """Drop HDF5 granules for one day. Observation JSONL is the record."""
+    if keep_cache() or not cache_dir.is_dir():
+        return 0
+    doy_tag = f"A{day:%Y%j}"
+    removed = 0
+    for path in cache_dir.glob(f"VNP46A2.{doy_tag}.*"):
+        if path.is_file():
+            path.unlink(missing_ok=True)
+            removed += 1
+    return removed
+
+
+def prune_viirs_cache(cache_dir: Path) -> dict[str, int]:
+    """Delete cached VIIRS HDF5 and leftover partials. Safe for measurement."""
+    files = 0
+    bytes_removed = 0
+    if not cache_dir.is_dir():
+        return {"files": 0, "bytes": 0}
+    for path in list(cache_dir.glob("VNP46A2.*.h5")) + list(cache_dir.glob("partial_*")):
+        if not path.is_file():
+            continue
+        bytes_removed += path.stat().st_size
+        path.unlink(missing_ok=True)
+        files += 1
+    return {"files": files, "bytes": bytes_removed}
 
 
 def cached_granule(cache_dir: Path, day: date, tile_id: str) -> Path | None:

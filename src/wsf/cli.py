@@ -12,6 +12,7 @@ import typer
 from wsf.agent import run_agent
 from wsf.brief_pdf import render_existing_packet
 from wsf.collect import ALL_KINDS, HARVEST_KINDS, run_collection
+from wsf.connectors.viirs import prune_viirs_cache
 from wsf.corpus import collect_corpus, connector_readiness
 from wsf.measure import measure_scenario
 from wsf.notice import (
@@ -176,6 +177,20 @@ def corpus_collect(
             "collection_id": manifest["collection_id"],
             "directory": str(directory),
             "mode": manifest["mode"],
+        }
+    )
+
+
+@corpus_app.command("prune-viirs")
+def corpus_prune_viirs() -> None:
+    """Delete cached VIIRS HDF5 granules. Observation JSONL is unchanged."""
+    with _operator_errors():
+        result = prune_viirs_cache(_root() / "data" / "raw" / "viirs")
+    _echo(
+        {
+            "files": result["files"],
+            "bytes": result["bytes"],
+            "freed": f"{result['bytes'] / 1_000_000_000:.1f}GB",
         }
     )
 
