@@ -1,8 +1,52 @@
 # Analyst workspace UI
 
+## Scenarios and collection artefacts
+
+Open **Scenarios** in the top navigation. All scenario files are listed, including
+those without measurement runs. **Scenario editor** offers common fields and an
+Advanced JSON editor for the full contract. Validation uses the existing scenario
+schema; incomplete but valid draft scenarios show collection-readiness warnings.
+Saved JSON preserves additional fields. Scenario IDs cannot be renamed here.
+
+Drafts are retained per scenario in the browser, including across reloads when
+local storage is available. Saves compare a content revision before atomically
+replacing `scenario.json`; a changed file produces a conflict rather than an
+overwrite. Use **Reload from disk**, copy/reconcile the draft, then discard it if
+you want the on-disk version. Frozen contracts are read-only. Saving does not
+start a collection, reset lifecycle state, or regenerate existing artefacts.
+
+**Collection artefacts** provides a searchable stage/run file browser:
+
+- `missing.json` and review files: recorded gaps by source, severity, window,
+  reason and requested follow-up.
+- Collection manifests: recorded coverage, expected/OK/missing/source-down
+  counts, mode, provenance and observation links. Not-applicable sources remain
+  distinct from observations; legacy missing counts display as unknown.
+- JSONL observations and measurement files: 100-record pages, field-selectable
+  plots where dated numeric values exist, and raw records. Charts cover only
+  the current page; null values are not replaced with zero.
+- Other JSON and Markdown artefacts: structured inspection and raw text.
+
+Previews are bounded to 1 MB. Large previews are explicitly labelled as partial;
+**Download original** returns the complete file. Artefact browsing is read-only
+and restricted to files under the selected scenario. Source-side public API keys
+are not required for browsing already collected local artefacts.
+
+Additional verification:
+
+```sh
+.venv/bin/python -m pytest tests/test_scenario_workspace_api.py tests/test_dashboard.py
+```
+
+From `dashboard/web`, with Playwright and Chrome available, run
+`node tests/scenarios-smoke.cjs`. The browser suite uses the existing Ukraine
+and German scenarios, real read-only artefacts and validation, and mocked saves;
+it verifies that the real scenario remains unchanged.
+
 The Docker web service serves this React frontend on port 5173. Source edits are
-live-mounted; reload the browser to open the updated workspace. No backend,
-measurement rules, or stored reports are changed by this UI refactor.
+live-mounted; reload the browser to open the updated workspace. The scenario API
+adds validated contract saves and read-only artefact access; measurement rules
+and existing stored reports are unchanged.
 
 - **Desk:** searchable notice queue and independently scrolling notice workspace.
   Overview leads with the cue and generated brief. Evidence, collection tasks,

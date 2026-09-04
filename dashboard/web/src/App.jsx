@@ -3,10 +3,11 @@ import Tooltip from "./components/Tooltip.jsx";
 import EvidenceCharts from "./components/EvidenceCharts.jsx";
 import NoticesView from "./views/NoticesView.jsx";
 import OperationsView from "./views/OperationsView.jsx";
+import ScenariosView from "./views/ScenariosView.jsx";
 import ReportView from "./views/ReportView.jsx";
 import useWorkspaceRoute from "./lib/useWorkspaceRoute.js";
 
-const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["operations", "Operations"]];
+const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["scenarios", "Scenarios"], ["operations", "Operations"]];
 const POLL_MS = 8000;
 const NOTICE_KEY = "wsd-alert-id";
 const RESULT_KEY = "wsd-dashboard-result";
@@ -15,6 +16,7 @@ export default function App() {
   const [catalog, setCatalog] = useState(null);
   const [notices, setNotices] = useState([]);
   const [route, navigate] = useWorkspaceRoute();
+  const selectScenario = useCallback((scenario, replace = false) => navigate({ scenario }, replace), [navigate]);
   const selectedNoticeId = route.notice;
   const surface = route.surface;
   const selectedNotice = notices.find((item) => item.notice_id === selectedNoticeId) || notices[0];
@@ -51,6 +53,7 @@ export default function App() {
   const [opsBusy, setOpsBusy] = useState(false);
   const [opsLog, setOpsLog] = useState("");
   const [opsError, setOpsError] = useState("");
+  const [harvest, setHarvest] = useState(null);
 
   const loadCatalog = useCallback(async () => {
     const response = await fetch("/api/results");
@@ -150,6 +153,24 @@ export default function App() {
     }, POLL_MS);
     return () => window.clearInterval(id);
   }, [resultKey, loadCatalog, loadHealth, loadNotices, loadResult]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const tick = () => {
+      fetch("/api/collection/progress")
+        .then((response) => (response.ok ? response.json() : null))
+        .then((payload) => {
+          if (!cancelled) setHarvest(payload?.active || null);
+        })
+        .catch(() => undefined);
+    };
+    tick();
+    const id = window.setInterval(tick, 2000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(id);
+    };
+  }, []);
 
   const noticeFocus = surface === "notices" && selectedNotice ? {
     noticeId: selectedNotice.notice_id,
@@ -395,6 +416,22 @@ export default function App() {
       </div>
     </nav>
     <main className={surface === "notices" ? "desk-main notice-main" : "desk-main standalone-main"}>
+      {harvest && !harvest.stale ? (
+        <div className={`harvest-banner${harvest.stalled ? " harvest-banner-stall" : ""}`}>
+          Collecting {harvest.scenario_id}
+          {harvest.source ? ` · ${harvest.source}` : ""}
+          {harvest.window ? `/${harvest.window}` : ""}
+          {harvest.day_index && harvest.day_count
+            ? ` · day ${harvest.day_index}/${harvest.day_count}`
+            : ""}
+          {harvest.aoi ? ` · ${harvest.aoi}` : ""}
+          {harvest.tile ? ` ${harvest.tile}` : ""}
+          {harvest.step ? ` · ${harvest.step}` : ""}
+          {harvest.bytes ? ` · ${(harvest.bytes / 1_000_000).toFixed(1)} MB` : ""}
+          {harvest.elapsed ? ` · ${harvest.elapsed}` : ""}
+          {harvest.stalled ? " · stalled (no new bytes)" : ""}
+        </div>
+      ) : null}
       {error && <p className="error" role="alert">{error}</p>}
       {surface === "notices" && <NoticesView
         notices={notices} selectedId={selectedNotice?.notice_id} onSelect={selectNotice}
@@ -425,9 +462,11 @@ export default function App() {
         <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
         <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
           resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
+          harvest={harvest}
           onEmit={emitNotices} onBuildPacket={buildPacket}
           onSelectResult={(key) => navigate({ result: key })} onSelectNotice={(notice) => navigate({ notice })} />
       </>}
+      {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} />}
     </main>
     <Tooltip tooltip={tooltip} />
   </div>;
