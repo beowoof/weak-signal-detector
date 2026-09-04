@@ -36,6 +36,7 @@ from wsf.scenario import (
     require_collection_ready,
     scenario_hash,
 )
+from wsf.workflow import STAGES, run_desk_workflow
 
 app = typer.Typer(no_args_is_help=True, help="Weak-signal detector research CLI.")
 scenario_app = typer.Typer(no_args_is_help=True, help="Create and manage scenarios.")
@@ -43,11 +44,13 @@ corpus_app = typer.Typer(no_args_is_help=True, help="Collect and review scenario
 notice_app = typer.Typer(no_args_is_help=True, help="Emit and list collection-cue notices.")
 packet_app = typer.Typer(no_args_is_help=True, help="Build cutoff-safe evidence packets.")
 agent_app = typer.Typer(no_args_is_help=True, help="Long-running collection/measure worker.")
+run_app = typer.Typer(no_args_is_help=True, help="Run multi-step scenario pipelines.")
 app.add_typer(scenario_app, name="scenario")
 app.add_typer(corpus_app, name="corpus")
 app.add_typer(notice_app, name="notice")
 app.add_typer(packet_app, name="packet")
 app.add_typer(agent_app, name="agent")
+app.add_typer(run_app, name="run")
 
 
 def _root() -> Path:
@@ -483,6 +486,67 @@ def packet_report(
             "updated_at": payload.get("updated_at"),
         }
     )
+
+
+@run_app.command("workflow")
+def run_workflow(
+    scenario: str = typer.Option(..., help="Scenario identifier."),
+    from_stage: str = typer.Option(
+        "validate",
+        "--from",
+        help="First stage to run: validate, collect, review, measure, emit.",
+    ),
+    through: str = typer.Option(
+        "emit",
+        help="Last stage to run: validate, collect, review, measure, emit.",
+    ),
+    focus: Path | None = typer.Option(  # noqa: B008
+        None, help="missing.json from a previous NO-GO review."
+    ),
+    mock: bool = typer.Option(
+        False, help="Synthetic collect and fake semantic review. Stops before measure."
+    ),
+    exploratory: bool = typer.Option(
+        True,
+        help="Pass --exploratory to measure (default). Use --no-exploratory only on a freeze.",
+    ),
+    only: str | None = typer.Option(
+        None,
+        help="Comma-separated source ids for collect (same as wsd corpus collect --only).",
+    ),
+    source_workers: int = typer.Option(
+        4,
+        help="Max sources to harvest at once.",
+    ),
+    quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
+) -> None:
+    """Validate, collect, review, measure, and emit notices as one pipeline.
+
+    Stops on a no_go review and prints the --focus command. Does not freeze,
+    prune VIIRS, call Ollama, or build packets. After a live harvest already
+    exists, resume with --from review.
+    """
+    selected = [item.strip() for item in only.split(",")] if only else None
+    with _operator_errors():
+        if from_stage not in STAGES:
+            raise ValueError(f"--from must be one of {', '.join(STAGES)}")
+        if through not in STAGES:
+            raise ValueError(f"--through must be one of {', '.join(STAGES)}")
+        result = run_desk_workflow(
+            _root(),
+            scenario,
+            from_stage=from_stage,
+            through=through,
+            focus_path=focus,
+            mock=mock,
+            exploratory=exploratory,
+            only=selected,
+            source_workers=source_workers,
+            progress=Progress(enabled=not quiet),
+        )
+    _echo(result)
+    if result.get("status") == "stopped_no_go":
+        raise typer.Exit(code=2)
 
 
 @agent_app.command("run")

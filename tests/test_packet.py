@@ -195,10 +195,46 @@ def test_product_watch_for_preparatory_window(tmp_path: Path, monkeypatch) -> No
     assert "GDELT" in public["observation"] or "Wikipedia" in public["observation"]
 
 
-def test_product_escalation_near_window_end(tmp_path: Path, monkeypatch) -> None:
+def test_first_notice_near_window_end_is_watch(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     _write_notice(tmp_path, _trigger(days_before_window_end=0))
     packet = build_packet(tmp_path, "desk-case", "notice-abc", replay=True)
+    assert packet.product is not None
+    assert packet.product.analytic_state == "watch"
+    routine = next(
+        row for row in packet.product.hypotheses if row["hypothesis"] == "Routine variation"
+    )
+    assert routine["fit"] == "Realistic possibility"
+    exercise = next(
+        row for row in packet.product.hypotheses if row["hypothesis"] == "Exercise / demonstration"
+    )
+    assert exercise["fit"] == "Realistic possibility"
+
+
+def test_product_escalation_after_prior_notice(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.chdir(tmp_path)
+    _write_notice(tmp_path, _trigger())
+    later = Notice(
+        notice_id="notice-def",
+        trigger=_trigger(
+            start=date(2022, 2, 21),
+            end=date(2022, 2, 23),
+            duration_days=3,
+            days_before_window_end=0,
+            observed={
+                "daily_dates": ["2022-02-21", "2022-02-22", "2022-02-23"],
+                "daily_series_z": [
+                    {"attn.wiki_pageviews": 2.0, "talk.gdelt_cameo": 2.1, "talk.icews_cameo": 1.6},
+                    {"attn.wiki_pageviews": 2.4, "talk.gdelt_cameo": 2.5, "talk.icews_cameo": 1.8},
+                    {"attn.wiki_pageviews": 3.1, "talk.gdelt_cameo": 2.8, "talk.icews_cameo": 2.0},
+                ],
+            },
+        ),
+        workflow=NoticeWorkflow(),
+    )
+    save_notice(tmp_path, later, overwrite_trigger=True)
+    packet = build_packet(tmp_path, "desk-case", "notice-def", replay=True)
+    assert packet.product is not None
     assert packet.product.analytic_state == "escalation"
     assert packet.product.analytic_state_label == "Escalation"
     overt = next(
@@ -289,3 +325,34 @@ def test_ukraine_late_product_is_escalation() -> None:
     assert "Yelnya" not in observations
     joined = " ".join(packet.product.assessment)
     assert packet.product.geographic_frame not in joined
+
+
+def test_rus2021apr_first_notice_is_watch_not_escalation() -> None:
+    root = Path(__file__).resolve().parents[1]
+    notice_path = (
+        root / "scenarios" / "rus2021apr" / "notices" / "notice-1e8be533f571" / "notice.json"
+    )
+    corpus = (
+        root
+        / "scenarios"
+        / "rus2021apr"
+        / "corpus"
+        / "collection-20260904T095246Z-6a1a2a"
+        / "observations"
+    )
+    if not notice_path.is_file() or not corpus.is_dir():
+        pytest.skip("rus2021apr restage collection is not on disk")
+    packet = build_packet(root, "rus2021apr", "notice-1e8be533f571", replay=True)
+    assert packet.product is not None
+    assert packet.product.analytic_state == "watch"
+    exercise = next(
+        row for row in packet.product.hypotheses if row["hypothesis"] == "Exercise / demonstration"
+    )
+    assert exercise["fit"] == "Realistic possibility"
+    observations = " ".join(row["observation"] for row in packet.product.watchlist)
+    assert "USD/RUB" in observations
+    assert "within the monitored staging AOIs" in observations
+    joined = " ".join(packet.product.assessment)
+    assert "maritime warnings" not in joined.lower()
+    assert "realistic possibility" in joined.lower()
+    assert "urgent collection" not in joined.lower()
