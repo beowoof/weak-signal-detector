@@ -1,3 +1,5 @@
+import { useEffect, useRef, useState } from "react";
+import { humanize, noticeTitle, workflowLabel } from "../lib/workspace.js";
 import { number } from "../lib/format.js";
 import BriefView from "./BriefView.jsx";
 
@@ -41,25 +43,15 @@ function isLate(trigger) {
   return (trigger.days_before_window_end ?? 99) <= 2;
 }
 
-function AlertRow({ item, selected, onSelect }) {
+function AlertRow({ item, selected, onSelect, draft }) {
   const trigger = item.trigger || {};
-  const workflow = item.workflow || {};
-  const late = isLate(trigger);
-  return (
-    <button
-      type="button"
-      className={`alert-row${late ? " notice-late" : " notice-early"}`}
-      aria-current={selected ? "true" : undefined}
-      onClick={() => onSelect(item.notice_id)}
-    >
-      <span className="alert-row-dates">
-        {trigger.start} → {trigger.end}
-      </span>
-      <span className="alert-row-meta">
-        {item.scenario_id || trigger.scenario_id} · {workflow.state || "new"}
-      </span>
-    </button>
-  );
+  return <button type="button" className="alert-row" aria-current={selected ? "true" : undefined}
+    onClick={() => onSelect(item.notice_id)}>
+    <span className="row-heading"><strong>{noticeTitle(item)}</strong><span className="workflow-badge">{workflowLabel(item.workflow?.state)}</span></span>
+    <span className="alert-row-dates">{trigger.start} → {trigger.end}</span>
+    <span className="alert-row-cue">{(trigger.contributing_domains || []).map(humanize).join(" · ") || "Measurement cue"}</span>
+    <span className="alert-row-meta">{isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}{draft && <span className="draft-badge"> · Draft</span>}</span>
+  </button>;
 }
 
 function taskKindClass(status) {
@@ -162,7 +154,6 @@ function CollectionPanel({ collection, busy, onRun }) {
         <details
           key={task.kind || task.task_id}
           className="collect-task"
-          open={task.kind === "validate" || Boolean(task.plan)}
         >
           <summary>
             <span className={taskKindClass(task.status)}>{task.status}</span> {task.title}
@@ -350,204 +341,114 @@ function CollectionPanel({ collection, busy, onRun }) {
   );
 }
 
-function AlertDetail({
-  item,
-  packet,
-  collection,
-  collectBusy,
-  onCollect,
-  onAddNotes,
-  onOpenAnomaly,
-  onBuildPacket,
-  onAction,
-  actionError,
-}) {
-  const trigger = item.trigger || {};
-  const workflow = item.workflow || {};
-  const late = isLate(trigger);
-  const domains = (trigger.contributing_domains || []).map((d) => d.replaceAll("_", " ")).join(", ");
-  const series = (trigger.contributing_series || []).join(", ");
-  return (
-    <article className={`notice-card${late ? " notice-late" : " notice-early"}`}>
-      <header>
-        <p className="eyebrow">Alert</p>
-        <h2>
-          {trigger.start} → {trigger.end}
-        </h2>
-        <p className="notice-timing">
-          {item.scenario_id || trigger.scenario_id} · {trigger.window_id} ·{" "}
-          {late
-            ? "near window end"
-            : `${trigger.days_before_window_end} days before window end`}
-        </p>
-      </header>
-      <p className="notice-look">
-        Look here:{" "}
-        {(packet?.product?.keys || []).length
-          ? packet.product.keys.join(" · ")
-          : domains || "no domains listed"}
-        .
-      </p>
-      {packet?.product?.geographic_frame ? (
-        <p className="notice-timing">{packet.product.geographic_frame}</p>
-      ) : null}
-      <p className="notice-actions">
-        {onAddNotes ? (
-          <button type="button" onClick={() => onAddNotes(item)}>
-            Add Notes
-          </button>
-        ) : null}
-        {item.key && onOpenAnomaly ? (
-          <button type="button" onClick={() => onOpenAnomaly(item)}>
-            Open anomaly
-          </button>
-        ) : null}
-        {onBuildPacket ? (
-          <button type="button" onClick={() => onBuildPacket(item)}>
-            Build brief
-          </button>
-        ) : null}
-        {packet?.packet_id ? (
-          <a
-            className="notice-pdf"
-            href={`/api/packet/pdf?scenario=${encodeURIComponent(
-              item.scenario_id || trigger.scenario_id,
-            )}&packet_id=${encodeURIComponent(packet.packet_id)}`}
-            target="_blank"
-            rel="noreferrer"
-          >
-            Download PDF
-          </a>
-        ) : null}
-        {onCollect ? (
-          <button
-            type="button"
-            disabled={collectBusy}
-            onClick={() => onCollect(item, ["validate"])}
-          >
-            Validate cue
-          </button>
-        ) : null}
-        {!TERMINAL.has(workflow.state) &&
-          ACTIONS.map((action) => {
-            const allowed = action.from.includes(workflow.state || "new");
-            return (
-              <button
-                key={action.id}
-                type="button"
-                disabled={!allowed || !onAction}
-                title={allowed ? undefined : "Not available in this state"}
-                onClick={() => {
-                  if (!allowed || !onAction) return;
-                  onAction(item, action.id);
-                  if (action.id === "reexamine") onOpenAnomaly?.(item);
-                }}
-              >
-                {action.label}
-              </button>
-            );
-          })}
-      </p>
-      {actionError ? <p className="error">{actionError}</p> : null}
-      <dl>
-        <div>
-          <dt>State</dt>
-          <dd>{workflow.state || "new"}</dd>
-        </div>
-        <div>
-          <dt>Recommended posture</dt>
-          <dd>{trigger.recommended_posture || "focused"}</dd>
-        </div>
-        <div>
-          <dt>Why</dt>
-          <dd>{(trigger.recommended_posture_reason || "").replaceAll("_", " ")}</dd>
-        </div>
-        <div>
-          <dt>Policy</dt>
-          <dd>{trigger.policy_id || "—"}</dd>
-        </div>
-        <div>
-          <dt>Peak energy</dt>
-          <dd>{number(trigger.derived?.max_energy)} σ</dd>
-        </div>
-        <div>
-          <dt>Imaging</dt>
-          <dd>{Object.values(trigger.imaging_status_by_day || {}).join(", ") || "—"}</dd>
-        </div>
-        <div>
-          <dt>Unknowns</dt>
-          <dd>{(trigger.unknowns || []).join(", ") || "none"}</dd>
-        </div>
-        <div>
-          <dt>Series</dt>
-          <dd>{series || "—"}</dd>
-        </div>
-      </dl>
-      <p className="notice-id">{item.notice_id}</p>
-      <CollectionPanel
-        collection={collection}
-        busy={collectBusy}
-        onRun={onCollect ? (kind) => onCollect(item, [kind]) : undefined}
-      />
-      <BriefView
-        packet={packet}
-        notice={item}
-        onCollect={onCollect ? (kind) => onCollect(item, [kind]) : undefined}
-        collectBusy={collectBusy}
-      />
-    </article>
-  );
-}
+const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection", "Collection"], ["notes", "Notes & assessment"]];
 
 export default function NoticesView({
-  notices,
-  selectedId,
-  onSelect,
-  onOpenAnomaly,
-  onBuildPacket,
-  packet,
-  collection,
-  collectBusy,
-  onCollect,
-  onAddNotes,
-  onAction,
-  actionError,
+  notices, selectedId, onSelect, onOpenAnomaly, onBuildPacket, packet, collection,
+  collectBusy, onCollect, onAddNotes, onAction, actionError, activeTab, onTabChange,
+  evidence, notes, loading, drafts,
 }) {
-  if (!notices.length) {
-    return (
-      <p className="empty">
-        No notices. An anomaly becomes an alert only after `wsd notice emit`.
-      </p>
-    );
-  }
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [listOpen, setListOpen] = useState(!new URLSearchParams(window.location.search).has("notice"));
+  const scrollBody = useRef(null);
+  const heading = useRef(null);
+  useEffect(() => { scrollBody.current?.scrollTo(0, 0); }, [selectedId, activeTab]);
   const selected = notices.find((item) => item.notice_id === selectedId) || notices[0];
-  return (
-    <div className="alert-layout">
-      <aside className="alert-inbox" aria-label="Notice inbox">
-        <p className="notice-intro">Inbox</p>
-        <div className="alert-row-list">
-          {notices.map((item) => (
-            <AlertRow
-              key={item.notice_id}
-              item={item}
-              selected={item.notice_id === selected.notice_id}
-              onSelect={onSelect}
-            />
-          ))}
+  const filtered = notices.filter((item) => {
+    const terms = [noticeTitle(item), item.notice_id, item.trigger?.start, item.trigger?.end,
+      ...(item.trigger?.contributing_domains || []).map(humanize)].join(" ").toLowerCase();
+    return terms.includes(query.toLowerCase()) && (filter === "all" ||
+      (filter === "active" ? !TERMINAL.has(item.workflow?.state) : filter === "draft" ? drafts[item.notice_id] : item.workflow?.state === filter));
+  });
+  if (!notices.length) return <p className="empty">{loading ? "Loading notices…" : "No notices yet. Use Operations to emit notices from a measurement result."}</p>;
+  const trigger = selected.trigger || {};
+  const workflow = selected.workflow || {};
+  return <div className={`alert-layout ${listOpen ? "show-list" : "show-detail"}`}>
+    <aside className="alert-inbox" aria-label="Notice inbox">
+      <div className="inbox-heading"><p className="eyebrow">Analyst queue</p><h1>Notices <span>{notices.length}</span></h1></div>
+      <label className="inbox-search"><span className="sr-only">Search notices</span>
+        <input type="search" placeholder="Search region, date, domain…" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
+      <label className="inbox-filter"><span className="sr-only">Filter notices</span><select aria-label="Filter notices" value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <option value="all">All notices</option><option value="active">Active notices</option>
+        <option value="new">New</option><option value="context_requested">Context requested</option>
+        <option value="draft">With local drafts</option>
+      </select></label>
+      <p className="queue-count" role="status">{filtered.length} of {notices.length} notices</p>
+      <div className="alert-row-list">{filtered.map((item) => <AlertRow key={item.notice_id} item={item}
+        selected={selectedId === item.notice_id} draft={drafts[item.notice_id]}
+        onSelect={(id) => { onSelect(id); setListOpen(false); requestAnimationFrame(() => heading.current?.focus()); }} />)}
+        {!filtered.length && <p className="empty">No matching notices. Try another search or filter.</p>}
+      </div>
+    </aside>
+    <article className="notice-card">
+      <header className="notice-header">
+        <button type="button" className="mobile-inbox-toggle" onClick={() => setListOpen(true)}>← Notices</button>
+        <div className="notice-heading-line"><p className="eyebrow">{noticeTitle(selected)}</p><span className="workflow-badge">{workflowLabel(workflow.state)}</span></div>
+        <h2 ref={heading} tabIndex={-1}>{packet?.product?.headline || "Multi-domain activity cue"}</h2>
+        <p className="notice-timing">{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
+        <div className="notice-actions">
+          <button className="primary-action" type="button" onClick={onOpenAnomaly}>Review evidence</button>
+          <button type="button" onClick={onAddNotes}>Your assessment{drafts[selectedId] ? " · Draft" : ""}</button>
+          <details className="action-menu" key={selectedId}
+            onKeyDown={(event) => {
+              if (event.key === "Escape") {
+                event.currentTarget.open = false;
+                event.currentTarget.querySelector("summary")?.focus();
+              }
+            }}
+            onClick={(event) => {
+              if (event.target.closest("button, a")) event.currentTarget.open = false;
+            }}><summary>More actions</summary><div className="action-menu-items">
+            <button type="button" disabled={collectBusy} onClick={() => onBuildPacket(selected)}>{packet ? "Rebuild brief" : "Build brief"}</button>
+            {packet?.packet_id && <a href={`/api/packet/pdf?scenario=${encodeURIComponent(selected.scenario_id || trigger.scenario_id)}&packet_id=${encodeURIComponent(packet.packet_id)}`} target="_blank" rel="noreferrer">Download PDF</a>}
+            {!TERMINAL.has(workflow.state) && ACTIONS.map((action) => <button key={action.id} type="button"
+              disabled={collectBusy || !action.from.includes(workflow.state || "new")} onClick={() => {
+                onAction(selected, action.id);
+                if (action.id === "reexamine") onOpenAnomaly();
+              }}>{action.label}</button>)}
+          </div></details>
         </div>
-      </aside>
-      <AlertDetail
-        item={selected}
-        packet={packet}
-        collection={collection}
-        collectBusy={collectBusy}
-        onCollect={onCollect}
-        onAddNotes={onAddNotes}
-        onOpenAnomaly={onOpenAnomaly}
-        onBuildPacket={onBuildPacket}
-        onAction={onAction}
-        actionError={actionError}
-      />
-    </div>
-  );
+        <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
+          {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
+            aria-selected={activeTab === id} aria-controls={`panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
+            onClick={() => onTabChange(id)} onKeyDown={(event) => {
+              const offset = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+              const target = event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : offset ? (index + offset + TABS.length) % TABS.length : null;
+              if (target !== null) { event.preventDefault(); onTabChange(TABS[target][0]); document.getElementById(`tab-${TABS[target][0]}`)?.focus(); }
+            }}>{label}{id === "notes" && drafts[selectedId] ? " •" : ""}</button>)}
+        </nav>
+      </header>
+      <div className="notice-body" ref={scrollBody}>
+        {actionError && <p className="error" role="alert">{actionError}</p>}
+        <section id="panel-overview" role="tabpanel" aria-labelledby="tab-overview" hidden={activeTab !== "overview"}>
+          <div className="cue-summary"><p className="eyebrow">Why this needs attention</p>
+            <p>{packet?.product?.change || humanize(trigger.recommended_posture_reason) || "A multi-domain measurement cue requires contextual review."}</p>
+            <p className="notice-timing">{(trigger.contributing_domains || []).map(humanize).join(" · ")}</p>
+          </div>
+          <BriefView packet={packet} notice={selected} mode="overview" />
+          <details className="notice-metadata"><summary>Notice metadata</summary><dl>
+            <div><dt>Notice ID</dt><dd>{selected.notice_id}</dd></div>
+            <div><dt>Policy</dt><dd>{trigger.policy_id || "—"}</dd></div>
+            <div><dt>Peak energy</dt><dd>{number(trigger.derived?.max_energy)} σ</dd></div>
+            <div><dt>Posture</dt><dd>{humanize(trigger.recommended_posture || "focused")}</dd></div>
+            <div><dt>Window</dt><dd>{trigger.window_id}</dd></div>
+            <div><dt>Imaging</dt><dd>{Object.values(trigger.imaging_status_by_day || {}).join(", ") || "—"}</dd></div>
+          </dl></details>
+        </section>
+        <section id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" hidden={activeTab !== "evidence"}>
+          {evidence}<BriefView packet={packet} notice={selected} mode="evidence" />
+        </section>
+        <section id="panel-collection" role="tabpanel" aria-labelledby="tab-collection" hidden={activeTab !== "collection"}>
+          <div className="section-heading"><div><p className="eyebrow">Next questions</p><h3>Collection & validation</h3></div>
+            <button type="button" disabled={collectBusy} onClick={() => onCollect(selected, ["validate"])}>{collectBusy ? "Working…" : "Validate cue"}</button>
+          </div>
+          <BriefView packet={packet} notice={selected} mode="collection" collectBusy={collectBusy} onCollect={(kind) => onCollect(selected, [kind])} />
+          <CollectionPanel key={selectedId} collection={collection} busy={collectBusy} onRun={(kind) => onCollect(selected, [kind])} />
+          {!collection?.tasks?.length && <p className="empty">No collection tasks yet. Start with cue validation or an available requirement above.</p>}
+        </section>
+        <section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden={activeTab !== "notes"}>{notes}</section>
+      </div>
+    </article>
+  </div>;
 }

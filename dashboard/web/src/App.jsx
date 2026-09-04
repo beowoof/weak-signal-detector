@@ -1,32 +1,12 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Tooltip from "./components/Tooltip.jsx";
-import { seriesIds, windowsOf } from "./lib/format.js";
-import CouplingView from "./views/CouplingView.jsx";
+import EvidenceCharts from "./components/EvidenceCharts.jsx";
 import NoticesView from "./views/NoticesView.jsx";
 import OperationsView from "./views/OperationsView.jsx";
-import ReportView, { NotesRead } from "./views/ReportView.jsx";
-import { AllSeriesView, CombinedView, ScatterView, SeriesView } from "./views/SeriesViews.jsx";
+import ReportView from "./views/ReportView.jsx";
+import useWorkspaceRoute from "./lib/useWorkspaceRoute.js";
 
-const SURFACES = [
-  ["notices", "Notices"],
-  ["anomaly", "Anomaly"],
-  ["operations", "Operations"],
-];
-
-const TITLES = {
-  notices: "Notices",
-  anomaly: "Anomaly",
-  operations: "Operations",
-};
-
-const CHARTS = [
-  ["coupling", "Multi-domain coupling"],
-  ["series", "Individual series"],
-  ["all", "All series"],
-  ["combined", "Combined z-scores"],
-  ["scatter", "Z-score scatter"],
-];
-
+const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["operations", "Operations"]];
 const POLL_MS = 8000;
 const NOTICE_KEY = "wsd-alert-id";
 const RESULT_KEY = "wsd-dashboard-result";
@@ -34,14 +14,30 @@ const RESULT_KEY = "wsd-dashboard-result";
 export default function App() {
   const [catalog, setCatalog] = useState(null);
   const [notices, setNotices] = useState([]);
-  const [selectedNoticeId, setSelectedNoticeId] = useState(localStorage.getItem(NOTICE_KEY) || "");
-  const [resultKey, setResultKey] = useState(localStorage.getItem(RESULT_KEY) || "");
+  const [route, navigate] = useWorkspaceRoute();
+  const selectedNoticeId = route.notice;
+  const surface = route.surface;
+  const selectedNotice = notices.find((item) => item.notice_id === selectedNoticeId) || notices[0];
+  const resultKey = surface === "notices" ? selectedNotice?.key || route.result : route.result;
+  const selectedRef = useRef(selectedNoticeId);
+  selectedRef.current = selectedNoticeId;
+  const resultRequest = useRef(0);
+  const reportRevision = useRef(0);
+  const [loadedKey, setLoadedKey] = useState("");
+  const [resourceOwner, setResourceOwner] = useState("");
+  const [resourceError, setResourceError] = useState("");
+  const ownerRef = useRef("");
+  const [refreshState, setRefreshState] = useState("Connecting…");
+  const [drafts, setDrafts] = useState(() => {
+    const found = {};
+    try { for (const key of Object.keys(localStorage)) {
+      if (key.startsWith("wsd-notes-draft:")) found[key.slice("wsd-notes-draft:".length)] = true;
+    } } catch { /* browser storage may be unavailable */ }
+    return found;
+  });
+  const onDraftChange = useCallback((id, dirty) => setDrafts((current) =>
+    current[id] === dirty ? current : { ...current, [id]: dirty }), []);
   const [result, setResult] = useState(null);
-  const [windowId, setWindowId] = useState(null);
-  const [seriesId, setSeriesId] = useState(null);
-  const [surface, setSurface] = useState("notices");
-  const [chart, setChart] = useState("coupling");
-  const [visibleSeries, setVisibleSeries] = useState(() => new Set());
   const [error, setError] = useState("");
   const [tooltip, setTooltip] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -50,7 +46,6 @@ export default function App() {
   const [collectBusy, setCollectBusy] = useState(false);
   const [report, setReport] = useState(null);
   const [reportBusy, setReportBusy] = useState(false);
-  const [notesOpen, setNotesOpen] = useState(false);
   const [actionError, setActionError] = useState("");
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
@@ -76,18 +71,21 @@ export default function App() {
 
   const loadResult = useCallback(async (key, { silent = false } = {}) => {
     if (!key) return;
+    const request = ++resultRequest.current;
     if (!silent) setLoading(true);
     try {
       const response = await fetch(`/api/result?key=${encodeURIComponent(key)}`);
       if (!response.ok) throw new Error(`Could not load result (${response.status})`);
       const payload = await response.json();
+      if (request !== resultRequest.current) return;
+      setLoadedKey(key);
       setResult(payload);
       localStorage.setItem(RESULT_KEY, key);
       setError("");
     } catch (err) {
-      if (!silent) setError(err.message);
+      if (request === resultRequest.current) setError(err.message);
     } finally {
-      if (!silent) setLoading(false);
+      if (request === resultRequest.current) setLoading(false);
     }
   }, []);
 
@@ -105,21 +103,21 @@ export default function App() {
         setNotices(items);
         setCatalog(catalogPayload);
         if (healthPayload) setHealth(healthPayload);
-        const remembered = localStorage.getItem(NOTICE_KEY);
+        const remembered = new URLSearchParams(window.location.search).get("notice") || localStorage.getItem(NOTICE_KEY);
         const initialNotice = items.some((item) => item.notice_id === remembered)
           ? remembered
           : items[0]?.notice_id || "";
-        setSelectedNoticeId(initialNotice);
         if (initialNotice) localStorage.setItem(NOTICE_KEY, initialNotice);
         const notice = items.find((item) => item.notice_id === initialNotice);
         const initialKey =
+          new URLSearchParams(window.location.search).get("result") ||
           notice?.key ||
           (catalogPayload.results.some((item) => item.key === localStorage.getItem(RESULT_KEY))
             ? localStorage.getItem(RESULT_KEY)
             : catalogPayload.results[0]?.key || "");
         if (initialKey) {
-          setResultKey(initialKey);
-          await loadResult(initialKey);
+          navigate({ notice: initialNotice, result: initialKey }, true);
+          setRefreshState("Up to date");
         } else {
           setLoading(false);
         }
@@ -133,13 +131,15 @@ export default function App() {
     return () => {
       cancelled = true;
     };
-  }, [loadCatalog, loadHealth, loadNotices, loadResult]);
+  }, [loadCatalog, loadHealth, loadNotices, navigate]);
+
+  useEffect(() => { if (resultKey) loadResult(resultKey); }, [resultKey, loadResult]);
 
   useEffect(() => {
     const id = window.setInterval(() => {
       loadNotices()
-        .then((data) => setNotices(data.notices || []))
-        .catch(() => undefined);
+        .then((data) => { setNotices(data.notices || []); setRefreshState("Up to date"); })
+        .catch(() => setRefreshState("Offline · showing last update"));
       loadCatalog()
         .then((data) => setCatalog(data))
         .catch(() => undefined);
@@ -151,113 +151,57 @@ export default function App() {
     return () => window.clearInterval(id);
   }, [resultKey, loadCatalog, loadHealth, loadNotices, loadResult]);
 
-  const windowOptions = useMemo(() => windowsOf(result), [result]);
-  const selectedNotice = notices.find((item) => item.notice_id === selectedNoticeId) || notices[0];
-  const noticeFocus = useMemo(() => {
-    if (!selectedNotice) return null;
-    const trigger = selectedNotice.trigger || {};
-    if (selectedNotice.key && resultKey && selectedNotice.key !== resultKey) return null;
-    if (!trigger.start || !trigger.end) return null;
-    return {
-      noticeId: selectedNotice.notice_id,
-      start: trigger.start,
-      end: trigger.end,
-      windowId: trigger.window_id,
-      series: trigger.contributing_series || [],
-      domains: trigger.contributing_domains || [],
-    };
-  }, [selectedNotice, resultKey]);
-
-  useEffect(() => {
-    if (!result) return;
-    const preferred = noticeFocus?.windowId;
-    const nextWindow = windowOptions.includes(preferred)
-      ? preferred
-      : windowOptions.includes(windowId)
-        ? windowId
-        : windowOptions[0];
-    if (nextWindow !== windowId) setWindowId(nextWindow);
-    const ids = seriesIds(result, nextWindow);
-    const focused = (noticeFocus?.series || []).filter((id) => ids.includes(id));
-    if (focused.length) {
-      setVisibleSeries(new Set(focused));
-      setSeriesId((current) => (focused.includes(current) ? current : focused[0]));
-    } else {
-      setVisibleSeries(new Set(ids));
-      setSeriesId((current) => (ids.includes(current) ? current : ids[0]));
-    }
-  }, [
-    result,
-    windowOptions,
-    windowId,
-    noticeFocus?.noticeId,
-    noticeFocus?.windowId,
-    noticeFocus?.series?.join(),
-  ]);
+  const noticeFocus = surface === "notices" && selectedNotice ? {
+    noticeId: selectedNotice.notice_id,
+    start: selectedNotice.trigger?.start,
+    end: selectedNotice.trigger?.end,
+    windowId: selectedNotice.trigger?.window_id,
+    series: selectedNotice.trigger?.contributing_series || [],
+    domains: selectedNotice.trigger?.contributing_domains || [],
+  } : null;
 
   useEffect(() => {
     const notice = notices.find((item) => item.notice_id === selectedNoticeId) || notices[0];
+    if (ownerRef.current !== selectedNoticeId) {
+      ownerRef.current = selectedNoticeId;
+      setResourceOwner(selectedNoticeId);
+      setPacket(null); setCollection(null); setReport(null);
+      setActionError(""); setResourceError("");
+    }
     const packetId = notice?.workflow?.packet_id;
     const scenario = notice?.scenario_id || notice?.trigger?.scenario_id;
-    if (!notice || !scenario) {
-      setPacket(null);
-      setCollection(null);
-      setReport(null);
-      return undefined;
-    }
+    if (!notice || !scenario) return;
     let cancelled = false;
-    fetch(
-      `/api/report?scenario=${encodeURIComponent(scenario)}&notice_id=${encodeURIComponent(notice.notice_id)}`,
-    )
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (!cancelled) setReport(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setReport(null);
-      });
-    if (!packetId) {
-      setPacket(null);
-      setCollection(null);
-      return () => {
-        cancelled = true;
-      };
-    }
-    fetch(`/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`)
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (!cancelled) setPacket(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setPacket(null);
-      });
-    fetch(
-      `/api/packet/collection?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`,
-    )
-      .then((response) => (response.ok ? response.json() : null))
-      .then((payload) => {
-        if (!cancelled) setCollection(payload);
-      })
-      .catch(() => {
-        if (!cancelled) setCollection(null);
-      });
-    return () => {
-      cancelled = true;
+    const reportReadRevision = reportRevision.current;
+    const read = async (path, label) => {
+      const response = await fetch(path);
+      if (!response.ok) throw new Error(`${label} could not be loaded (${response.status}).`);
+      return response.json();
     };
+    const tasks = [
+      read(`/api/report?scenario=${encodeURIComponent(scenario)}&notice_id=${encodeURIComponent(notice.notice_id)}`, "Assessment")
+        .then((payload) => {
+          if (!cancelled && reportRevision.current === reportReadRevision) setReport(payload);
+        }),
+    ];
+    if (packetId) {
+      tasks.push(
+        read(`/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`, "Brief")
+          .then((payload) => { if (!cancelled) setPacket(payload); }),
+        read(`/api/packet/collection?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`, "Collection")
+          .then((payload) => { if (!cancelled) setCollection(payload); }),
+      );
+    } else { setPacket(null); setCollection(null); }
+    Promise.allSettled(tasks).then((outcomes) => {
+      if (!cancelled) setResourceError(outcomes.filter((item) => item.status === "rejected")
+        .map((item) => item.reason.message).join(" "));
+    });
+    return () => { cancelled = true; };
   }, [notices, selectedNoticeId]);
 
-  const ids = seriesIds(result, windowId);
-  const purpose = result?.scenario?.purpose?.replaceAll("_", " ") || "unspecified purpose";
-  const mode = result?.summary?.measurement_mode || "legacy unspecified";
-
   function selectNotice(noticeId) {
-    setSelectedNoticeId(noticeId);
+    navigate({ notice: noticeId, surface: "notices" });
     localStorage.setItem(NOTICE_KEY, noticeId);
-    const notice = notices.find((item) => item.notice_id === noticeId);
-    if (notice?.key && notice.key !== resultKey) {
-      setResultKey(notice.key);
-      loadResult(notice.key);
-    }
   }
 
   async function runAction(notice, action) {
@@ -282,7 +226,7 @@ export default function App() {
       setNotices((current) =>
         current.map((item) => (item.notice_id === payload.notice_id ? { ...item, ...payload } : item)),
       );
-      if (payload.collection) setCollection(payload.collection);
+      if (payload.collection && selectedRef.current === notice.notice_id) setCollection(payload.collection);
     } catch (err) {
       setActionError(err.message);
     }
@@ -301,14 +245,17 @@ export default function App() {
         replay,
         request_context: requestContext,
       });
-      setCollection(payload);
+      if (selectedRef.current === notice.notice_id) setCollection(payload);
       const data = await loadNotices();
       setNotices(data.notices || []);
       if (payload.packet_id) {
         const packetResponse = await fetch(
           `/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(payload.packet_id)}`,
         );
-        if (packetResponse.ok) setPacket(await packetResponse.json());
+        if (packetResponse.ok) {
+          const nextPacket = await packetResponse.json();
+          if (selectedRef.current === notice.notice_id) setPacket(nextPacket);
+        }
       }
     } catch (err) {
       setActionError(err.message);
@@ -318,6 +265,7 @@ export default function App() {
   }
 
   async function saveReport(notice, notes) {
+    reportRevision.current += 1;
     setActionError("");
     setReportBusy(true);
     const scenario = notice.scenario_id || notice.trigger?.scenario_id;
@@ -327,17 +275,19 @@ export default function App() {
         notice_id: notice.notice_id,
         notes,
       });
-      setReport(payload);
+      if (selectedRef.current === notice.notice_id) setReport(payload);
+      return payload;
     } catch (err) {
-      setActionError(err.message);
+      if (selectedRef.current === notice.notice_id) setActionError(err.message);
     } finally {
       setReportBusy(false);
+      reportRevision.current += 1;
     }
   }
 
   function openNotes() {
     if (!selectedNotice) return;
-    setNotesOpen(true);
+    navigate({ surface: "notices", tab: "notes" });
   }
 
   async function postJson(url, body) {
@@ -389,7 +339,10 @@ export default function App() {
         const packetResponse = await fetch(
           `/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(payload.packet_id)}`,
         );
-        if (packetResponse.ok) setPacket(await packetResponse.json());
+        if (packetResponse.ok) {
+          const nextPacket = await packetResponse.json();
+          if (selectedRef.current === noticeId) setPacket(nextPacket);
+        }
       }
     } catch (err) {
       setOpsError(err.message);
@@ -409,237 +362,73 @@ export default function App() {
     );
   }
 
-  function openAnomaly(notice) {
-    if (notice?.key) {
-      setResultKey(notice.key);
-      loadResult(notice.key);
-    }
-    const trigger = notice?.trigger || {};
-    if (trigger.window_id) setWindowId(trigger.window_id);
-    setChart("coupling");
-    setSurface("anomaly");
+  function openAnomaly() {
+    navigate({ surface: "notices", tab: "evidence" });
   }
 
-  function toggleSeries(id) {
-    setVisibleSeries((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  async function refresh() {
+    setRefreshState("Refreshing…");
+    try {
+      const [data, catalogData, healthData] = await Promise.all([loadNotices(), loadCatalog(), loadHealth()]);
+      setNotices(data.notices || []); setCatalog(catalogData); setHealth(healthData);
+      if (resultKey) await loadResult(resultKey, { silent: true });
+      setRefreshState("Up to date");
+    } catch (err) { setRefreshState("Refresh failed"); setError(err.message); }
   }
 
-  return (
-    <div className="desk-shell">
-      <nav className="desk-nav" aria-label="Desk">
-        <p className="eyebrow">WSD desk</p>
-        {SURFACES.map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            aria-current={surface === id ? "page" : undefined}
-            onClick={() => setSurface(id)}
-          >
-            {id === "notices" ? `${label}${notices.length ? ` (${notices.length})` : ""}` : label}
-          </button>
-        ))}
-      </nav>
-      <div className="desk-main">
-      <header className="app-header">
-        <div>
-          <p className="eyebrow">Collection cueing desk</p>
-          <h1>{TITLES[surface]}</h1>
-        </div>
-        <div className="header-actions">
-          <p className="header-note">
-            {surface === "operations"
-              ? "Emit notices and build briefs here. CLI is for tests and harvests."
-              : surface === "anomaly"
-                ? "Charts for the selected notice window."
-                : "Inbox. Open an alert to read the brief."}
-          </p>
-          <button type="button" onClick={() => loadNotices().then((data) => setNotices(data.notices || []))}>
-            Refresh
-          </button>
-          <span className="poll-hint">polls every {POLL_MS / 1000}s</span>
-        </div>
-      </header>
-      <main>
-        {surface === "anomaly" && (
-          <section className="controls" aria-label="Anomaly selection">
-            <label>
-              <span>Result set</span>
-              <select
-                value={resultKey}
-                onChange={(event) => {
-                  setResultKey(event.target.value);
-                  loadResult(event.target.value);
-                }}
-              >
-                {(catalog?.results || []).map((item) => (
-                  <option key={item.key} value={item.key}>
-                    {item.scenario_id} · {item.measure_id.replace("measure-", "")}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Window</span>
-              <select value={windowId || ""} onChange={(event) => setWindowId(event.target.value)}>
-                {windowOptions.map((id) => (
-                  <option key={id} value={id}>
-                    {id.replaceAll("-", " ")}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label hidden={chart !== "series"}>
-              <span>Measurement series</span>
-              <select value={seriesId || ""} onChange={(event) => setSeriesId(event.target.value)}>
-                {ids.map((id) => (
-                  <option key={id} value={id}>
-                    {noticeFocus?.series?.includes(id) ? `● ${id}` : id}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </section>
-        )}
-        {surface === "anomaly" && result && (
-          <section className="result-summary" aria-live="polite">
-            <strong>{result.scenario?.scenario_id || "Unknown scenario"}</strong>
-            <span>{purpose}</span>
-            <span>{result.summary?.n_feature_rows ?? result.features.length} feature rows</span>
-            <span>{ids.length} series</span>
-            <span className="mode-warning">{mode.replaceAll("_", " ")}</span>
-          </section>
-        )}
-        {surface === "anomaly" && noticeFocus && (
-          <div className="anomaly-focus-banner">
-            <span>
-              Alert <strong>{noticeFocus.start} → {noticeFocus.end}</strong>
-              {noticeFocus.domains.length
-                ? ` · look at ${noticeFocus.domains.map((d) => d.replaceAll("_", " ")).join(", ")}`
-                : ""}
-              {noticeFocus.series.length ? ` · ${noticeFocus.series.join(", ")}` : ""}
-            </span>
-            {selectedNotice ? (
-              <button type="button" className="collect-inline" onClick={openNotes}>
-                {report && !report.empty ? "Edit notes" : "Add Notes"}
-              </button>
-            ) : null}
-          </div>
-        )}
-        {selectedNotice && (surface === "notices" || surface === "anomaly") ? (
-          notesOpen ? (
-            <ReportView
-              report={report}
-              busy={reportBusy}
-              onSave={(notes) => saveReport(selectedNotice, notes)}
-              onClose={() => setNotesOpen(false)}
-            />
-          ) : report && !report.empty ? (
-            <NotesRead
-              notes={report.notes}
-              updatedAt={report.updated_at}
-              onEdit={openNotes}
-            />
-          ) : null
-        ) : null}
-        {surface === "anomaly" && (
-          <nav className="view-tabs" aria-label="Anomaly charts">
-            {CHARTS.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-pressed={String(chart === id)}
-                onClick={() => setChart(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </nav>
-        )}
-        <section aria-live="polite">
-          {error ? <p className="error">{error}</p> : null}
-          {loading && surface === "anomaly" && !result ? <p className="empty">Loading anomaly…</p> : null}
-          {surface === "notices" && (
-            <NoticesView
-              notices={notices}
-              selectedId={selectedNotice?.notice_id}
-              onSelect={selectNotice}
-              onOpenAnomaly={openAnomaly}
-              onBuildPacket={buildPacketFromNotice}
-              packet={packet}
-              collection={collection}
-              collectBusy={collectBusy}
-              onCollect={runCollect}
-              onAddNotes={openNotes}
-              onAction={runAction}
-              actionError={actionError}
-            />
-          )}
-          {surface === "operations" && (
-            <OperationsView
-              catalog={catalog}
-              notices={notices}
-              selectedNotice={selectedNotice}
-              resultKey={resultKey}
-              health={health}
-              busy={opsBusy}
-              log={opsLog}
-              error={opsError}
-              onEmit={emitNotices}
-              onBuildPacket={buildPacket}
-              onSelectResult={(key) => {
-                setResultKey(key);
-                loadResult(key);
-              }}
-              onSelectNotice={selectNotice}
-            />
-          )}
-          {surface === "anomaly" && result && chart === "coupling" && (
-            <CouplingView
-              result={result}
-              windowId={windowId}
-              onTooltip={setTooltip}
-              focus={noticeFocus}
-            />
-          )}
-          {surface === "anomaly" && result && chart === "series" && (
-            <SeriesView
-              result={result}
-              windowId={windowId}
-              seriesId={seriesId}
-              onTooltip={setTooltip}
-              focus={noticeFocus}
-            />
-          )}
-          {surface === "anomaly" && result && chart === "all" && (
-            <AllSeriesView
-              result={result}
-              windowId={windowId}
-              onTooltip={setTooltip}
-              focus={noticeFocus}
-            />
-          )}
-          {surface === "anomaly" && result && chart === "combined" && (
-            <CombinedView
-              result={result}
-              windowId={windowId}
-              visibleSeries={visibleSeries}
-              onToggle={toggleSeries}
-              onTooltip={setTooltip}
-              focus={noticeFocus}
-            />
-          )}
-          {surface === "anomaly" && result && chart === "scatter" && (
-            <ScatterView result={result} windowId={windowId} onTooltip={setTooltip} />
-          )}
-        </section>
-      </main>
+  const ownResources = resourceOwner === selectedNoticeId;
+  const currentPacket = ownResources ? packet : null;
+  const currentReport = ownResources ? report : null;
+  const currentResult = loadedKey === resultKey ? result : null;
+  const evidence = <EvidenceCharts key={surface === "notices" ? selectedNoticeId : resultKey}
+    scopeKey={surface === "notices" ? selectedNoticeId : resultKey}
+    result={currentResult} focus={noticeFocus} onTooltip={setTooltip} />;
+
+  return <div className="desk-shell">
+    <nav className="desk-nav" aria-label="Workspace">
+      <span className="desk-brand">WSD <span>INTELLIGENCE DESK</span></span>
+      <div className="surface-links">{SURFACES.map(([id, label]) =>
+        <button key={id} type="button" aria-current={surface === id ? "page" : undefined}
+          onClick={() => navigate({ surface: id })}>{label}</button>)}</div>
+      <div className="refresh-status"><span role="status">{refreshState}</span>
+        <button type="button" onClick={refresh} aria-label="Refresh workspace" title="Automatically checks every 8 seconds">↻</button>
       </div>
-      <Tooltip tooltip={tooltip} />
-    </div>
-  );
+    </nav>
+    <main className={surface === "notices" ? "desk-main notice-main" : "desk-main standalone-main"}>
+      {error && <p className="error" role="alert">{error}</p>}
+      {surface === "notices" && <NoticesView
+        notices={notices} selectedId={selectedNotice?.notice_id} onSelect={selectNotice}
+        onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
+        packet={currentPacket} collection={ownResources ? collection : null}
+        collectBusy={collectBusy || opsBusy} onCollect={runCollect}
+        onAddNotes={openNotes} onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
+        activeTab={route.tab} onTabChange={(tab) => navigate({ tab })}
+        loading={loading && !notices.length} drafts={drafts}
+        evidence={evidence}
+        notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
+          report={currentReport} busy={reportBusy} onDraftChange={onDraftChange}
+          onSave={(notes) => saveReport(selectedNotice, notes)} />}
+      />}
+      {surface === "anomaly" && <>
+        <header className="page-heading"><p className="eyebrow">Independent measurement exploration</p><h1>Explorer</h1>
+          <p className="notice-timing">Browse result sets independently of your notice and assessment.</p></header>
+        <label className="result-picker"><span>Result set</span>
+          <select aria-label="Result set" value={route.result} onChange={(e) => navigate({ result: e.target.value })}>
+            {(catalog?.results || []).map((item) => <option key={item.key} value={item.key}>
+              {item.scenario_id} · {item.measure_id.replace("measure-", "")}
+            </option>)}
+          </select>
+        </label>
+        {evidence}
+      </>}
+      {surface === "operations" && <>
+        <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
+        <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
+          resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
+          onEmit={emitNotices} onBuildPacket={buildPacket}
+          onSelectResult={(key) => navigate({ result: key })} onSelectNotice={(notice) => navigate({ notice })} />
+      </>}
+    </main>
+    <Tooltip tooltip={tooltip} />
+  </div>;
 }

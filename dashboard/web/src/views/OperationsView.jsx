@@ -59,6 +59,7 @@ export default function OperationsView({
           <label>
             <span>Scenario</span>
             <select
+              aria-label="Scenario"
               value={scenarioId}
               onChange={(event) => {
                 const next = results.find((item) => item.scenario_id === event.target.value);
@@ -75,6 +76,7 @@ export default function OperationsView({
           <label>
             <span>Measurement</span>
             <select
+              aria-label="Measurement"
               value={selected?.key || ""}
               onChange={(event) => onSelectResult(event.target.value)}
             >
@@ -106,6 +108,7 @@ export default function OperationsView({
         <label>
           <span>Notice</span>
           <select
+            aria-label="Notice"
             value={selectedNotice?.notice_id || ""}
             onChange={(event) => onSelectNotice(event.target.value)}
           >
