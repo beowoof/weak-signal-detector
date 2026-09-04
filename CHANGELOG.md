@@ -4,6 +4,10 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ## Unreleased
 
+### Fixed
+
+- **CBR holidays:** a weekday with a policy rate but no RUONIA print is a closed session (`missing`), not `source_down`. New Year, 23 Feb, 8 Mar and 2020 non-working days no longer fail the 0.95 coverage gate.
+
 ### Added
 
 - **Harvest progress:** corpus collect writes `collect_progress.json` (source, day, AOI, tile, bytes, elapsed, stalled). Desk banner and Operations poll `GET /api/collection/progress` every 2s. VIIRS uses cached granules when present and times out a hung NASA download after 5 minutes. The CLI shows a byte bar when NASA reports granule size (`[####....] 50% 11/22MB`). HDF5 cache is kept through collection. `wsd corpus prune-viirs --scenario <id>` is allowed only after that scenario’s corpus review is not `no_go`, and not while a harvest is running.
