@@ -22,10 +22,10 @@ from wsf.notice import (
     load_notice,
 )
 from wsf.packet import build_and_save
-from wsf.progress import Progress
+from wsf.progress import Progress, load_collect_progress
 from wsf.register import validate_configuration
 from wsf.report import load_report, save_report
-from wsf.review import review_corpus
+from wsf.review import review_allows_cache_prune, review_corpus
 from wsf.run import ensure_manifest
 from wsf.scenario import (
     create_scenario,
@@ -182,12 +182,31 @@ def corpus_collect(
 
 
 @corpus_app.command("prune-viirs")
-def corpus_prune_viirs() -> None:
-    """Delete cached VIIRS HDF5 granules. Observation JSONL is unchanged."""
+def corpus_prune_viirs(
+    scenario: str = typer.Option(..., help="Scenario whose review must have passed."),
+    force: bool = typer.Option(
+        False, help="Delete even if review has not passed. Do not use during a harvest."
+    ),
+) -> None:
+    """Delete cached VIIRS HDF5 after a passing corpus review. JSONL is unchanged."""
     with _operator_errors():
-        result = prune_viirs_cache(_root() / "data" / "raw" / "viirs")
+        root = _root()
+        live = load_collect_progress(root).get("active")
+        if live and not live.get("stale"):
+            raise ValueError(
+                "a corpus harvest is running; do not prune VIIRS cache until it finishes"
+            )
+        ok, reason = review_allows_cache_prune(root, scenario)
+        if not ok and not force:
+            raise ValueError(
+                f"{reason}. Pass `wsd corpus review --scenario {scenario}` first, "
+                "or pass --force after you are sure."
+            )
+        result = prune_viirs_cache(root / "data" / "raw" / "viirs")
     _echo(
         {
+            "scenario": scenario,
+            "review": reason if ok else f"forced ({reason})",
             "files": result["files"],
             "bytes": result["bytes"],
             "freed": f"{result['bytes'] / 1_000_000_000:.1f}GB",

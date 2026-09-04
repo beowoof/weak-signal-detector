@@ -216,7 +216,7 @@ Full live harvest:
 wsd corpus collect --scenario ukraine2022
 ```
 
-Progress is on stderr and in `scenarios/<id>/collect_progress.json` (source, window, day, AOI, tile, bytes, elapsed, stalled). When NASA reports granule size the CLI draws a bar: `viirs incident 101/141 2021-02-27 RUS-dzhankoi h21v04 [############............] 50% 11.2/22.5MB`. The desk polls `GET /api/collection/progress`. JSON results stay on stdout. Use `--quiet` to suppress stderr only. VIIRS reuses cached granules, times out a hung NASA download after five minutes, and deletes each day's HDF5 after extracting AOI means (the JSONL is the record). Keep the cache with `WSD_VIIRS_KEEP_CACHE=1`. `wsd corpus prune-viirs` deletes leftover granules. Independent sources harvest in parallel (default four at a time). `--source-workers 1` restores one-source-at-a-time.
+Progress is on stderr and in `scenarios/<id>/collect_progress.json` (source, window, day, AOI, tile, bytes, elapsed, stalled). When NASA reports granule size the CLI draws a bar: `viirs incident 101/141 2021-02-27 RUS-dzhankoi h21v04 [############............] 50% 11.2/22.5MB`. The desk polls `GET /api/collection/progress`. JSON results stay on stdout. Use `--quiet` to suppress stderr only. VIIRS reuses cached granules and times out a hung NASA download after five minutes. HDF5 tiles stay on disk through collection so a fix-and-recollect does not re-download NASA. After `wsd corpus review --scenario <id>` is not `no_go`, `wsd corpus prune-viirs --scenario <id>` can free the cache. Independent sources harvest in parallel (default four at a time). `--source-workers 1` restores one-source-at-a-time.
 
 Operator expectations:
 

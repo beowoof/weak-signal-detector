@@ -355,19 +355,12 @@ def test_granule_nbytes_reads_size_in_bytes() -> None:
     assert granule_nbytes(item) == 22_000_000
 
 
-def test_forget_day_deletes_hdf5_unless_keep_cache(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_forget_day_deletes_hdf5_for_that_doy(tmp_path: Path) -> None:
     day = date(2021, 3, 24)
     path = tmp_path / "VNP46A2.A2021083.h22v03.002.h5"
     path.write_bytes(b"x" * 100)
-    monkeypatch.delenv("WSD_VIIRS_KEEP_CACHE", raising=False)
     assert forget_day(tmp_path, day) == 1
     assert not path.exists()
-    path.write_bytes(b"x" * 100)
-    monkeypatch.setenv("WSD_VIIRS_KEEP_CACHE", "1")
-    assert forget_day(tmp_path, day) == 0
-    assert path.exists()
 
 
 def test_cached_granule_skips_tiny_and_cog_files(tmp_path: Path) -> None:
