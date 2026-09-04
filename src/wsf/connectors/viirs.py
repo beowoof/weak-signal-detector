@@ -4,6 +4,10 @@ import json
 import math
 import os
 import re
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeoutError
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
 from typing import Any, Protocol
@@ -20,6 +24,8 @@ CLOUD_CLEAR = {0, 1}
 CLOUD_DETECTION_SHIFT = 6
 GRANULE_TILE = re.compile(r"h(\d{2})v(\d{2})")
 CMR_VERSION = "2"
+DOWNLOAD_TIMEOUT_S = 300
+STALL_S = 60
 
 
 class TileArrays:
@@ -89,10 +95,27 @@ class ViirsConnector:
                 values: list[float] = []
                 for h, v in tile_ids:
                     tile_id = f"h{h:02d}v{v:02d}"
+                    aoi_id = str(aoi["id"])
                     progress.status(
                         f"viirs {request.window_id} {day.isoformat()} "
-                        f"[{index}/{n_days}] {aoi['id']} {tile_id}"
+                        f"[{index}/{n_days}] {aoi_id} {tile_id}",
+                        source="viirs",
+                        window=request.window_id,
+                        day=day.isoformat(),
+                        day_index=index,
+                        day_count=n_days,
+                        aoi=aoi_id,
+                        tile=tile_id,
+                        step="tile",
+                        stalled=False,
                     )
+                    stop = threading.Event()
+                    watcher = threading.Thread(
+                        target=_watch_partials,
+                        args=(progress, self.cache_dir, stop),
+                        daemon=True,
+                    )
+                    watcher.start()
                     try:
                         arrays = backend.read_tile(day, tile_id, bbox, self.cache_dir)
                     except Exception as error:  # noqa: BLE001
@@ -106,6 +129,8 @@ class ViirsConnector:
                             }
                         )
                         continue
+                    finally:
+                        stop.set()
                     requests.append(
                         {
                             "day": day.isoformat(),
@@ -207,6 +232,21 @@ class EarthaccessViirsBackend:
         import h5py
 
         earthaccess.login(strategy="environment")
+        cached = cached_granule(cache_dir, day, tile_id)
+        if cached is not None:
+            path = cached
+            h, v = _parse_tile(tile_id)
+            with h5py.File(path, "r") as handle:
+                ntl, quality, cloud, lat, lon = _read_science_arrays(handle, h, v)
+            return TileArrays(
+                ntl=ntl,
+                quality=quality,
+                cloud=cloud,
+                lat=lat,
+                lon=lon,
+                production_timestamp=path.name,
+                tile_id=tile_id,
+            )
         doy_tag = f"A{day:%Y%j}"
         pattern = f"VNP46A2.{doy_tag}.{tile_id}*"
         results = earthaccess.search_data(
@@ -232,7 +272,7 @@ class EarthaccessViirsBackend:
                 break
         if granule is None:
             return None
-        files = earthaccess.download([granule], local_path=str(cache_dir))
+        files = _download_granule(earthaccess, granule, cache_dir)
         if not files:
             return None
         path = Path(files[0])
@@ -248,6 +288,48 @@ class EarthaccessViirsBackend:
             production_timestamp=path.name,
             tile_id=tile_id,
         )
+
+
+def cached_granule(cache_dir: Path, day: date, tile_id: str) -> Path | None:
+    doy_tag = f"A{day:%Y%j}"
+    matches = [
+        path
+        for path in cache_dir.glob(f"VNP46A2.{doy_tag}.{tile_id}*.h5")
+        if path.is_file() and path.stat().st_size > 1_000_000 and "COG" not in path.name
+    ]
+    if not matches:
+        return None
+    return max(matches, key=lambda path: path.stat().st_mtime)
+
+
+def _download_granule(earthaccess: Any, granule: Any, cache_dir: Path) -> list[Any]:
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        future = pool.submit(earthaccess.download, [granule], str(cache_dir))
+        try:
+            files = future.result(timeout=DOWNLOAD_TIMEOUT_S)
+        except FuturesTimeoutError as error:
+            raise TimeoutError(
+                f"VIIRS download timed out after {DOWNLOAD_TIMEOUT_S}s"
+            ) from error
+    return list(files or [])
+
+
+def _watch_partials(progress: Any, cache_dir: Path, stop: threading.Event) -> None:
+    last_size = -1
+    last_change = time.monotonic()
+    while not stop.wait(2):
+        partials = [
+            path for path in cache_dir.glob("partial_*") if path.is_file()
+        ]
+        if not partials:
+            continue
+        newest = max(partials, key=lambda path: path.stat().st_mtime)
+        size = newest.stat().st_size
+        if size != last_size:
+            last_size = size
+            last_change = time.monotonic()
+        stalled = time.monotonic() - last_change >= STALL_S
+        progress.update(step="download", bytes=size, stalled=stalled)
 
 
 def zonal_mean(arrays: TileArrays, bbox: list[float]) -> float | None:

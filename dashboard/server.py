@@ -22,6 +22,7 @@ from wsf.collect import HARVEST_KINDS, load_collection, run_collection
 from wsf.db import desk_health
 from wsf.notice import apply_action_at_path, emit_notices_for_measurement
 from wsf.packet import build_and_save
+from wsf.progress import load_collect_progress
 from wsf.report import load_report, save_report
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -300,6 +301,9 @@ def create_app(
     app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
     app.state.project_root = proj
     app.state.scenarios_root = root
+    from dashboard.scenario_workspace import scenario_router
+
+    app.include_router(scenario_router(root))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -312,6 +316,10 @@ def create_app(
         payload = desk_health()
         status = 200 if payload["ok"] else 503
         return JSONResponse(payload, status_code=status)
+
+    @app.get("/api/collection/progress")
+    def api_collection_progress() -> dict:
+        return load_collect_progress(app.state.project_root)
 
     @app.get("/api/notices")
     def api_notices() -> dict:

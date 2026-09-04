@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from pathlib import Path
 
 import pytest
@@ -212,6 +212,26 @@ def test_api_health_without_database(tmp_path: Path, monkeypatch: pytest.MonkeyP
     assert body["ok"] is True
     assert body["db"] == {"configured": False, "ok": True, "error": None}
     assert body["agent"] is None
+
+
+def test_api_collection_progress(tmp_path: Path) -> None:
+    scenario = tmp_path / "scenarios" / "rus2021apr"
+    scenario.mkdir(parents=True)
+    (scenario / "collect_progress.json").write_text(
+        json.dumps(
+            {
+                "scenario_id": "rus2021apr",
+                "source": "viirs",
+                "updated_at": datetime.now(UTC).isoformat(),
+            }
+        ),
+        encoding="utf-8",
+    )
+    client = TestClient(create_app(api_only=True, project_root=tmp_path))
+    response = client.get("/api/collection/progress")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["active"]["source"] == "viirs"
 
 
 def test_api_report_template_and_save(tmp_path: Path) -> None:

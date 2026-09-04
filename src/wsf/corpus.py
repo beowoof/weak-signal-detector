@@ -51,7 +51,7 @@ def collect_corpus(
 ) -> tuple[Path, dict[str, Any]]:
     scenario = load_scenario(project_root, scenario_id)
     require_collection_ready(scenario)
-    log = progress or SILENT
+    log = progress if progress is not None and progress is not SILENT else Progress(enabled=False)
     status = load_status(project_root, scenario_id)
     if status["phase"] == "frozen":
         raise ValueError("a frozen scenario cannot collect additional corpus data")
@@ -65,65 +65,83 @@ def collect_corpus(
     retrieved_at = datetime.now(UTC)
 
     workers = max(1, min(source_workers, len(selected)))
-    log.line(
-        f"collect {scenario_id} mode={'mock' if mock else 'live'} "
-        f"sources={','.join(selected)} windows={len(windows)} source_workers={workers}"
+    scenario_dir = scenario_directory(project_root, scenario_id)
+    log.bind(directory / "progress.json", scenario_dir / "collect_progress.json")
+    log.update(
+        scenario_id=scenario_id,
+        collection_id=collection_id,
+        phase="harvesting",
+        mode="mock" if mock else "live",
+        source_count=len(selected),
+        window_count=len(windows),
     )
-    if mock:
-        items = _synthetic_items(scenario, windows, selected)
-        mode = "synthetic_rehearsal"
-        log.line(f"collect {scenario_id} mock items={len(items)}")
-    else:
-        load_project_env(project_root)
-        _preflight_live(project_root, scenario, selected)
-        registry = connectors or default_connectors(project_root)
-        items = _live_items(
-            project_root=project_root,
-            scenario=scenario,
-            scenario_id=scenario_id,
-            windows=windows,
-            selected=selected,
-            focus=focus,
-            parent_id=status.get("active_collection_id"),
-            directory=directory,
-            registry=registry,
-            retrieved_at=retrieved_at,
-            progress=log,
-            source_workers=workers,
+    log.start_pulse()
+    try:
+        log.line(
+            f"collect {scenario_id} mode={'mock' if mock else 'live'} "
+            f"sources={','.join(selected)} windows={len(windows)} source_workers={workers}"
         )
-        mode = "live_harvest"
+        if mock:
+            items = _synthetic_items(scenario, windows, selected)
+            mode = "synthetic_rehearsal"
+            log.line(f"collect {scenario_id} mock items={len(items)}")
+        else:
+            load_project_env(project_root)
+            _preflight_live(project_root, scenario, selected)
+            registry = connectors or default_connectors(project_root)
+            items = _live_items(
+                project_root=project_root,
+                scenario=scenario,
+                scenario_id=scenario_id,
+                windows=windows,
+                selected=selected,
+                focus=focus,
+                parent_id=status.get("active_collection_id"),
+                directory=directory,
+                registry=registry,
+                retrieved_at=retrieved_at,
+                progress=log,
+                source_workers=workers,
+            )
+            mode = "live_harvest"
 
-    manifest = {
-        "collection_id": collection_id,
-        "scenario_id": scenario_id,
-        "scenario_hash": scenario_hash(scenario),
-        "created_at": retrieved_at.isoformat(),
-        "mode": mode,
-        "parent_collection_id": status.get("active_collection_id"),
-        "focus_source": str(focus_path) if focus_path else None,
-        "resolved_gap_ids": [item["gap_id"] for item in focus.get("critical_gaps", [])],
-        "selected_sources": selected,
-        "items": items,
-    }
-    _write_json(directory / "manifest.json", manifest)
-    (directory / "collection_summary.md").write_text(
-        _collection_markdown(manifest), encoding="utf-8"
-    )
-    status.update(
-        {
-            "phase": "collected",
-            "active_collection_id": collection_id,
-            "active_review_id": None,
+        manifest = {
+            "collection_id": collection_id,
+            "scenario_id": scenario_id,
+            "scenario_hash": scenario_hash(scenario),
+            "created_at": retrieved_at.isoformat(),
+            "mode": mode,
+            "parent_collection_id": status.get("active_collection_id"),
+            "focus_source": str(focus_path) if focus_path else None,
+            "resolved_gap_ids": [item["gap_id"] for item in focus.get("critical_gaps", [])],
+            "selected_sources": selected,
+            "items": items,
         }
-    )
-    save_status(project_root, scenario_id, status)
-    append_history(
-        scenario_directory(project_root, scenario_id),
-        "corpus_collected",
-        {"collection_id": collection_id, "mode": manifest["mode"]},
-    )
-    log.line(f"collect {scenario_id} finished {collection_id} items={len(items)}")
-    return directory, manifest
+        _write_json(directory / "manifest.json", manifest)
+        (directory / "collection_summary.md").write_text(
+            _collection_markdown(manifest), encoding="utf-8"
+        )
+        status.update(
+            {
+                "phase": "collected",
+                "active_collection_id": collection_id,
+                "active_review_id": None,
+            }
+        )
+        save_status(project_root, scenario_id, status)
+        append_history(
+            scenario_directory(project_root, scenario_id),
+            "corpus_collected",
+            {"collection_id": collection_id, "mode": manifest["mode"]},
+        )
+        log.update(phase="finished", step=None, stalled=False, aoi=None, tile=None, day=None)
+        log.line(f"collect {scenario_id} finished {collection_id} items={len(items)}")
+        return directory, manifest
+    except Exception:
+        log.update(phase="failed", stalled=True)
+        raise
+    finally:
+        log.stop_pulse()
 
 
 def _selected_sources(scenario: Any, only: list[str] | None) -> list[str]:
@@ -208,6 +226,13 @@ def _live_items(
         harvested: dict[tuple[str, str], dict[str, Any]] = {}
         for window in windows:
             prefix = f"collect {source}/{window.id} [{job_index[(source, window.id)]}/{n_jobs}]"
+            progress.update(
+                source=source,
+                window=window.id,
+                job_index=job_index[(source, window.id)],
+                job_count=n_jobs,
+                step="start",
+            )
             key = (source, window.id)
             if focus_pairs and key not in focus_pairs and key in parent_items:
                 progress.line(f"{prefix} copy from parent")
@@ -258,7 +283,7 @@ def _live_items(
         for future in as_completed(futures):
             collected.update(future.result())
 
-    # Copy unselected enabled sources from parent collection so existing data (VIIRS, SAR, GDELT, etc.) is preserved
+    # Copy unselected enabled sources from the parent collection.
     if parent_items:
         for key, parent_item in parent_items.items():
             source, _win = key
