@@ -1,3 +1,60 @@
+function HarvestCard({ harvest }) {
+  if (!harvest) {
+    return (
+      <section className="notice-card">
+        <h2>Corpus harvest</h2>
+        <p className="notice-timing">No live collection running.</p>
+      </section>
+    );
+  }
+  const stalled = harvest.stalled || harvest.stale;
+  return (
+    <section className={`notice-card${stalled ? " harvest-stalled" : ""}`}>
+      <h2>Corpus harvest</h2>
+      <p className="notice-timing">
+        {harvest.scenario_id} · {harvest.collection_id || "in progress"} · {harvest.elapsed || ""}
+        {stalled ? " · stalled" : harvest.stale ? " · stale" : " · live"}
+      </p>
+      <dl>
+        <div>
+          <dt>Source</dt>
+          <dd>
+            {harvest.source || "—"}
+            {harvest.window ? ` / ${harvest.window}` : ""}
+            {harvest.job_index && harvest.job_count
+              ? ` (${harvest.job_index}/${harvest.job_count})`
+              : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Day</dt>
+          <dd>
+            {harvest.day_index && harvest.day_count
+              ? `${harvest.day_index}/${harvest.day_count}`
+              : "—"}
+            {harvest.day ? ` · ${harvest.day}` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>AOI / tile</dt>
+          <dd>
+            {harvest.aoi || "—"}
+            {harvest.tile ? ` · ${harvest.tile}` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Step</dt>
+          <dd>
+            {harvest.step || harvest.phase || "—"}
+            {harvest.bytes ? ` · ${(harvest.bytes / 1_000_000).toFixed(1)} MB` : ""}
+          </dd>
+        </div>
+      </dl>
+      {harvest.message ? <p>{harvest.message}</p> : null}
+    </section>
+  );
+}
+
 export default function OperationsView({
   catalog,
   notices,
@@ -7,6 +64,7 @@ export default function OperationsView({
   busy,
   log,
   error,
+  harvest,
   onEmit,
   onBuildPacket,
   onSelectResult,
@@ -48,6 +106,8 @@ export default function OperationsView({
           </div>
         </dl>
       </section>
+
+      <HarvestCard harvest={harvest} />
 
       <section className="notice-card">
         <h2>Emit notices</h2>

@@ -1,9 +1,10 @@
 export const NOTICE_TABS = ["overview", "evidence", "collection", "notes"];
-export const SURFACES = ["notices", "anomaly", "operations"];
+export const SURFACES = ["notices", "anomaly", "operations", "scenarios"];
 
 export function readRoute(search, storage) {
   const params = new URLSearchParams(search);
   return {
+    ...(params.get("scenario") ? { scenario: params.get("scenario") } : {}),
     surface: SURFACES.includes(params.get("view")) ? params.get("view") : "notices",
     tab: NOTICE_TABS.includes(params.get("tab")) ? params.get("tab") : "overview",
     notice: params.get("notice") || storage?.getItem("wsd-alert-id") || "",
@@ -14,6 +15,7 @@ export function routeSearch(route) {
   const params = new URLSearchParams({ view: route.surface, tab: route.tab });
   if (route.notice) params.set("notice", route.notice);
   if (route.result) params.set("result", route.result);
+  if (route.scenario) params.set("scenario", route.scenario);
   return `?${params}`;
 }
 export function humanize(value = "") { return String(value).replaceAll("_", " "); }
