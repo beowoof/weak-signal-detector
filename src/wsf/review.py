@@ -123,7 +123,36 @@ def review_corpus(
         f"review {scenario_id} {review_id} decision={decision} "
         f"critical={len(critical)} warnings={len(warnings)}"
     )
+    if decision != "no_go":
+        log.line(
+            f"review {scenario_id} passed deterministic gates. "
+            f"VIIRS HDF5 cache may be pruned with: "
+            f"wsd corpus prune-viirs --scenario {scenario_id}"
+        )
     return directory, result
+
+
+def review_allows_cache_prune(project_root: Path, scenario_id: str) -> tuple[bool, str]:
+    """True when the active collection has a review that is not no_go."""
+    status = load_status(project_root, scenario_id)
+    review_id = status.get("active_review_id")
+    if not review_id:
+        return False, f"{scenario_id} has no completed corpus review"
+    path = (
+        scenario_directory(project_root, scenario_id)
+        / "reviews"
+        / review_id
+        / "decision.json"
+    )
+    if not path.is_file():
+        return False, f"{scenario_id} review {review_id} has no decision.json"
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    decision = str(payload.get("decision") or "")
+    if decision == "no_go":
+        return False, f"{scenario_id} review {review_id} is no_go; keep the cache"
+    if not decision:
+        return False, f"{scenario_id} review {review_id} has no decision"
+    return True, f"{scenario_id} review {review_id} decision={decision}"
 
 
 def _deterministic_gaps(scenario: Any, collection: dict[str, Any]) -> list[dict[str, Any]]:

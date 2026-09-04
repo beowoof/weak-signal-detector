@@ -100,6 +100,20 @@ def test_mock_workflow_can_be_rehearsed_but_not_frozen_as_real(tmp_path: Path) -
     assert load_status(tmp_path, "ukraine2022")["phase"] == "frozen"
 
 
+def test_viirs_prune_requires_passing_review(tmp_path: Path) -> None:
+    from wsf.review import review_allows_cache_prune
+
+    _complete_scenario(tmp_path)
+    collect_corpus(tmp_path, "ukraine2022", mock=True)
+    ok, reason = review_allows_cache_prune(tmp_path, "ukraine2022")
+    assert ok is False
+    assert "no completed corpus review" in reason
+    review_corpus(tmp_path, "ukraine2022", mock_model=True)
+    ok, reason = review_allows_cache_prune(tmp_path, "ukraine2022")
+    assert ok is True
+    assert "go_candidate_rehearsal" in reason
+
+
 def test_no_go_missing_file_can_drive_focused_recollection(tmp_path: Path) -> None:
     scenario_dir = _complete_scenario(tmp_path)
     collection_dir, _ = collect_corpus(

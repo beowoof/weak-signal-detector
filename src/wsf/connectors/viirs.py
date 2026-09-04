@@ -26,7 +26,6 @@ GRANULE_TILE = re.compile(r"h(\d{2})v(\d{2})")
 CMR_VERSION = "2"
 DOWNLOAD_TIMEOUT_S = 300
 STALL_S = 60
-KEEP_CACHE_ENV = "WSD_VIIRS_KEEP_CACHE"
 
 
 class TileArrays:
@@ -197,7 +196,6 @@ class ViirsConnector:
                     extra=json.dumps(extra, sort_keys=True),
                 )
             )
-            forget_day(self.cache_dir, day)
 
         n_expected = len(days)
         coverage = n_ok / n_expected if n_expected else 0.0
@@ -303,10 +301,6 @@ class EarthaccessViirsBackend:
         )
 
 
-def keep_cache() -> bool:
-    return os.environ.get(KEEP_CACHE_ENV, "").strip().lower() in {"1", "true", "yes"}
-
-
 def granule_nbytes(item: Any) -> int | None:
     umm = getattr(item, "umm", None)
     if umm is None and isinstance(item, dict):
@@ -341,8 +335,8 @@ def granule_nbytes(item: Any) -> int | None:
 
 
 def forget_day(cache_dir: Path, day: date) -> int:
-    """Drop HDF5 granules for one day. Observation JSONL is the record."""
-    if keep_cache() or not cache_dir.is_dir():
+    """Drop HDF5 granules for one day. Not used during collect; review must pass first."""
+    if not cache_dir.is_dir():
         return 0
     doy_tag = f"A{day:%Y%j}"
     removed = 0
@@ -354,7 +348,7 @@ def forget_day(cache_dir: Path, day: date) -> int:
 
 
 def prune_viirs_cache(cache_dir: Path) -> dict[str, int]:
-    """Delete cached VIIRS HDF5 and leftover partials. Safe for measurement."""
+    """Delete cached VIIRS HDF5 and leftover partials. Call only after review."""
     files = 0
     bytes_removed = 0
     if not cache_dir.is_dir():
