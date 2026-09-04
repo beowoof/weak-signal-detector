@@ -167,6 +167,38 @@ def test_cbr_connector():
     assert all(ob.quality == "ok" for ob in res.observations)
 
 
+def test_cbr_weekday_without_ruonia_is_holiday_not_source_down():
+    ruonia_body = (
+        b"<Ruonia><ro><D0>2021-01-11T00:00:00</D0><ruo>4.25</ruo></ro></Ruonia>"
+    )
+    keyrate_body = b"<KeyRate><KR><DT>2020-12-01T00:00:00</DT><Rate>4.25</Rate></KR></KeyRate>"
+    transport = RecordingMockTransport(
+        responses={
+            "RuoniaXML": HttpResponse(url="https://cbr.ru", status=200, body=ruonia_body, headers={}),
+            "KeyRateXML": HttpResponse(url="https://cbr.ru", status=200, body=keyrate_body, headers={}),
+        }
+    )
+    conn = CbrConnector(transport)
+    req = PullRequest(
+        source="cbr",
+        series_id="market.cbr_funding_spread",
+        scenario_id="rus2021apr",
+        window_id="incident",
+        start=date(2021, 1, 8),
+        end=date(2021, 1, 11),
+        queries=SimpleNamespace(cameo_actor="RUS", facility_actor="RUS"),
+        retrieved_at=datetime(2021, 1, 12, tzinfo=timezone.utc),
+    )
+    res = conn.pull(req)
+    obs = {ob.event_time.date(): ob for ob in res.observations}
+    assert obs[date(2021, 1, 8)].quality == "missing"
+    assert obs[date(2021, 1, 9)].quality == "missing"
+    assert obs[date(2021, 1, 10)].quality == "missing"
+    assert obs[date(2021, 1, 11)].quality == "ok"
+    assert res.item["n_source_down"] == 0
+    assert res.item["coverage"] == 1.0
+
+
 def test_notam_connector():
     transport = RecordingMockTransport()
     conn = NotamConnector(transport)

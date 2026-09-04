@@ -126,8 +126,11 @@ class CbrConnector:
                 ruonia_rate = ruonia_by_date[day]
                 key_rate = key_rate_by_date[day]
                 counts[day] = (ruonia_rate - key_rate) * 100.0
-            elif day.weekday() < 5 and (day in ruonia_by_date or day in key_rate_by_date):
+            elif day.weekday() < 5 and day in ruonia_by_date and day not in key_rate_by_date:
+                # RUONIA print without a policy rate is a harvest failure.
                 source_down_days.add(day)
+            # Weekday with a policy rate but no RUONIA print is a closed session
+            # (holiday / non-working day), not source_down.
 
         progress.line(
             f"cbr {request.window_id} ruonia_days={len(ruonia_by_date)} spread_days={len(counts)} "
