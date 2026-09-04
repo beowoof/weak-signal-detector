@@ -12,7 +12,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -20,6 +20,7 @@ from wsf.analysis.coupling import evaluate_window_coupling
 from wsf.brief_pdf import render_existing_packet
 from wsf.collect import HARVEST_KINDS, load_collection, run_collection
 from wsf.db import desk_health
+from wsf.draft import run_desk_draft
 from wsf.notice import apply_action_at_path, emit_notices_for_measurement
 from wsf.packet import build_and_save
 from wsf.progress import load_collect_progress
@@ -276,6 +277,14 @@ class PacketBuildBody(BaseModel):
     replay: bool = False
 
 
+class PacketDraftBody(BaseModel):
+    scenario: str = Field(min_length=1)
+    notice_id: str = Field(min_length=1)
+    replay: bool = False
+    search: bool = True
+    apply: bool = False
+
+
 class ReportBody(BaseModel):
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
@@ -301,6 +310,7 @@ def create_app(
     app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
     app.state.project_root = proj
     app.state.scenarios_root = root
+    from dashboard.draft_stream import draft_events
     from dashboard.scenario_workspace import scenario_router
 
     app.include_router(scenario_router(root))
@@ -352,9 +362,7 @@ def create_app(
                 )
             except (ValueError, OSError, FileNotFoundError, KeyError) as exc:
                 raise HTTPException(status_code=400, detail=str(exc)) from exc
-            payload = load_notice_payload(
-                body.scenario, body.notice_id, app.state.scenarios_root
-            )
+            payload = load_notice_payload(body.scenario, body.notice_id, app.state.scenarios_root)
             payload["collection"] = collection
             return payload
         try:
@@ -436,6 +444,41 @@ def create_app(
         packet_id: str = Query(..., min_length=1),
     ) -> dict:
         return load_collection(app.state.project_root, scenario, packet_id)
+
+    @app.post("/api/packet/draft")
+    def api_packet_draft(body: PacketDraftBody) -> dict:
+        try:
+            return run_desk_draft(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                replay=body.replay,
+                search=body.search,
+                apply=body.apply,
+            )
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Unknown notice") from exc
+        except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/packet/draft/stream")
+    def api_packet_draft_stream(body: PacketDraftBody) -> StreamingResponse:
+        def run(*, progress):
+            return run_desk_draft(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                replay=body.replay,
+                search=body.search,
+                apply=body.apply,
+                progress=progress,
+            )
+
+        return StreamingResponse(
+            draft_events(run),
+            media_type="application/x-ndjson",
+            headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+        )
 
     @app.post("/api/packet/collect")
     def api_packet_collect(body: PacketCollectBody) -> dict:

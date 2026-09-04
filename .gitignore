@@ -18,6 +18,8 @@ scenarios/*/status.json
 scenarios/*/history.jsonl
 scenarios/*/freeze.json
 scenarios/*/collect_progress.json
+scenarios/*/interpretation/*/machine_draft.json
+scenarios/*/interpretation/*/machine_draft.md
 
 # Dashboard frontend
 dashboard/web/node_modules/

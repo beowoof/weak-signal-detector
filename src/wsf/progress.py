@@ -136,6 +136,43 @@ class Progress:
 SILENT = Progress(enabled=False)
 
 
+class DraftProgress:
+    """Stage-based draft feedback; stage counts are not generation percentages."""
+
+    def __init__(self, *, enabled: bool = True, stream: TextIO | None = None) -> None:
+        self.enabled = enabled
+        self.stream = stream or sys.stderr
+        self.last_stage = ""
+        self.last_at = -30
+
+    def update(self, event: dict[str, Any]) -> None:
+        if not self.enabled:
+            return
+        elapsed = int(event.get("elapsed_s", 0))
+        stage = str(event.get("stage", "Waiting for API"))
+        total = max(1, int(event.get("total", 5)))
+        completed = min(total, max(0, int(event.get("completed", 0))))
+        filled = 20 * completed // total
+        bar = "#" * filled + "." * (20 - filled)
+        pulse = "|/-\\"[elapsed % 4] if completed < total else ""
+        line = (
+            f"{event.get('job_id', 'Job-pending')} [{bar}] {completed}/{total} stages "
+            f"{pulse} {stage} · {format_elapsed(elapsed)}"
+        )
+        if self.stream.isatty():
+            self.stream.write("\r" + _fit(line) + "\033[K")
+        elif stage != self.last_stage or elapsed - self.last_at >= 30:
+            self.stream.write(line + "\n")
+            self.last_at = elapsed
+        self.last_stage = stage
+        self.stream.flush()
+
+    def close(self) -> None:
+        if self.enabled and self.stream.isatty():
+            self.stream.write("\n")
+            self.stream.flush()
+
+
 def format_elapsed(seconds: int) -> str:
     hours, rem = divmod(max(0, seconds), 3600)
     minutes, secs = divmod(rem, 60)
@@ -213,4 +250,3 @@ def _fit(message: str, width: int = 140) -> str:
     if len(text) > width:
         text = text[: width - 1] + "…"
     return text
-

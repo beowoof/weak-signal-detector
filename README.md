@@ -33,7 +33,7 @@ The repository still contains:
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
 - live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Sentinel-1 (descending IW), Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, Brent, and Certificate Transparency are out of the v1 basket; OpenSky Trino is not built; default tests remain offline;
-- `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet. `wsd run workflow` is the operator path for a live scenario (exploratory measure, then notice emit).
+- `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet. `wsd run workflow` is the **backtest** operator path (validate through emit on a closed window). The live desk is later: continuous, scheduled, event-driven.
 - Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day score + 120-day lookback) sit next to `ukraine2022`. Frozen `coincidence_v1` rules; do not retune from Ukraine. `GRC-TUR-2020` stays unharvested.
 
 Replay of a recorded harvest is in [`HOWTO.md`](HOWTO.md). `ukraine2022` is a development showcase, not held-out evidence. Findings: [`FINDINGS.md`](FINDINGS.md). Design record: `weak-signal-fusion-spec.md`.
@@ -124,8 +124,13 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 | `ICEWS_EVENTS_PATH` | Dataverse zip, directory, or `.tab` | Yes; `data/raw/icews/dataverse_files.zip` |
 | `GOOGLE_CLOUD_PROJECT` | Optional bounded GDELT BigQuery path | No; bulk GDELT is qualified first |
 | `GOOGLE_APPLICATION_CREDENTIALS` | Optional path to Google ADC credentials | No |
-| `OLLAMA_BASE_URL` | Local Ollama API, default `http://localhost:11434` | Only for owner-run interpretation |
-| `OLLAMA_MODEL` | Frozen local model, `qwen3.8:27b-mlx` | Only for owner-run interpretation |
+| `WSD_API_BASE_URL` | Docker desk API, default `http://127.0.0.1:8000` | Host `wsd packet draft` submits work here |
+| `WSD_API_TIMEOUT_SECONDS` | API request timeout, default 1800 seconds | No automatic retries or local fallback |
+| `OLLAMA_BASE_URL` | Ollama URL reachable from the API container, e.g. `http://host.docker.internal:11434` | Server-side desk drafting |
+| `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft` and the Machine draft button |
+| `OLLAMA_TIMEOUT_SECONDS` | Local generation timeout, default 900 seconds | Optional; one attempt, no automatic regeneration on timeout |
+| `OLLAMA_MAX_OUTPUT_TOKENS` | Desk draft output limit, default 4096 | Optional; truncated responses do not replace existing drafts |
+| `OLLAMA_NUM_CTX` | Context window, default 32768 | Optional; must exceed output limit |
 
 Google Cloud will not be configured or used without an explicit decision after the GDELT bulk acquisition sample. Live source calls and model calls are never part of default tests.
 
@@ -147,13 +152,13 @@ Then open <http://127.0.0.1:5173> (UI) and <http://127.0.0.1:8000/docs> (API). `
 | `db` | 5432 | Postgres (`wsd` / `wsd` / `wsd`) |
 | `agent` | — | Heartbeats into Postgres; run CLI jobs with `docker compose exec` |
 
-Collect through emit inside the stack:
+Backtest (replay a closed window) inside the stack:
 
 ```bash
 docker compose exec agent wsd run workflow --scenario ukraine2022
 ```
 
-That is validate → collect → review → exploratory measure → notice emit. It stops on a `no_go` review (exit 2) and prints the `--focus` resume. After a harvest already exists: `--from review`. It does not freeze, prune VIIRS, call Ollama, or build packets. The same stages remain available as individual commands (`wsd corpus collect`, `wsd measure --exploratory`, `wsd notice emit`).
+That is validate → collect → review → exploratory measure → notice emit. It stops on a `no_go` review (exit 2) and prints the `--focus` resume. After a harvest already exists: `--from review`. It does not freeze, prune VIIRS, call Ollama, or build packets, and it is not the live watch (schedules and events come later). The same stages remain available as individual commands (`wsd corpus collect`, `wsd measure --exploratory`, `wsd notice emit`).
 
 The UI polls `/api/result` every 8s. Source under `dashboard/web/src` and `src/` is bind-mounted, so Vite and uvicorn still reload. Websocket invalidation of that poll is next.
 
@@ -199,7 +204,7 @@ See [Desk API and UI](#desk-api-and-ui). The plots are diagnostic views of recor
 
 ## Running a scenario experiment
 
-The live operator command is:
+The backtest operator command (closed historical window, once):
 
 ```bash
 wsd run workflow --scenario ukraine2022
@@ -218,7 +223,7 @@ python3 run_test.py --scenario ukraine2022 --through review --mock
 3. writes `experiment_summary.json` and `experiment_summary.md` to `artifacts/<run-id>/`;
 4. prints the run ID and artifact directory for feedback.
 
-`--mock` remains the default rehearsal for that harness. Omit it for live collection. Live review still does not call Ollama; it stops at `model_pending` unless `--mock-model` is also set. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point. Prefer `wsd run workflow` for day-to-day live scenarios.
+`--mock` remains the default rehearsal for that harness. Omit it for a live (networked) collection of a historical window. Review still does not call Ollama; it stops at `model_pending` unless `--mock-model` is also set. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point. Prefer `wsd run workflow` for day-to-day **backtests**. A continuous, scheduled, event-driven watch is a later phase; do not cron the batch command as if it were one.
 
 ## Running engineering tests
 
