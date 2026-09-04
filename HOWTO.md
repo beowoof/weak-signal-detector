@@ -216,7 +216,7 @@ Full live harvest:
 wsd corpus collect --scenario ukraine2022
 ```
 
-Progress lines go to stderr (source, window, day, cache vs download). The JSON result stays on stdout. Use `--quiet` to suppress progress. Independent sources harvest in parallel (default four at a time); retries and backoff stay inside each source. Windows of the same source stay sequential. `--source-workers 1` restores the old one-source-at-a-time behaviour.
+Progress is on stderr and in `scenarios/<id>/collect_progress.json` (source, window, day, AOI, tile, bytes, elapsed, stalled). The desk polls `GET /api/collection/progress` and shows a live banner. JSON results stay on stdout. Use `--quiet` to suppress stderr only. VIIRS reuses cached granules and times out a hung NASA download after five minutes. Independent sources harvest in parallel (default four at a time); retries and backoff stay inside each source. Windows of the same source stay sequential. `--source-workers 1` restores the old one-source-at-a-time behaviour.
 
 Operator expectations:
 

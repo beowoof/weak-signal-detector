@@ -21,6 +21,7 @@ from wsf.connectors.viirs import (
     ViirsConnector,
     _read_science_arrays,
     _science_group,
+    cached_granule,
     lonlat_to_tile,
     viirs_extra_available,
     zonal_mean,
@@ -339,6 +340,16 @@ def test_viirs_requires_two_valid_aois() -> None:
     )
     assert two_aois.item["coverage"] == 1.0
     assert two_aois.observations[0].value == pytest.approx(10.0)
+
+
+def test_cached_granule_skips_tiny_and_cog_files(tmp_path: Path) -> None:
+    day = date(2021, 3, 24)
+    (tmp_path / "VNP46A2.A2021083.h22v03.002.tiny.h5").write_bytes(b"abc")
+    (tmp_path / "VNP46A2.A2021083.h22v03.002.COG.h5").write_bytes(b"x" * 2_000_000)
+    good = tmp_path / "VNP46A2.A2021083.h22v03.002.2025102062827.h5"
+    good.write_bytes(b"x" * 2_000_000)
+    assert cached_granule(tmp_path, day, "h22v03") == good
+    assert cached_granule(tmp_path, day, "h21v04") is None
 
 
 def test_viirs_extracts_from_cached_collection2_granule() -> None:
