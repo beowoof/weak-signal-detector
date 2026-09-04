@@ -15,27 +15,29 @@ Order (all development_showcase, none of them held-out):
   3. usachn2018trade   hard negative: loud 2018 tariff talk, no mobilisation
 Do not harvest GRC-TUR-2020 yet.
 
-For each scenario:
+For each scenario, one command runs validate → collect → review → measure → emit:
 
-1. wsd scenario validate --scenario <id>
-2. wsd corpus collect --scenario <id>
-      Harvest each window plus 120-day lookback. Sources run in parallel.
-      Inspect collection_summary.md (zeros and cloud are OK; source_down is not).
-      2018 cases disable FIRMS (NOAA-20 starts 2018-04-01; 2017 control lookback
-      cannot use the frozen instrument) and MOEX (not a DEU/USA mechanism).
-      They do call ALFRED (`DEXUSEU` / `DEXCHUS`); confirm FRED_API_KEY.
-3. wsd corpus review --scenario <id>
-      critical=0 → continue (VIIRS weather gaps may remain warnings).
-      no_go → focused recollect from the printed missing.json, then review again.
-4. wsd measure --scenario <id> --exploratory
-      Development scoring, explicitly non-scientific until semantic review and freeze:
-        a. Trailing z — novelty vs the last 90 days of this window.
-        b. Rhythm — each window vs its own frozen pre-window baseline (z + tail rank).
-        c. Amber — persistent cross-domain soft flags while costly evidence is unavailable.
-        d. Red permutation — circularly shift all flags across that series' observable days.
-        e. Amber permutation — shift only non-costly flags; freeze the costly/VIIRS
-           unknown mask. Statistic: max consecutive amber run.
-      Read measurement.md. Compare incident vs control. Do not retune from Ukraine.
+```bash
+wsd run workflow --scenario <id>
+```
+
+It does not freeze, prune VIIRS, call Ollama, or build packets. Measure is
+`--exploratory` (non-scientific) unless you pass `--no-exploratory` on a freeze.
+If review is `no_go`, the pipeline stops (exit 2) and prints the resume command
+with `--focus missing.json`. After a harvest that already exists:
+
+```bash
+wsd run workflow --scenario <id> --from review
+```
+
+The same stages still exist as individual commands if you need to inspect between
+them. Collect harvests each window plus 120-day lookback. 2018 cases disable
+FIRMS (NOAA-20 starts 2018-04-01; 2017 control lookback cannot use the frozen
+instrument) and MOEX (not a DEU/USA mechanism); they do call ALFRED
+(`DEXUSEU` / `DEXCHUS`). Review: critical=0 continues; `no_go` needs a focused
+recollect. Measure is development scoring until semantic review and freeze.
+Do not retune from Ukraine. If emit opens notices, the JSON `next` field lists
+`wsd packet build --scenario <id> --notice <id> --replay`.
 
 Ollama / Qwen is not part of this path. A later analyst step will retrieve
 cutoff-safe packets from a vector store (Chroma + embeddings), not dump the harvest
@@ -371,9 +373,19 @@ Clicking **Physical posture** or **Official posture** on the brief runs the job 
 
 **Add Notes** (top of the alert, and on the Anomaly banner) opens one text box pre-filled with a template from the packet. Edit and save. Writes `scenarios/<id>/reports/<report-id>/report.md`. The desk does not draft it. CLI: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
 
-## 7. Run the whole mocked test harness
+## 7. Run the whole pipeline
 
-After `scenario.json` validates, Steps 4 and 5 can be run together:
+Live desk path (validate, collect, review, exploratory measure, emit):
+
+```bash
+wsd run workflow --scenario ukraine2022
+```
+
+`--mock` is a synthetic rehearsal and stops after review (measurement refuses a
+mock harvest). Resume after an existing collect with `--from review`. Stop early
+with `--through collect` or `--through review`.
+
+The older experiment harness still exists for parent/child run IDs:
 
 ```bash
 python3 run_test.py --scenario ukraine2022 --through review --mock

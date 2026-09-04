@@ -11,7 +11,7 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 from wsf.analysis.coupling import CAUSAL_DOMAINS
-from wsf.notice import Notice, NoticeState, load_notice, save_notice
+from wsf.notice import Notice, NoticeState, list_notices, load_notice, save_notice
 from wsf.protocol import load_yaml
 from wsf.scenario import load_scenario, scenario_directory
 from wsf.types import Observation
@@ -729,23 +729,36 @@ def _implication(series_id: str, z_values: list[float]) -> str:
     return "Near baseline."
 
 
+def _prior_notice_in_window(project_root: Path, notice: Notice) -> bool:
+    """True when an earlier notice already exists in the same scoring window."""
+    try:
+        others = list_notices(project_root, notice.trigger.scenario_id)
+    except FileNotFoundError:
+        return False
+    return any(
+        other.notice_id != notice.notice_id
+        and other.trigger.window_id == notice.trigger.window_id
+        and other.trigger.end < notice.trigger.start
+        for other in others
+    )
+
+
 def _analytic_state(
-    notice: Notice, *, physical_knowable: bool, physical_weak: bool
+    notice: Notice,
+    *,
+    prior_in_window: bool = False,
 ) -> tuple[str, str, str]:
-    days_left = notice.trigger.days_before_window_end
     duration = notice.trigger.duration_days
     n_dom = len(notice.trigger.contributing_domains)
-    if days_left <= 2 and n_dom >= 3:
+    # Escalation is a subsequent cue in the same window, not "near the
+    # research window's end date". Window geometry is a design choice.
+    # First notices stay at Watch: physical corroboration raises AnCR,
+    # it does not promote the desk to preparatory_pattern on its own.
+    if prior_in_window and n_dom >= 3:
         return (
             "escalation",
             "Escalation",
             "Rapid increase in anomaly energy and domain breadth",
-        )
-    if duration >= 3 and n_dom >= 3 and physical_knowable and not physical_weak:
-        return (
-            "preparatory_pattern",
-            "Preparatory pattern",
-            "Sustained multi-domain abnormality",
         )
     if duration >= 3 and n_dom >= 3:
         return ("watch", "Watch", "Broadening multi-domain anomaly")
@@ -934,6 +947,26 @@ def _cbr_observation(notice: Notice, observations: list[Observation], clocks: Pa
     return text
 
 
+def _moex_observation(notice: Notice, observations: list[Observation], clocks: PacketClocks) -> str:
+    pairs = _ok_z_pairs(notice, observations, clocks, "dyad.moex_usdrub")
+    if not pairs:
+        pairs = _ok_z_pairs(notice, observations, clocks, "dyad.fx")
+        series_id = "dyad.fx"
+    else:
+        series_id = "dyad.moex_usdrub"
+    if not pairs:
+        return "Exchange-rate conditions were not knowable at cutoff."
+    peak_day, peak_z = max(pairs, key=lambda item: abs(item[1]))
+    rows = _knowable_ok(
+        observations, clocks, series_id, notice.trigger.start, notice.trigger.end
+    )
+    last = next((row.value for row in reversed(rows) if row.value is not None), None)
+    text = f"USD/RUB reached {peak_z:.2f}σ on {_fmt_short_day(peak_day)}"
+    if last is not None:
+        text += f" (last print {_fmt_num(last)})"
+    return text
+
+
 def _ripe_observation(notice: Notice, observations: list[Observation], clocks: PacketClocks) -> str:
     pairs = _ok_z_pairs(notice, observations, clocks, "net.ripe_prefixes")
     if not pairs:
@@ -1042,6 +1075,16 @@ def _watchlist(
             _cbr_observation(notice, observations, clocks),
             "market.cbr_funding_spread",
             [z for _, z in _ok_z_pairs(notice, observations, clocks, "market.cbr_funding_spread")],
+        )
+    elif "dyad.moex_usdrub" in contributing or "dyad.fx" in contributing:
+        series_id = (
+            "dyad.moex_usdrub" if "dyad.moex_usdrub" in contributing else "dyad.fx"
+        )
+        add(
+            financial_label,
+            _moex_observation(notice, observations, clocks),
+            series_id,
+            [z for _, z in _ok_z_pairs(notice, observations, clocks, series_id)],
         )
     if "net.ripe_prefixes" in contributing:
         add(
@@ -1152,6 +1195,12 @@ def _named_elevation(notice: Notice, frame: dict[str, Any]) -> str:
         if capital:
             bit += f" (CBR, {capital})"
         bits.append(bit)
+    elif (
+        "market" in domains
+        or "dyad.moex_usdrub" in series
+        or "dyad.fx" in series
+    ):
+        bits.append(f"{adj} financial conditions".strip() or "financial conditions")
     if "digital_infrastructure" in domains or "net.ripe_prefixes" in series:
         bits.append(f"{adj} RIPEstat prefixes".strip() or "RIPEstat prefixes")
     if "information" in domains or "public_attention" in domains:
@@ -1159,9 +1208,16 @@ def _named_elevation(notice: Notice, frame: dict[str, Any]) -> str:
             bits.append(f"public reporting on {focal_name} and {others[0]}")
         else:
             bits.append("public reporting")
-    if "physical_activity" in domains:
+    if "physical_activity" in domains or "tempo.firms_thermal" in series:
         bits.append("physical activity")
-    if "spatial_restriction" in domains:
+    nav_z = notice.trigger.observed.get("daily_series_z") or []
+    nav_values = [
+        float(day["nav.spatial_warnings"])
+        for day in nav_z
+        if isinstance(day, dict) and isinstance(day.get("nav.spatial_warnings"), int | float)
+    ]
+    nav_persisted = bool(nav_values) and nav_values[-1] >= 1.5
+    if "spatial_restriction" in domains and nav_persisted:
         bits.append("maritime warnings")
     if not bits:
         return (
@@ -1276,6 +1332,8 @@ def _compile_product(
     theatre: str,
     actor_adjective: str = "",
     frame: dict[str, Any] | None = None,
+    *,
+    prior_in_window: bool = False,
 ) -> ProductBrief:
     start, end = notice.trigger.start, notice.trigger.end
     viirs_all = _obs_on_days(observations, "tempo.viirs_aoi", start, end)
@@ -1288,7 +1346,8 @@ def _compile_product(
     physical_weak = not firms_z or max(abs(z) for z in firms_z) < 2
     physical_knowable = bool(viirs_knowable)
     state, state_label, change = _analytic_state(
-        notice, physical_knowable=physical_knowable, physical_weak=physical_weak
+        notice,
+        prior_in_window=prior_in_window,
     )
     frame = frame or {}
     watchlist = _watchlist(notice, observations, clocks, actor_adjective)
@@ -1700,6 +1759,7 @@ def build_packet(
         _theatre_name(project_root, scenario_id),
         _actor_adjective(project_root, scenario_id),
         frame,
+        prior_in_window=_prior_notice_in_window(project_root, notice),
     )
     return packet
 

@@ -265,7 +265,7 @@ Output: `scenarios/<id>/interpretation/<packet-id>/evidence.json` plus stable ci
 | Immutable observations, provenance, availability, coverage, and source health | Built (`available_at` / `retrieved_at` already exist on observations) |
 | Daily z, costly unknown versus flagged, and frozen `coincidence_v1` | Built (`wsd measure`) |
 | Multi-domain lowered-threshold coupling and “collect more” annotations | Built as an exploratory heuristic (`src/wsf/analysis/coupling.py`, dashboard coupling tab) |
-| Frontier/staging RUS AOIs and current physical restage | `ukraine2022` restaged and measured (`collection-20260902T172316Z-3a7030` / `measure-20260902T203316Z-f05cf7`, exploratory). VIIRS 21/21 scored nights valid. `rus2021apr` restage not started. |
+| Frontier/staging RUS AOIs and current physical restage | `ukraine2022` restaged and measured (`collection-20260902T172316Z-3a7030` / `measure-20260902T203316Z-f05cf7`, exploratory). `rus2021apr` restaged (`collection-20260904T095246Z-6a1a2a` / `measure-20260904T095423Z-ceca4f`): coincidence_v1 0 alerts; one K≥3 coupling notice 5–8 Apr (`notice-1e8be533f571`). DEU/USA emit 0 notices. |
 | CBR, NAVAREA, DEU/USA gazette as live costly/admin series | Built (RUS gazette and NOTAM still out) |
 | Information-environment baseline | Missing; existing series provide partial proxies only |
 | Collection posture | Missing |

@@ -10,6 +10,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
+- **`wsd run workflow`:** one command for validate → collect → review → measure → emit. Stops on `no_go` (exit 2) and prints the `--focus` resume. `--from` / `--through` skip or cut stages. Measure defaults to `--exploratory`. Does not freeze, prune, call Ollama, or build packets. README, HOWTO, and `docker compose exec agent` use this as the live operator path.
 - **Harvest progress:** corpus collect writes `collect_progress.json` (source, day, AOI, tile, bytes, elapsed, stalled). Desk banner and Operations poll `GET /api/collection/progress` every 2s. VIIRS uses cached granules when present and times out a hung NASA download after 5 minutes. The CLI shows a byte bar when NASA reports granule size (`[####....] 50% 11/22MB`). HDF5 cache is kept through collection. `wsd corpus prune-viirs --scenario <id>` is allowed only after that scenario’s corpus review is not `no_go`, and not while a harvest is running.
 - **Copernicus catalogue pointers:** Physical posture harvests cutoff-safe Sentinel-1 GRD and Sentinel-2 L1C catalogue hits over named AOIs. Pointers only; scenes are not downloaded and do not vote. Sentinel-2 CDSE PublicationDate is often a later reprocess, so knowability uses reconstructed 1-day availability when publication is stale.
 - **Collection job plans:** Physical and Official tasks now state which open sources can answer the requirement, which AOIs to query, which dates are admissible at cutoff, and what observation would discriminate among the hypotheses. Wired harvest still runs; unwired sources are marked as analyst search.
@@ -32,6 +33,8 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Changed
 
+- **Analytic state:** Escalation requires a prior notice in the same scoring window. A first cue at the research window’s last days is Watch. Window geometry is not observable system state; `days_before_window_end` no longer promotes Escalation. Ukraine 21–23 Feb stays Escalation because 10–12 Feb already opened.
+- **Watchlist market series:** USD/RUB (MOEX) appears when it contributes and CBR does not. Maritime warnings are omitted from the “simultaneously elevated” clause when they do not persist.
 - **FIRMS spatial attribution:** the watchlist states detections as a count within the monitored staging AOIs as a combined set. Named AOIs appear only in keys and physical-posture collection, not as if one detection occurred in every listed place.
 - **Assessment:** the geographic-frame sentence sits in keys only. Assessment is judgement → evidence → alternatives → decision.
 - **Official posture requirement:** a bounded collection task (contemporaneous Russian, Ukrainian, UK, US and allied statements and formal measures, including travel advice, diplomatic drawdowns, defence announcements, NOTAM/NAVAREA restrictions and sanctions). Identify changes in declared threat assessment or costly government action.

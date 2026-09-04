@@ -28,12 +28,12 @@ The repository still contains:
 - population-standard-deviation trailing z-scores with explicit polarity;
 - coincidence across causal domains and source systems, with a costly-signal gate and persistence;
 - synthetic fixtures and offline invariant tests;
-- a JSON scenario lifecycle: create, validate, collect, review, focused recollect, and freeze;
+- a JSON scenario lifecycle: create, validate, collect, review, focused recollect, measure, emit, and freeze; `wsd run workflow` runs validate through emit as one command;
 - deterministic corpus gates and an explicit semantic-review queue;
 - `run_test.py`, which assigns a parent experiment ID and runs a mocked scenario rehearsal;
 - `run_unit_tests.py`, which assigns a run ID and records engineering-test artifacts;
 - live connectors for Wikipedia pageviews, GDELT, ICEWS (local Dataverse zip), ALFRED, MOEX, VIIRS NTL, FIRMS NOAA-20, Sentinel-1 (descending IW), Internet Archive official hosts, crt.sh, and RIPEstat; OSM, wiki-edits, Brent, and Certificate Transparency are out of the v1 basket; OpenSky Trino is not built; default tests remain offline;
-- `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet.
+- `wsd measure` scores a live harvest with trailing and frozen-local rhythm baselines, emits amber evidence-gap episodes, permutation-tests the red chorus with availability-aware circular shifts, and permutation-tests amber with a frozen costly/VIIRS unknown mask (max-run statistic); no Ollama yet. `wsd run workflow` is the operator path for a live scenario (exploratory measure, then notice emit).
 - Collection-ready development scenarios `rus2021apr`, `deu2018quiet`, and `usachn2018trade` (21-day score + 120-day lookback) sit next to `ukraine2022`. Frozen `coincidence_v1` rules; do not retune from Ukraine. `GRC-TUR-2020` stays unharvested.
 
 Replay of a recorded harvest is in [`HOWTO.md`](HOWTO.md). `ukraine2022` is a development showcase, not held-out evidence. Findings: [`FINDINGS.md`](FINDINGS.md). Design record: `weak-signal-fusion-spec.md`.
@@ -147,12 +147,13 @@ Then open <http://127.0.0.1:5173> (UI) and <http://127.0.0.1:8000/docs> (API). `
 | `db` | 5432 | Postgres (`wsd` / `wsd` / `wsd`) |
 | `agent` | — | Heartbeats into Postgres; run CLI jobs with `docker compose exec` |
 
-Collect or measure inside the stack:
+Collect through emit inside the stack:
 
 ```bash
-docker compose exec agent wsd measure --scenario ukraine2022 --exploratory
-docker compose exec agent wsd notice emit --scenario ukraine2022
+docker compose exec agent wsd run workflow --scenario ukraine2022
 ```
+
+That is validate → collect → review → exploratory measure → notice emit. It stops on a `no_go` review (exit 2) and prints the `--focus` resume. After a harvest already exists: `--from review`. It does not freeze, prune VIIRS, call Ollama, or build packets. The same stages remain available as individual commands (`wsd corpus collect`, `wsd measure --exploratory`, `wsd notice emit`).
 
 The UI polls `/api/result` every 8s. Source under `dashboard/web/src` and `src/` is bind-mounted, so Vite and uvicorn still reload. Websocket invalidation of that poll is next.
 
@@ -170,36 +171,27 @@ draft -> collected -> reviewed -> frozen -> scientific measurement
              +-- focused recollection  +-> exploratory measurement (explicit flag)
 ```
 
-Create an incomplete scenario template, fill it in, and validate it:
+Create an incomplete scenario template, fill it in, then run the desk pipeline:
 
 ```bash
-.venv/bin/wsd scenario create --name ukraine2022
-.venv/bin/wsd scenario validate --scenario ukraine2022
+wsd scenario create --name ukraine2022
+wsd scenario validate --scenario ukraine2022
+wsd run workflow --scenario ukraine2022
 ```
 
-Rehearsal:
+`--from review` skips collect when a harvest is already on disk. `--through review` stops before measure. `--focus path/to/missing.json` is the no_go resume. `--mock` is a synthetic rehearsal and stops after review (measurement refuses a mock harvest).
 
-```bash
-wsd corpus collect --scenario ukraine2022 --mock
-wsd corpus review --scenario ukraine2022 --mock-model
-```
-
-Live harvest of the declared scenario windows (no Ollama, no Google Cloud):
+The same stages still exist one at a time:
 
 ```bash
 wsd corpus collect --scenario ukraine2022 --only wikipedia,alfred
 wsd corpus collect --scenario ukraine2022
-```
-
-VIIRS live harvest also needs `uv sync --extra viirs`. Mocked output is always labelled rehearsal and cannot be frozen as real evidence. Live harvests are still not frozen scientific results until deterministic gates and the owner-run semantic review both pass. See [`HOWTO.md`](HOWTO.md).
-
-Until the owner-run semantic review is implemented, development measurements must opt in explicitly:
-
-```bash
+wsd corpus review --scenario ukraine2022
 wsd measure --scenario ukraine2022 --exploratory
+wsd notice emit --scenario ukraine2022
 ```
 
-The report records `measurement_mode: exploratory_unfrozen` and `scientific_result: false`.
+VIIRS live harvest also needs `uv sync --extra viirs`. Mocked output is always labelled rehearsal and cannot be frozen as real evidence. Live harvests are still not frozen scientific results until deterministic gates and the owner-run semantic review both pass. The workflow’s measure step is `--exploratory` unless you pass `--no-exploratory` on a freeze. The report records `measurement_mode: exploratory_unfrozen` and `scientific_result: false`. If emit opens notices, JSON `next` lists `wsd packet build --scenario <id> --notice <id> --replay`. See [`HOWTO.md`](HOWTO.md).
 
 ### Visualising local measurement results
 
@@ -207,20 +199,26 @@ See [Desk API and UI](#desk-api-and-ui). The plots are diagnostic views of recor
 
 ## Running a scenario experiment
 
-The normal command is:
+The live operator command is:
+
+```bash
+wsd run workflow --scenario ukraine2022
+```
+
+For a mocked lifecycle rehearsal with a parent experiment ID:
 
 ```bash
 python3 run_test.py --scenario ukraine2022 --through review --mock
 ```
 
-It:
+`run_test.py`:
 
 1. assigns a parent run ID such as `experiment-20260828T120000Z-a1b2c3`;
 2. runs synthetic collection and a fake semantic review without live or Ollama calls;
 3. writes `experiment_summary.json` and `experiment_summary.md` to `artifacts/<run-id>/`;
 4. prints the run ID and artifact directory for feedback.
 
-`--mock` remains the default rehearsal. Omit it for live collection. Live review still does not call Ollama; it stops at `model_pending` unless `--mock-model` is also set. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point.
+`--mock` remains the default rehearsal for that harness. Omit it for live collection. Live review still does not call Ollama; it stops at `model_pending` unless `--mock-model` is also set. Use `--through collect`, `--through review`, or `--through freeze` to choose the stopping point. Prefer `wsd run workflow` for day-to-day live scenarios.
 
 ## Running engineering tests
 
