@@ -74,12 +74,12 @@ const COLLECT_FOR = [
   { prefix: "Information", kind: null, ready: false },
 ];
 
-export default function BriefView({ packet, notice, onCollect, collectBusy }) {
+export default function BriefView({ packet, notice, onCollect, collectBusy, mode = "overview" }) {
   if (!packet) {
     return (
       <section className="brief-layers">
         <h3>Brief</h3>
-        <p className="notice-timing">No brief yet. Use Build brief on this alert.</p>
+        <p className="notice-timing">No brief available yet. Choose More actions → Build brief to create one.</p>
       </section>
     );
   }
@@ -151,9 +151,9 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
 
   return (
     <section className="brief-layers">
+      {mode === "overview" && <>
       <header className="product-hero">
-        <p className="eyebrow">{product.analytic_state_label}</p>
-        <h3>{product.headline}</h3>
+        <p className="eyebrow">Generated brief · {product.analytic_state_label}</p>
         <p className="product-meta">
           {product.period} · available by {product.available_by}
         </p>
@@ -162,16 +162,17 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
             {product.analytic_state_label}
           </span>
           <span className="brief-pill">AnCR: {product.confidence}</span>
-          <span className="brief-pill brief-pill-proxy">{product.change}</span>
         </div>
         {(product.keys || []).length ? (
+          <details className="geographic-context"><summary>Geographic context · {product.keys.length} locations</summary>
+          {product.geographic_frame && <p>{product.geographic_frame}</p>}
           <div className="brief-pills">
             {product.keys.map((key) => (
               <span key={key} className="brief-pill">
                 {key}
               </span>
             ))}
-          </div>
+          </div></details>
         ) : null}
       </header>
 
@@ -182,7 +183,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
       ))}
 
       <div className="brief-card">
-        <h3>Assessment</h3>
+        <h3>Generated assessment</h3>
         {(product.assessment || []).map((para) => (
           <p key={para}>{para}</p>
         ))}
@@ -273,6 +274,12 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
       </div>
 
       <div className="brief-card">
+        <h3>Generated context note</h3>
+        <p>{product.analyst_note}</p>
+      </div>
+      </>}
+
+      {mode === "collection" && <div className="brief-card">
         <h3>Collection requirements</h3>
         <ol className="product-collection">
           {(product.collection || []).map((row) => {
@@ -302,14 +309,9 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
             );
           })}
         </ol>
-      </div>
+      </div>}
 
-      <div className="brief-card">
-        <h3>Analyst note</h3>
-        <p>{product.analyst_note}</p>
-      </div>
-
-      <details className="brief-audit">
+      {mode === "evidence" && <details className="brief-audit" open>
         <summary>Evidence and provenance</summary>
         <p className="notice-timing">
           Series values, reconstructed latency, missingness, and shared-substrate notes.
@@ -530,7 +532,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy }) {
           <p>{cannot.body}</p>
         </div>
       ) : null}
-      </details>
+      </details>}
     </section>
   );
 }
