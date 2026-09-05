@@ -94,7 +94,9 @@ def load_collection(project_root: Path, scenario_id: str, packet_id: str) -> dic
         for kind in ALL_KINDS:
             path = _task_path(directory, kind)
             if path.is_file():
-                tasks.append(CollectionTask.model_validate_json(path.read_text()).model_dump(mode="json"))
+                tasks.append(
+                    CollectionTask.model_validate_json(path.read_text()).model_dump(mode="json")
+                )
     return {"packet_id": packet_id, "tasks": tasks}
 
 
@@ -363,9 +365,7 @@ def _validate(packet: Packet, notice: Notice, clocks, now: datetime) -> Collecti
                 {
                     "id": "substrate",
                     "status": "warn",
-                    "text": (
-                        f"{members} share {dep.get('shared_information_substrate')}."
-                    ),
+                    "text": (f"{members} share {dep.get('shared_information_substrate')}."),
                 }
             )
     else:
@@ -433,8 +433,7 @@ def _validate(packet: Packet, notice: Notice, clocks, now: datetime) -> Collecti
         knowledge_cutoff=clocks.knowledge_cutoff,
         ran_at=now,
         summary=(
-            "Checklist from the packet: substrate, chorus breadth, holes, latency. "
-            "No new harvest."
+            "Checklist from the packet: substrate, chorus breadth, holes, latency. No new harvest."
         ),
         items=items,
         notes=[
@@ -459,12 +458,7 @@ def _chronology(
         row: dict[str, Any] = {"day": cursor.isoformat(), "series": []}
         for series_id in SERIES_CHRONICLE:
             match = next(
-                (
-                    item
-                    for item in _knowable_in(
-                        observations, clocks, series_id, cursor, cursor
-                    )
-                ),
+                (item for item in _knowable_in(observations, clocks, series_id, cursor, cursor)),
                 None,
             )
             if match is None:
@@ -568,6 +562,14 @@ def _physical(
                     "available_at": _as_dt(row.available_at).isoformat(),
                     "aoi_means": extra.get("aoi_means") if knowable else None,
                     "contributing_aois": extra.get("contributing_aois") if knowable else None,
+                    "coverage_details": extra.get("coverage_details") if knowable else None,
+                    "availability_reason": (
+                        "Not available under "
+                        f"{extra.get('availability_regime', 'recorded availability')} "
+                        f"until {_as_dt(row.available_at).isoformat()}"
+                        if not knowable
+                        else None
+                    ),
                     "orbit": extra.get("orbit_direction"),
                 }
             )
@@ -850,9 +852,7 @@ def _official(
     notes.extend(declared_notes)
     if snapshot is not None:
         _attach_posture(packet, snapshot, declared_events)
-    status: Literal["complete", "blocked"] = (
-        "complete" if items or declared_events else "blocked"
-    )
+    status: Literal["complete", "blocked"] = "complete" if items or declared_events else "blocked"
     n_declared = len(declared_events)
     summary = (
         f"{len(nav)} knowable NAVAREA days; {n_declared} dated UK/US posture events "
@@ -903,8 +903,7 @@ def _attach_search(packet: Packet, harvested: dict[str, Any]) -> None:
             "kind": "open_source_search",
             "votes": False,
             "summary": (
-                f"{len(hits)} Tavily hits published on or before cutoff. "
-                "Search does not vote."
+                f"{len(hits)} Tavily hits published on or before cutoff. Search does not vote."
             ),
             "n_hits": len(hits),
             "dropped_n": harvested.get("dropped_n") or 0,
@@ -1045,9 +1044,7 @@ def run_collection(
     directory.mkdir(parents=True, exist_ok=True)
     tasks: list[CollectionTask] = []
     for kind in wanted:
-        task = _run_kind(
-            kind, packet, notice, observations, clocks, now, project_root, transport
-        )
+        task = _run_kind(kind, packet, notice, observations, clocks, now, project_root, transport)
         _task_path(directory, kind).write_text(
             task.model_dump_json(indent=2) + "\n", encoding="utf-8"
         )

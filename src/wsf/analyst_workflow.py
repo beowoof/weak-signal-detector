@@ -459,6 +459,15 @@ def _render_gaps_and_cautions(review: dict) -> list[str]:
     research = (review or {}).get("research", {})
     if research:
         lines.append("#### Research execution & source retrieval trail")
+        for outcome in research.get("collection_outcomes", []):
+            lines.append(
+                f"- {outcome['question']}: {outcome['status']} — {outcome['reason']}"
+            )
+            for attempt in outcome.get("attempts", []):
+                lines.append(
+                    f"  - {attempt['url']}: {attempt['status']}"
+                    + (f" — {attempt['reason']}" if attempt.get("reason") else "")
+                )
         usage = research.get("usage", {})
         if usage:
             u_parts = []

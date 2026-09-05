@@ -56,7 +56,8 @@ const { chromium } = require("playwright");
         return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ review: reviews.get(id) || null }) });
       }
       if (["GET", "HEAD", "OPTIONS"].includes(req.method())) return route.continue();
-      if (req.url().endsWith("/api/packet/draft")) {
+      if (req.url().endsWith("/api/packet/draft/stream")) {
+        assert.equal(req.postDataJSON().research_limits.documents, 6);
         requests += 1;
         const review = {
           bundle_id: `fixture-${requests}`, status: "references_checked", proposed_decision: "collect_more",
@@ -69,9 +70,9 @@ const { chromium } = require("playwright");
           hypothesis_updates: [{ hypothesis: "routine_variation", change: "lowered", rationale: "Proposed change with a source.", supporting_evidence: ["ev-test"] }],
         };
         reviews.set(req.postDataJSON().notice_id, review);
-        return route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({
+        return route.fulfill({ status: 200, contentType: "application/x-ndjson", body: JSON.stringify({type: "progress", stage: "Checking source", elapsed_s: 1}) + "\n" + JSON.stringify({type: "result", result: {
           notes: `Mock machine draft ${requests}`, provider: "ollama", model: "mock", leakage: [], votes: false, review,
-        }) });
+        }}) + "\n" });
       }
       return route.abort();
     });

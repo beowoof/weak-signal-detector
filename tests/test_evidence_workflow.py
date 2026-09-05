@@ -254,7 +254,7 @@ def test_hypothesis_update_and_grounding_checks(packet):
 def test_claim_evidence_invariants_flag_mismatches(packet):
     bundle = build_bundle(packet, {"tasks": []})
     ref = bundle["items"][0]["id"]
-    # bundle["items"][0] has series_id="market.test", evidence_time=2022-02-10, text="The measured value is 3."
+    # First item: market.test, 2022-02-10, "The measured value is 3."
 
     # 1. Date mismatch: claim specifies 2022-02-12, but evidence is 2022-02-10
     date_mismatch = {
@@ -378,6 +378,11 @@ def test_research_is_requirement_led_bounded_and_resumable(packet, tmp_path, mon
         "document_attempts": 1,
     }
     assert result["admitted_documents"] == 1
+    assert all(
+        row["status"] == "documents_obtained"
+        for row in result["collection_outcomes"]
+        if row.get("query")
+    )
     assert "HIDDEN" not in result["documents"][0]["text"]
     assert "title" not in result["documents"][0]
     second = run_research(
@@ -417,6 +422,79 @@ def test_counterevidence_survives_many_requirements(packet):
     assert len(plan) == 6
     assert plan[-1]["requirement_id"] == "counterevidence"
     assert plan[-2]["requirement_id"] == "physical-corroboration"
+
+
+def test_collection_outcomes_explain_disabled_and_unplanned_questions(packet, tmp_path):
+    packet.product.collection *= 10
+    result = run_research(tmp_path, packet, tmp_path, collection={}, allow_network=False)
+    assert all(row["status"] == "not_attempted" for row in result["collection_outcomes"])
+    reasons = {row["reason"] for row in result["collection_outcomes"]}
+    assert "Research query budget exhausted" in reasons
+    assert any("Network research disabled" in reason for reason in reasons)
+
+
+def test_archive_failure_is_attached_to_question(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+
+    class NoArchive(ArchiveFixture):
+        def get(self, url, **kwargs):
+            return HttpResponse(url, 200, b"[]", {})
+
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=NoArchive(),
+        limits=ResearchLimits(queries=3, documents=1, seconds=5),
+    )
+    outcome = next(row for row in result["collection_outcomes"] if row.get("attempts"))
+    assert outcome["status"] == "no_admitted_documents"
+    assert outcome["attempts"][0]["reason"] == "No usable pre-cutoff archive capture"
+
+
+def test_more_document_allowance_continues_after_failed_urls(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+
+    class FailedArchives(ArchiveFixture):
+        def post(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            return HttpResponse(
+                url,
+                200,
+                json.dumps(
+                    {"results": [{"url": f"https://example.com/{i}"} for i in range(4)]}
+                ).encode(),
+                {},
+            )
+
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            return HttpResponse(url, 200, b"[]", {})
+
+    fake = FailedArchives()
+    first = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=fake,
+        limits=ResearchLimits(queries=3, documents=1, seconds=5),
+    )
+    assert first["limit_reached"] == "documents"
+    first_urls = [url for url, _ in fake.calls if "/cdx/" in url]
+    second = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=fake,
+        limits=ResearchLimits(queries=3, documents=2, seconds=10),
+    )
+    assert second["run_usage"]["search_requests"] == 0
+    assert second["run_usage"]["document_attempts"] == 2
+    assert second["usage"]["failed_documents"] == 3
+    assert [url for url, _ in fake.calls if "/cdx/" in url].count(first_urls[0]) == 1
 
 
 def test_malformed_revision_stays_reviewable(packet):
@@ -541,6 +619,12 @@ def test_draft_saves_exact_input_and_review_without_modifying_originals(
     assert stored["system"] == sent["messages"][0]["content"]
     assert stored["user"] == sent["messages"][1]["content"]
     model_payload = json.loads(stored["user"])
+    assert (
+        model_payload["collection_outcomes"] == result["review"]["research"]["collection_outcomes"]
+    )
+    assert any(
+        "Network research disabled" in row["reason"] for row in model_payload["collection_outcomes"]
+    )
     assert model_payload["schema_id"] == "desk_model_input_v1"
     assert len(stored["user"]) <= 32000
     assert "A supported draft" in result["notes"]

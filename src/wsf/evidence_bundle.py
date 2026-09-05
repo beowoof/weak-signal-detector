@@ -253,7 +253,7 @@ def save_bundle(directory: Path, bundle: dict) -> Path:
     return path
 
 
-def model_input(bundle: dict, *, max_chars: int = 32000) -> dict:
+def model_input(bundle: dict, *, max_chars: int = 32000, collection_outcomes=None) -> dict:
     """Build a bounded model view while retaining the complete bundle as the audit source."""
     if max_chars < 8000:
         raise ValueError("Model input budget must be at least 8000 characters")
@@ -325,6 +325,7 @@ def model_input(bundle: dict, *, max_chars: int = 32000) -> dict:
         "requirements": bundle["requirements"],
         "dependencies": bundle["dependencies"],
         "cautions": bundle["cautions"],
+        "collection_outcomes": collection_outcomes or [],
         "evidence": [],
         "admission_summary": {
             "full_bundle_items": len(bundle["items"]),

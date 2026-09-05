@@ -31,7 +31,7 @@ from wsf.evidence_bundle import build_bundle, canonical, model_input, save_bundl
 from wsf.notice import load_notice
 from wsf.packet import Packet, packet_directory, packet_path
 from wsf.report import SECTIONS, load_report, save_report
-from wsf.research import run_research
+from wsf.research import ResearchLimits, run_research
 
 DRAFT_SCHEMA = "desk_draft_v0"
 
@@ -299,6 +299,20 @@ def _system_prompt(cutoff: str, forbidden: list[str]) -> str:
         "bundle must appear by its exact ID. Keep detector facts unchanged. "
         "Separate direct observation, source-reported claims and your inference. "
         "Repeated reporting is not independent corroboration.\n"
+        "Make an assessment of what the evidence suggests and explain the inference. "
+        "Do not substitute dataset descriptions or generic disclaimers for judgement. "
+        "Indirect public evidence can support an assessment of preparation; direct physical "
+        "observation is not a prerequisite. Explain any dependence concretely: several news "
+        "counts or attention measures may respond to the same story, rather than separate "
+        "developments. Never write 'share a substrate' or 'information base is incomplete' "
+        "without a specific consequence for the judgement. Collection priorities must name "
+        "a usable public source and what finding would change the assessment.\n"
+        "Use collection_outcomes to explain unresolved gaps: name the attempted source "
+        "and actual obstacle (no pre-cutoff archive, retrieval failure, no usable leads, "
+        "or exhausted budget). Not attempted is not unavailable; a retrieved document "
+        "does not necessarily answer the question. This execution record is not evidence "
+        "of world events. Name cloud filtering only where sensor diagnostics establish it; "
+        "distinguish it from publication latency, quality filtering and retrieval failures.\n"
         f"Language requiring cutoff review: {banned}. Legitimate pre-cutoff warnings may be "
         "quoted from admitted evidence with source IDs; do not assert later outcomes.\n"
         "Return compact JSON only. Do not repeat the assessment as notes, sections or citations. "
@@ -477,6 +491,7 @@ def run_desk_draft(
     search_transport: HttpTransport | None = None,
     chat_transport: HttpTransport | None = None,
     progress: Callable[[str, int], None] | None = None,
+    research_limits: ResearchLimits | None = None,
 ) -> dict[str, Any]:
     def report(stage: str, completed: int) -> None:
         if progress:
@@ -504,13 +519,14 @@ def run_desk_draft(
         transport=search_transport,
         progress=report,
         allow_network=search,
+        limits=research_limits,
     )
     bundle = build_bundle(packet, collection, documents=research["documents"])
     bundle_path = save_bundle(directory, bundle)
     forbidden = forbidden_terms(project_root, scenario_id)
     cutoff = packet.clocks.knowledge_cutoff.isoformat()
     system = _system_prompt(cutoff, forbidden)
-    bounded_input = model_input(bundle)
+    bounded_input = model_input(bundle, collection_outcomes=research.get("collection_outcomes"))
     user = canonical(bounded_input)
     attempt = directory / "draft_runs" / uuid.uuid4().hex
     attempt.mkdir(parents=True)
@@ -572,7 +588,19 @@ def run_desk_draft(
         )
         review["status"] = "needs_review"
     review["research"] = {
-        k: research[k] for k in ("usage", "blocked", "limit_reached", "requests") if k in research
+        k: research[k]
+        for k in (
+            "usage",
+            "run_usage",
+            "limits",
+            "stop_reason",
+            "admitted_documents",
+            "blocked",
+            "limit_reached",
+            "requests",
+            "collection_outcomes",
+        )
+        if k in research
     }
     if research.get("blocked"):
         review["issues"].append(research["blocked"])
