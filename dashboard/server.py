@@ -576,9 +576,14 @@ def create_app(
     def api_workflow_export(scenario: str, notice_id: str, version: int, format: str = "md"):
         try:
             content = export_brief(app.state.project_root, scenario, notice_id, version, format)
+            media_type = (
+                "application/pdf"
+                if format == "pdf"
+                else ("text/html" if format == "html" else "text/markdown")
+            )
             return Response(
                 content,
-                media_type="text/html" if format == "html" else "text/markdown",
+                media_type=media_type,
                 headers={
                     "Content-Disposition": f'attachment; filename="assessment-v{version}.{format}"'
                 },
