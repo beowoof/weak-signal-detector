@@ -346,9 +346,11 @@ const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection",
 
 export default function NoticesView({
   notices, selectedId, onSelect, onOpenAnomaly, onBuildPacket, packet, collection,
-  collectBusy, onCollect, onAddNotes, onMachineDraft, onAction, actionError, activeTab, onTabChange,
+  collectBusy, onCollect, onMachineDraft, onAction, actionError, activeTab, onTabChange,
   evidence, notes, loading, drafts, machineProgress,
 }) {
+  const [packetStatus, setPacketStatus] = useState("");
+  useEffect(() => setPacketStatus(""), [selectedId]);
   const [query, setQuery] = useState("");
   const [researchLimits, setResearchLimits] = useState({ queries: 6, documents: 6, seconds: 180 });
   const [filter, setFilter] = useState("all");
@@ -386,13 +388,8 @@ export default function NoticesView({
     <article className="notice-card">
       <header className="notice-header">
         <button type="button" className="mobile-inbox-toggle" onClick={() => setListOpen(true)}>← Notices</button>
-        <div className="notice-heading-line"><p className="eyebrow">{noticeTitle(selected)}</p><span className="workflow-badge">{workflowLabel(workflow.state)}</span></div>
-        <h2 ref={heading} tabIndex={-1}>{packet?.product?.headline || "Multi-domain activity cue"}</h2>
-        <p className="notice-timing">{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
-        <div className="notice-actions">
-          <button className="primary-action" type="button" onClick={onOpenAnomaly}>Review evidence</button>
-          <button type="button" onClick={onAddNotes}>Your assessment{drafts[selectedId] ? " · Draft" : ""}</button>
-          <button className="primary-action" type="button" onClick={() => onTabChange("collection")}>Secondary collection</button>
+        <div className="notice-heading-line"><p className="eyebrow">{noticeTitle(selected)}</p>
+        <div className="notice-management"><span className="workflow-badge">{workflowLabel(workflow.state)}</span>
           <details className="action-menu" key={selectedId}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
@@ -402,16 +399,16 @@ export default function NoticesView({
             }}
             onClick={(event) => {
               if (event.target.closest("button, a")) event.currentTarget.open = false;
-            }}><summary>More actions</summary><div className="action-menu-items">
-            <button type="button" disabled={collectBusy} onClick={() => onBuildPacket(selected)}>{packet ? "Rebuild brief" : "Build brief"}</button>
-            {packet?.packet_id && <a href={`/api/packet/pdf?scenario=${encodeURIComponent(selected.scenario_id || trigger.scenario_id)}&packet_id=${encodeURIComponent(packet.packet_id)}`} target="_blank" rel="noreferrer">Download PDF</a>}
+            }}><summary>Notice actions</summary><div className="action-menu-items">
             {!TERMINAL.has(workflow.state) && ACTIONS.map((action) => <button key={action.id} type="button"
               disabled={collectBusy || !action.from.includes(workflow.state || "new")} onClick={() => {
                 onAction(selected, action.id);
                 if (action.id === "reexamine") onOpenAnomaly();
               }}>{action.label}</button>)}
           </div></details>
-        </div>
+        </div></div>
+        <h2 ref={heading} tabIndex={-1}>{packet?.product?.headline || "Multi-domain activity cue"}</h2>
+        <p className="notice-timing">{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
         <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
           {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
             aria-selected={activeTab === id} aria-controls={`panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
@@ -440,6 +437,16 @@ export default function NoticesView({
           </dl></details>
         </section>
         <section id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" hidden={activeTab !== "evidence"}>
+          <section className="packet-tools" aria-label="Evidence packet tools">
+            <div><h3>Evidence packet</h3><p className="notice-timing">Rebuild the source packet here. Prepare the finished intelligence brief in Notes & assessment → Intelligence brief.</p></div>
+            <div className="notice-actions"><button type="button" disabled={collectBusy} onClick={async () => {
+              setPacketStatus("Building evidence packet…");
+              const result = await onBuildPacket(selected);
+              setPacketStatus(result ? "Evidence packet updated below." : "Evidence packet was not rebuilt. See the error above.");
+            }}>{collectBusy ? "Working…" : packet ? "Rebuild evidence packet" : "Build evidence packet"}</button>
+            {packet?.packet_id && <a href={`/api/packet/pdf?scenario=${encodeURIComponent(selected.scenario_id || trigger.scenario_id)}&packet_id=${encodeURIComponent(packet.packet_id)}`} target="_blank" rel="noreferrer">Evidence packet PDF</a>}</div>
+            {packetStatus && <p role="status">{packetStatus}</p>}
+          </section>
           {evidence}<BriefView packet={packet} notice={selected} mode="evidence" />
         </section>
         <section id="panel-collection" role="tabpanel" aria-labelledby="tab-collection" hidden={activeTab !== "collection"}>

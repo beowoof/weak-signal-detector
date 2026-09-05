@@ -51,6 +51,7 @@ const { chromium } = require("playwright");
     assert.equal(await windowPicker.inputValue(), chosenWindow, "Poll must preserve measurement window");
 
     await page.getByRole("tab", { name: "Notes & assessment", exact: true }).click();
+    await page.getByRole("button", { name: /3\s*Your assessment/ }).click();
     await page.getByRole("button", { name: /^(Edit|Write) assessment$/ }).click();
     const marker = "Unsaved analyst draft — browser regression only";
     await page.getByLabel("Your notes and assessment", { exact: true }).fill(marker);
@@ -67,7 +68,7 @@ const { chromium } = require("playwright");
     assert.equal(savedBody.notice_id, firstId);
     saveMode = "success";
     await page.getByRole("button", { name: "Save assessment", exact: true }).click();
-    await page.locator(".report-read").waitFor();
+    await page.locator("#prepare-brief").waitFor();
     assert.equal(await page.evaluate((id) => localStorage.getItem(`wsd-notes-draft:${id}`), firstId), null);
 
     await page.getByRole("button", { name: "Explorer", exact: true }).click();

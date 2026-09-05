@@ -4,6 +4,8 @@
 
 ## Secondary collection
 
+A notice has one tab row (Overview, Evidence, Collection, Notes & assessment) and a separate **Notice actions** menu. Notes & assessment is four stages; only the selected stage is shown: review findings, retained findings, your assessment, intelligence brief. **Prepare new brief version** reports running, failure and completion, including while you are on another stage.
+
 On a notice, click **Secondary collection**. The Collection tab has one sequence:
 
 1. **Start secondary collection:** select government actions, satellite availability/recorded observations, chronology and/or public reporting leads. The source descriptions say what each job actually does. Starting these jobs does not invoke Ollama.
@@ -12,7 +14,7 @@ On a notice, click **Secondary collection**. The Collection tab has one sequence
 
 The defaults remain 6 queries, 6 document attempts and 180 research seconds. UI controls allow up to 12 queries, 48 attempts and 600 seconds. Failed retrievals count; model time is additional. Limits do not reflect Tavily credit balance and do not control the earlier connector jobs. Research results distinguish total recorded requests from new requests in this invocation.
 
-The mocked `node tests/machine-draft-smoke.cjs` suite exercises this path, including source selection and immediate result display, and prevents real collection/model POSTs. Set `WSD_UI_URL` to the test UI; use `NODE_PATH` if Playwright is installed outside this package. See [the documentation checkpoint](../../DOCUMENTATION_STATUS.md).
+The mocked `node tests/machine-draft-smoke.cjs` suite exercises this path, including source selection and immediate result display, and prevents real collection/model POSTs. `node tests/brief-workflow.cjs` checks the four-stage assessment path and brief-preparation status. Set `WSD_UI_URL` to the test UI; use `NODE_PATH` if Playwright is installed outside this package. See [the documentation checkpoint](../../DOCUMENTATION_STATUS.md).
 
 ## Scenarios and collection artefacts
 

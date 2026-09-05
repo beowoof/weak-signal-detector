@@ -9,22 +9,21 @@ __pycache__/
 artifacts/
 data/raw/
 
-# Scenario contracts (scenario.json) are tracked. Harvest products are not.
+# Scenario contracts (scenario.json) are tracked. Runtime products stay on disk only.
 scenarios/*/corpus/
 scenarios/*/reviews/
 scenarios/*/measurement/
 scenarios/*/reports/
+scenarios/*/interpretation/
+scenarios/*/notices/
 scenarios/*/status.json
 scenarios/*/history.jsonl
 scenarios/*/freeze.json
+scenarios/*/desk_pin.json
 scenarios/*/collect_progress.json
-scenarios/*/interpretation/*/machine_draft.json
-scenarios/*/interpretation/*/machine_draft.md
-scenarios/*/interpretation/*/evidence_bundles/
-scenarios/*/interpretation/*/draft_runs/
-scenarios/*/interpretation/*/research/
 scenarios/.osint_search_index/
 scenarios/.document_index/
+**/.DS_Store
 
 # Dashboard frontend
 dashboard/web/node_modules/

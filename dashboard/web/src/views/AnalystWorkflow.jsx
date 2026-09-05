@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { readDraft, writeDraft, clearDraft } from "../lib/drafts.js";
 import EvidenceReview from "./EvidenceReview.jsx";
 
@@ -18,12 +17,12 @@ function BriefProgress({ progress }) {
   </div>;
 }
 
-export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset }) {
-  const [briefHost, setBriefHost] = useState(null);
-  useEffect(() => { setBriefHost(document.getElementById(`brief-destination-${noticeId}`)); }, [noticeId]);
+export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset, step, onStepChange, children }) {
   const [workflow, setWorkflow] = useState(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
+  const [loadError, setLoadError] = useState("");
+  const [success, setSuccess] = useState("");
   const [title, setTitle] = useState("");
   const [reviewer, setReviewer] = useState("");
   const [acknowledged, setAcknowledged] = useState(false);
@@ -33,12 +32,11 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const query = new URLSearchParams({ scenario, notice_id: noticeId }).toString();
   useEffect(() => {
     let cancelled = false;
-    setError("");
     fetch(`/api/analyst-workflow?${query}`).then(async r => {
       if (!r.ok) throw new Error("Could not load saved review decisions. Reload to retry.");
       const data = await r.json();
-      if (!cancelled) { setWorkflow(data); setAcknowledged(false); }
-    }).catch(e => { if (!cancelled) setError(e.message); });
+      if (!cancelled) { setWorkflow(current => current?.revision > data.revision ? current : data); setLoadError(""); }
+    }).catch(e => { if (!cancelled) setLoadError(e.message); });
     return () => { cancelled = true; };
   }, [query, evidenceReview, report?.updated_at]);
   useEffect(() => {
@@ -53,7 +51,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   }, [query, workflow?.preparing, editorialBusy]);
   async function act(action, fields = {}) {
     if (!workflow || pending) return;
-    setPending(true); setEditorialBusy(action === "prepare"); setError("");
+    setPending(true); setEditorialBusy(action === "prepare"); setError(""); setSuccess("");
     if (action === "prepare") setWorkflow(current => ({ ...current, brief_progress: null }));
     try {
       const response = await fetch("/api/analyst-workflow", {
@@ -61,9 +59,10 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
         body: JSON.stringify({ scenario, notice_id: noticeId, revision: workflow.revision,
           review_version: workflow.review_version, action, ...fields }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || "Action was not saved");
+      const data = await response.json().catch(() => null);
+      if (!response.ok || !data) throw new Error(data?.detail || `Briefing service could not save this action (${response.status}). Existing versions are retained.`);
       setWorkflow(data); setAcknowledged(false);
+      if (action === "prepare") setSuccess(`Brief version ${data.briefs.at(-1).version} is ready for review. Check its wording and sources before sign-off.`);
       if (action === "reset") {
         for (const b of workflow.briefs) clearDraft(`brief:${scenario}:${noticeId}:${b.version}`, localStorage);
         setBriefText(null); setTitle(""); setReviewer(""); setPreview(false); onReset(data.report);
@@ -77,6 +76,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const total = review ? (review.claims?.length || 0) + (review.hypothesis_updates?.length || 0) + 1 : 0;
   const reviewed = Object.keys(decisions).length;
   const latest = workflow?.briefs.at(-1);
+  useEffect(() => { setAcknowledged(false); }, [latest?.version, latest?.stale, report?.updated_at, workflow?.review_version]);
   const briefDraftKey = `brief:${scenario}:${noticeId}:${latest?.version}`;
   useEffect(() => { setBriefText(latest ? readDraft(briefDraftKey, localStorage) : null); }, [briefDraftKey]);
   useEffect(() => {
@@ -88,40 +88,43 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const disabled = pending || busy || workflow?.preparing || !workflow;
   return <section className="workflow-panel" aria-label="Assessment to intelligence brief">
     <div className="section-heading"><div><p className="eyebrow">Review → assessment → brief</p>
-      <h3>{latest && !latest.stale ? (latest.signed_off ? "Brief signed off" : "Brief ready for review") : "Develop your assessment"}</h3></div>
+      <h3>{editorialBusy || workflow?.preparing ? "Preparing intelligence brief" : latest && !latest.stale ? (latest.signed_off ? "Brief signed off" : "Brief ready for review") : "Develop your assessment"}</h3></div>
       <span role="status">{reviewed} / {total} proposals reviewed</span></div>
     <nav className="workflow-steps" aria-label="Assessment workflow steps">
-      <a href="#review-proposals">1. Review ({reviewed}/{total})</a>
-      <a href="#assemble-assessment">2. Preview findings</a>
-      <a href="#working-assessment">3. Edit & save assessment</a>
-      <a href="#prepare-brief">4. Name & prepare brief</a>
+      {[["review", `Review findings (${reviewed}/${total})`], ["findings", "Retained findings"], ["assessment", "Your assessment"], ["brief", "Intelligence brief"]].map(([id, label], index) =>
+        <button key={id} type="button" aria-current={step === id ? "step" : undefined} onClick={() => onStepChange(id)}><span>{index + 1}</span>{label}</button>)}
     </nav>
-    <div id="review-proposals" />
-    {workflow?.stale_decisions > 0 && <p role="alert">The source draft has changed. {workflow.stale_decisions} previous decisions remain in history; review the new proposals.</p>}
-    {error && <p role="alert" className="error">{error}</p>}
+    {success && <p role="status" className="brief-success">{success}{step !== "brief" && <button type="button" onClick={() => onStepChange("brief")}>View prepared brief</button>}</p>}
+    {(error || loadError) && <p role="alert" className="error">{error || loadError}</p>}
+    {(editorialBusy || workflow?.preparing) && <BriefProgress progress={workflow?.brief_progress} />}
+    {!error && !editorialBusy && !workflow?.preparing && workflow?.brief_progress?.stage?.startsWith("Failed") && <p role="alert" className="error">Brief preparation failed. Existing versions are retained. Open Intelligence brief to retry.</p>}
     {!workflow && !error && <p role="status">Loading saved review…</p>}
-    {workflow && !review && <p>No machine proposals yet. Use <strong>Machine draft</strong> to investigate and generate source-linked findings, or write your own assessment below.</p>}
+    <div hidden={step !== "review"} id="review-proposals">
+    {workflow?.stale_decisions > 0 && <p role="alert">The source draft has changed. {workflow.stale_decisions} previous decisions remain in history; review the new proposals.</p>}
+
+    {workflow && !review && <p>No machine proposals yet. Use Collection → Research and draft assessment to generate source-linked findings, or open Your assessment to write your own.</p>}
     {review && <EvidenceReview key={workflow.review_version} review={review} decisions={decisions} busy={disabled}
       onReview={(fields) => act("review", fields)} />}
+      <button className="workflow-next" type="button" onClick={() => onStepChange("findings")}>Continue to retained findings →</button>
+    </div>
+    <section hidden={step !== "assessment"}>{children}</section>
     {workflow && <>
-      <a className="workflow-next" href="#assemble-assessment">Continue to step 2: preview retained findings →</a>
-      <section className="brief-callout" id="assemble-assessment">
+      <section hidden={step !== "findings"} className="brief-callout" id="assemble-assessment">
         <h4>2. Preview retained findings</h4>
         <p>{reviewed < total ? `${total - reviewed} proposals still to review. You can preview progress now or finish reviewing first.` : "Review complete. Preview the retained material, then add it to your assessment."}</p>
-        <p>Retained findings and hypothesis changes become a cited starting point. Add your judgement, implications and alternative explanations in the assessment editor below. Rejections and unresolved issues remain visible in the annex.</p>
+        <p>Retained findings and hypothesis changes become a cited starting point. Add your judgement, implications and alternative explanations in the Your assessment step. Rejections and unresolved issues remain visible in the annex.</p>
         <button type="button" disabled={disabled || !review || !reviewed} onClick={() => setPreview(!preview)}>Preview reviewed material</button>
         {preview && <><pre className="workflow-prose">{workflow.assembly}</pre>
           <button type="button" disabled={disabled} onClick={() => { onAssemble(workflow.assembly); setPreview(false); }}>Merge reviewed material into assessment</button>
-          <p>This updates only the marked review section, preserving your writing outside it. Save the assessment below when ready.</p></>}
+          <p>This updates only the marked review section, preserving your writing outside it. Save in Your assessment when ready.</p></>}
       </section>
-      {briefHost && createPortal(<section className="brief-callout" id="prepare-brief" aria-label="Finished intelligence brief">
+      <section hidden={step !== "brief"} className="brief-callout" id="prepare-brief" aria-label="Finished intelligence brief">
         <h4>4. Name and prepare the intelligence brief</h4>
         <p>First edit and save your assessment in step 3. Then choose a title here, prepare a version, preview it and sign off.</p>
-        <p>The model edits your saved assessment and retained findings into a concise senior-leadership brief: key judgements, significance, alternatives and outlook. It makes no new searches. Review and amend its wording before sign-off; the evidence annex is preserved.</p>
+        <details className="brief-method"><summary>How preparation works</summary><p>The model edits your saved assessment and retained findings into a concise senior-leadership brief: key judgements, significance, alternatives and outlook. It makes no new searches. Review and amend its wording before sign-off; the evidence annex is preserved.</p></details>
         <label>Brief title<input value={title} placeholder={report?.context?.headline || "Public-source intelligence assessment"} onChange={e => setTitle(e.target.value)} /></label>
-        {dirty && <p role="status">Save your assessment before preparing or signing off a brief.</p>}
-        <button type="button" disabled={disabled || dirty || report?.empty || !value?.trim()} onClick={() => act("prepare", { title: title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : "Prepare new brief version"}</button>
-        {(editorialBusy || workflow.preparing) && <BriefProgress progress={workflow.brief_progress} />}
+        {(dirty || report?.empty || !value?.trim()) && <p role="status">{dirty ? "Save your assessment before preparing or signing off a brief." : "Write and save an assessment before preparing a brief."} <button type="button" onClick={() => onStepChange("assessment")}>Go to assessment</button></p>}
+        <button className="primary-action" type="button" disabled={disabled || dirty || report?.empty || !value?.trim()} onClick={() => act("prepare", { title: title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : "Prepare new brief version"}</button>
         {latest && <>
           <p><strong>Version {latest.version}</strong> · {latest.stale ? "Stale — prepare a new version" : latest.signed_off ? `Signed off by ${latest.signed_off.reviewer}` : "Awaiting sign-off"} · Not distributed</p>
           {latest.editorial && <p>Editorial model: {latest.editorial.model} · Input references checked; factual support and faithfulness require your review.</p>}
@@ -176,8 +179,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
               if (await act("remove_brief", { version: brief.version })) clearDraft(`brief:${scenario}:${noticeId}:${brief.version}`, localStorage);
             }}>Remove version {brief.version}</button></p>)}
         </details>}
-      </section>, briefHost)}
-      <details className="brief-callout"><summary>Reset assessment for a fresh test</summary>
+      </section>
+      <details className="workflow-maintenance"><summary>Assessment maintenance</summary>
         <p>Clear this notice’s saved assessment, review decisions and active briefs, plus drafts in this browser. Previous saved work is archived. Evidence, research and machine proposals stay available.</p>
         <button type="button" disabled={disabled} onClick={() => {
           if (window.confirm("Reset this assessment, review decisions and briefs? Unsaved edits in this browser will be discarded. Saved work is archived; research and source proposals are retained.")) act("reset", { acknowledged: true });
