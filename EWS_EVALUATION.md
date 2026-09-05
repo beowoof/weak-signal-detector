@@ -1,5 +1,7 @@
 # Phase 1: Rolling Correlation & λ_max Re-Evaluation
 
+**Reviewed 2026-09-05.** Historical evaluation snapshot. Numerical results are unchanged; no new measurement or scientific freeze was performed during this documentation review.
+
 This is the instrument specified in [`IDEAS.md`](IDEAS.md) Blueprint B / Phase 1: trailing-z series, rolling Pearson correlation, leading eigenvalue versus the Marcenko-Pastur bulk edge, and Gaussian multi-information. It is **not** a retune of `coincidence_v1`. The lowered-threshold domain-count experiment in [`COUPLING_EVALUATION.md`](COUPLING_EVALUATION.md) remains a marginal-exceedance detector and is reported separately.
 
 Panel: one representative per causal domain (`attn.wiki_pageviews`, `talk.gdelt_cameo`, market = `dyad.moex_usdrub` or `dyad.fx`). ICEWS is omitted from the matrix because it shares the information domain with GDELT. Gazette crawl counts and Certificate Transparency are omitted (demoted in [`FINDINGS.md`](FINDINGS.md)). RIPEstat is a sensitivity panel only.

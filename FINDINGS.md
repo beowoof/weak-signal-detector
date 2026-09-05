@@ -1,5 +1,7 @@
 # Findings
 
+**Reviewed 2026-09-05.** Historical detector findings, preserved without rerunning measurements. Statements about an unbuilt interpretation layer describe that experiment; the local analyst desk is now implemented. See [README](README.md).
+
 **Verdict:** speculative success, execution failure.
 
 There is a measurable change in several weak public series in the last ten days before 24 February 2022, with a quiet 2021 control and two quiet hard negatives under the same frozen rule. That is not a proof of costly preparation, strategic intent, or a detector that could be defended. Availability, reliability, completeness, and the costly-gate design are too weak to support a dissertation claim. This was a personal education project without funding for the sources that would be required to continue.

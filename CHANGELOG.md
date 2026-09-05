@@ -1,10 +1,21 @@
 # Changelog
 
+**Reviewed 2026-09-05.** Current development history; dated entries below describe their state at the time.
+
+## 2026-09-05 — Collection clarity, bounded research and substantive briefs
+
+- Added **Secondary collection → Start secondary collection** with source selection, immediate status/explanation/timestamp results and a separate **Research and draft assessment** step. Removed competing inline launch controls; moved research limits beside their action.
+- Exposed query/document/time controls and streamed browser stages, elapsed time, failures and stopping reasons. Document attempts are per invocation; increasing document/time allowances preserves the same-plan research checkpoint. Tavily credit balance is not inspected.
+- Passed per-question collection outcomes into assessment drafting and editorial synthesis. Recorded cloud/quality/fill/no-granule/retrieval diagnostics for new VIIRS observations without inventing reasons for older missing data.
+- Strengthened editorial instructions to retain concrete evidence, current analyst judgement, counterevidence and actionable discriminators; separated earlier packet context and removed sensor-availability-based explanatory confidence.
+- Added an editorial example and reconciled all maintained Markdown guides with the implemented workflow. Generated historical briefs and numerical experiment results remain records, not rewritten outputs.
+- Verified the offline Python suite (321 passed, one skipped), frontend tests (13 passed), production build and mocked collection-to-brief browser flow. No live collection or model generation is claimed by these checks.
+
 ## 2026-09-05 — Align delivery around the complete intelligence workflow
 
 - Make public-source investigation through assessment and a finished brief the product objective, with manual detours feeding automation.
 - Specify durable review decisions, assessment integration, brief revision/sign-off/export, and a practical retrospective gate for a bounded live pilot.
-- Separate detector research claims from product delivery gates and reconcile conflicting README guidance. Documentation only; the missing workflow is specified, not implemented.
+- Separate detector research claims from product delivery gates and reconcile conflicting README guidance. This earlier documentation-only entry specified the workflow; subsequent implementation is recorded below.
 
 All notable enhancements to this project are recorded here. The project follows an iterative research workflow rather than promising semantic-version compatibility during the PoC.
 
@@ -21,7 +32,7 @@ All notable enhancements to this project are recorded here. The project follows 
 ### Changed
 
 - **Analytical briefing presentation:** notice overviews and regenerated notice exports lead with a two-sentence BLUF, analytical confidence/rationale and an explicit public-source assessment. Display-only probability ranges follow PHIA's published yardstick on first use without changing stored observations or hypotheses.
-- **Editorial output contract:** requires BLUF (maximum two sentences/60 words), confidence and source assessment before supporting judgements. Model input includes relevant source provenance and warns against invented reliability, independent corroboration or confidence ratings. Existing saved brief versions are preserved.
+- **Editorial output contract:** requires BLUF (maximum two sentences/60 words), substantive judgements before the concise confidence and source-assessment sections. Model input includes relevant source provenance and warns against invented reliability, independent corroboration or confidence ratings. Existing saved brief versions are preserved.
 
 
 ### Added
@@ -37,7 +48,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
-- **Complete local review-to-brief path:** persisted, version-bound finding/hypothesis/action decisions and history; explicit reviewed-material merge that preserves surrounding analyst prose; immutable brief content versions with evidence annex, stale-state detection, reviewer sign-off, Markdown and printable HTML export. No distribution, new research or model call occurs during brief preparation. API revision checks reject stale writes; tests cover lifecycle, changed proposals using the same bundle, preservation and escaped export.
+- **Complete local review-to-brief path:** persisted, version-bound finding/hypothesis/action decisions and history; explicit reviewed-material merge that preserves surrounding analyst prose; immutable brief content versions with evidence annex, stale-state detection, reviewer sign-off, Markdown and printable HTML export. The initial renderer made no model call; current brief preparation uses editorial Ollama synthesis as described above. It performs no new research or distribution. API revision checks reject stale writes; tests cover lifecycle, changed proposals using the same bundle, preservation and escaped export.
 
 
 ### Fixed
@@ -49,7 +60,7 @@ All notable enhancements to this project are recorded here. The project follows 
 - **pytest temporary-directory vulnerability:** raised both runtime and dev requirements to `pytest>=9.0.3,<10` and updated `uv.lock` from 8.4.2 to 9.0.3. This addresses Dependabot alerts #1 and #2 for the same Unix temporary-directory issue, [CVE-2025-71176 / GHSA-6w46-j5rx-g56g](https://github.com/advisories/GHSA-6w46-j5rx-g56g). Existing Python Docker images must be rebuilt to receive the patched dependency; source bind mounts alone do not update installed packages.
 - **Structured draft sections:** model-authored lists and objects in `sections` are converted to readable Markdown before validation. The raw response and conversion metadata are preserved; malformed and empty assessments remain rejected. The prompt now explicitly requests string-valued sections, and cutoff-language checks include saved sections even when `notes` takes display precedence.
 - **Ollama structured-output compatibility:** an explicit HTTP 501 `structured output is unavailable` response gets one resubmission without native JSON mode. Prompt JSON is still validated before saving; other errors and uncertain timeouts are not retried. Draft sidecars record the output mode.
-- **Draft progress:** the host CLI consumes API stage events and two-second heartbeats via `/api/packet/draft/stream`, showing a job ID, stage bar and elapsed time on stderr. `--quiet` retains JSON-only output; the UI's existing JSON endpoint is unchanged. The bar measures completed stages, not token-generation percentage.
+- **Draft progress:** the host CLI consumes API stage events and two-second heartbeats via `/api/packet/draft/stream`, showing a job ID, stage bar and elapsed time on stderr. `--quiet` retains JSON-only output; the JSON endpoint remains supported; the UI now also consumes the progress stream. The bar measures completed stages, not token-generation percentage.
 - **Draft CLI routing:** `wsd packet draft` now submits to the Docker desk API, which owns Ollama configuration and generation. `WSD_API_BASE_URL` defaults to `http://127.0.0.1:8000`; no local fallback or automatic retry. Existing flags, JSON summary and leakage exit status are preserved.
 - **CBR holidays:** a weekday with a policy rate but no RUONIA print is a closed session (`missing`), not `source_down`. New Year, 23 Feb, 8 Mar and 2020 non-working days no longer fail the 0.95 coverage gate.
 

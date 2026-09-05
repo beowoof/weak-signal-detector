@@ -298,7 +298,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
             return (
               <li key={row.title}>
                 <strong>{row.title}.</strong> {row.why}{" "}
-                {match ? (
+                {match && onCollect ? (
                   <button
                     type="button"
                     className="collect-inline"

@@ -1,5 +1,13 @@
 # Weak Signal Fusion
 
+**Reviewed 2026-09-05.** Current implementation and operator entry points. See [documentation review](DOCUMENTATION_STATUS.md) for the 2026-09-05 checkpoint.
+
+## Current desk workflow — 2026-09-05
+
+Use **Desk → notice → Secondary collection → Start secondary collection** to run selected source jobs and review their results. Then use **Research and draft assessment** for document retrieval and Ollama proposals. Save reviewed material and analyst judgement before **Prepare new brief version**. The finished brief is a separate, versioned output.
+
+Research limits are visible and adjustable beside the drafting action; default 6 queries, 6 document attempts per run and 180 seconds. Failed retrievals consume attempts. Stages, elapsed time, stopping reason, failures and unattempted questions are visible. These are application limits, not Tavily credit limits. See [the documentation checkpoint](DOCUMENTATION_STATUS.md) for limits, resume semantics, sensor diagnostics and verification.
+
 **Product direction:** automate public-source investigation through a draft assessment, analyst contributions and a finished intelligence brief. Prove the complete workflow retrospectively, then qualify a bounded live pilot. [ROADMAP.md](ROADMAP.md) governs this delivery sequence; the detector experiment below remains a separate research record.
 
 Weak Signal Fusion is an evidence-first proof of concept for a narrow question:
@@ -18,7 +26,7 @@ The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do 
 
 The entry point is a **collection cueing desk** within the investigation-to-brief workflow: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
 
-The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui). Day-to-day work is the UI (Notices, Anomaly, Operations). The CLI remains for tests and harvests.
+The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui). Day-to-day work is the UI (Desk, Explorer, Scenarios, Operations). The CLI remains for tests and harvests.
 
 The repository still contains:
 
@@ -53,7 +61,7 @@ The collection cueing desk runs as Docker Compose (`compose.yaml`): Postgres, Fa
 | Raw and derived analytical data | Parquet / JSONL files | Portable, immutable, tabular |
 | Ollama and `qwen3.8:27b-mlx` | Existing host service/API | MLX depends on the Mac environment; no container or token required |
 
-ChromaDB is not part of measurement. When an LLM later acts as a **named intelligence-analyst step** (packet interpretation, not a general-purpose aggregator and never a combiner), retrieval will go through Chroma + embeddings so the model sees a cutoff-safe cited subset rather than the raw harvest. Explicit frozen prior packets remain the audit trail.
+ChromaDB is not used by the current desk. Ollama assessment drafting receives a bounded, source-referenced projection of the saved evidence bundle, plus collection outcomes. A separately scored prior-versus-signals experiment remains planned; it is distinct from this implemented analyst workflow.
 
 ## Scientific separation
 
@@ -129,7 +137,7 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 | `WSD_API_BASE_URL` | Docker desk API, default `http://127.0.0.1:8000` | Host `wsd packet draft` submits work here |
 | `WSD_API_TIMEOUT_SECONDS` | API request timeout, default 1800 seconds | No automatic retries or local fallback |
 | `OLLAMA_BASE_URL` | Ollama URL reachable from the API container, e.g. `http://host.docker.internal:11434` | Server-side desk drafting |
-| `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft`, Machine draft and Prepare new brief version |
+| `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft`, Research and draft assessment and Prepare new brief version |
 | `OLLAMA_TIMEOUT_SECONDS` | Local generation timeout, default 900 seconds | Optional; one attempt, no automatic regeneration on timeout |
 | `OLLAMA_MAX_OUTPUT_TOKENS` | Desk draft output limit, default 4096 | Optional; compact output should fit; truncated responses are retained diagnostically and never replace drafts |
 | `OLLAMA_NUM_CTX` | Context window, default 32768 | Optional; must exceed output limit |
@@ -172,7 +180,7 @@ These are separate stages. The examples use the existing Ukraine preparatory-win
 |---|---|---|
 | Notice evidence and watch summary | `wsd packet build` | No |
 | Printable notice PDF from its current packet | `wsd packet pdf` | No |
-| Proposed findings and working-assessment draft | `wsd packet draft` or **Machine draft** | Yes, except when revalidating a retained failed completion |
+| Proposed findings and working-assessment draft | `wsd packet draft` or **Research and draft assessment** | Yes, except when revalidating a retained failed completion |
 | Final editorial brief from your saved assessment | **Prepare new brief version** in the UI | Yes |
 
 **Rebuild the notice packet and its watch-summary exports:**
@@ -336,7 +344,7 @@ Reusing a run ID after any scientific value changes is an error. YAML comments a
 | `USA-CHN-2018-trade` | Development | High-tension hard negative |
 | `RUS-2021-apr` | Development | Reversed mobilisation positive |
 | `GRC-TUR-2020` | Held out | High-tension hard negative |
-| `RUS-2022` | Held out | Overt-action positive |
+| `RUS-2022` | Development showcase | Overt-action positive; used during development, no longer held out |
 
 This is an investment-decision panel, not a population sample. It cannot establish a general false-alert rate or intent-classification accuracy.
 

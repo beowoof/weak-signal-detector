@@ -1,5 +1,13 @@
 # Analyst-desk roadmap
 
+**Reviewed 2026-09-05.** Current delivery plan. The local collection/review/brief path is implemented; retrospective product qualification and continuous live orchestration remain outstanding.
+
+## Implementation checkpoint — 2026-09-05
+
+The local path now includes a dedicated secondary-collection entry point with source selection/results, adjustable bounded document research with streamed progress and explicit outcomes, machine proposals, durable analyst review, saved assessment, editorial synthesis/amendment, versioning, sign-off and export. Collection outcomes reach both model drafting and editorial synthesis. Historical records remain snapshots. See [DOCUMENTATION_STATUS.md](DOCUMENTATION_STATUS.md).
+
+Still outstanding: owner-reviewed substantive quality across cases; reliable pre-cutoff retrieval for sources without usable archives; adaptive follow-up; public PDF/imagery handling where required; and the continuous scheduled/event-driven pilot. Passing fixture and browser checks does not close these product qualification gates or validate detector intent claims.
+
 **Product:** an automated public-source intelligence workflow: detect a reason to investigate, do the searching and evidence assembly, develop a draft assessment, incorporate analyst judgement, and produce a decision-ready intelligence brief for review and sending up the chain. Collection cueing is its entry point, not its finished product.
 
 **Working proposition:** states leave public traces of preparations, constraints and possible strategic intent. Assembling those traces across domains may support useful, timely assessments within public-source means. Backtested scenarios must demonstrate where this works, where it fails and where the explanation remains unresolved; the proposition is not an established result.

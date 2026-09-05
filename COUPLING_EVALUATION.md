@@ -1,5 +1,7 @@
 # Strategic Coupling Re-Evaluation (Option 1)
 
+**Reviewed 2026-09-05.** Historical evaluation snapshot. Numerical results and experimental conclusions are unchanged; this is not evidence of current operational readiness.
+
 **Verdict:** not a salvage of the detector. This experiment still applies point-in-time marginal thresholds (now $z \ge 1.5$ instead of $2.5$) and counts domains. That is failure mode 1 in [`IDEAS.md`](IDEAS.md), not Blueprint B. Both mobilisation windows produce $K_{\mathrm{dom}} \ge 3$ warning episodes (Ukraine produces two, rus2021apr produces one), and the hard negatives do not, but permutation $p_{\mathrm{episodes}}$ is not small (~0.43). The actual Phase 1 instrument (rolling $\lambda_{\max}$) is in [`EWS_EVALUATION.md`](EWS_EVALUATION.md).
 
 ---

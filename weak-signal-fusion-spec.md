@@ -1,5 +1,7 @@
 # Weak-signal fusion: a cutoff-safe panel test of correlated public indicators
 
+**Reviewed 2026-09-05.** Initial design record; its original date and proposed architecture are retained. Current implementation is documented in [README](README.md) and [HOWTO](HOWTO.md), including the implemented Ollama analyst desk without a Chroma dependency.
+
 | Field | Value |
 |---|---|
 | **Document** | Greenfield lab-notebook specification (new repository seed) |

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { humanize, noticeTitle, workflowLabel } from "../lib/workspace.js";
 import { number } from "../lib/format.js";
 import BriefView from "./BriefView.jsx";
+import SecondaryCollection from "./SecondaryCollection.jsx";
 
 const SOURCE_ROLE = {
   corpus: "In this collection",
@@ -391,9 +392,7 @@ export default function NoticesView({
         <div className="notice-actions">
           <button className="primary-action" type="button" onClick={onOpenAnomaly}>Review evidence</button>
           <button type="button" onClick={onAddNotes}>Your assessment{drafts[selectedId] ? " · Draft" : ""}</button>
-          <button type="button" disabled={collectBusy} onClick={() => onMachineDraft(researchLimits)}>
-            {collectBusy ? "Drafting…" : "Machine draft"}
-          </button>
+          <button className="primary-action" type="button" onClick={() => onTabChange("collection")}>Secondary collection</button>
           <details className="action-menu" key={selectedId}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
@@ -413,18 +412,6 @@ export default function NoticesView({
               }}>{action.label}</button>)}
           </div></details>
         </div>
-        <p>Research limits: {researchLimits.queries} queries · {researchLimits.documents} document attempts · {researchLimits.seconds}s. Failed retrievals count; Ollama drafting time is additional.</p>
-        <details><summary>Change research limits</summary>
-          <p>Application limits, unrelated to your Tavily credit balance. Each network request waits at most 30 seconds. Previously attempted URLs are skipped; another run can try remaining candidates.</p>
-          {[ ["queries", "Search queries", [3, 6, 9, 12]], ["documents", "Document attempts per run", [6, 12, 24, 48]], ["seconds", "Research time (seconds)", [60, 180, 300, 600]] ].map(([key, label, choices]) =>
-            <label key={key}>{label} <select disabled={collectBusy} value={researchLimits[key]} onChange={e => setResearchLimits(old => ({ ...old, [key]: Number(e.target.value) }))}>
-              {choices.map(value => <option key={value} value={value}>{value}</option>)}
-            </select> </label>)}
-        </details>
-        {machineProgress?.noticeId === selected.notice_id && <section aria-label="Machine draft progress">
-          <p role="status">{machineProgress.elapsed_s}s elapsed · {machineProgress.stage}</p>
-          <details><summary>Run activity and cutoffs</summary><ol>{machineProgress.history?.map((stage, i) => <li key={i}>{stage}</li>)}</ol></details>
-        </section>}
         <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
           {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
             aria-selected={activeTab === id} aria-controls={`panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
@@ -456,12 +443,29 @@ export default function NoticesView({
           {evidence}<BriefView packet={packet} notice={selected} mode="evidence" />
         </section>
         <section id="panel-collection" role="tabpanel" aria-labelledby="tab-collection" hidden={activeTab !== "collection"}>
-          <div className="section-heading"><div><p className="eyebrow">Next questions</p><h3>Collection & validation</h3></div>
-            <button type="button" disabled={collectBusy} onClick={() => onCollect(selected, ["validate"])}>{collectBusy ? "Working…" : "Validate cue"}</button>
-          </div>
-          <BriefView packet={packet} notice={selected} mode="collection" collectBusy={collectBusy} onCollect={(kind) => onCollect(selected, [kind])} />
-          <CollectionPanel key={selectedId} collection={collection} busy={collectBusy} onRun={(kind) => onCollect(selected, [kind])} />
-          {!collection?.tasks?.length && <p className="empty">No collection tasks yet. Start with cue validation or an available requirement above.</p>}
+          <SecondaryCollection key={selectedId} noticeId={selectedId} cutoff={packet?.clocks?.knowledge_cutoff} busy={collectBusy} collection={collection} onRun={tasks => onCollect(selected, tasks)} />
+          <details><summary>Detailed source results</summary><CollectionPanel key={selectedId} collection={collection} busy={collectBusy} /></details>
+          <section className="brief-callout" aria-label="Research and draft assessment">
+            <h3>3. Research and draft the assessment</h3>
+            <p>Retrieve and check public documents, combine them with the collection above, then ask Ollama to draft findings for review in Notes & assessment.</p>
+        <p>Research limits: {researchLimits.queries} queries · {researchLimits.documents} document attempts · {researchLimits.seconds}s. Failed retrievals count; Ollama drafting time is additional.</p>
+        <details><summary>Change research limits</summary>
+          <p>Application limits, unrelated to your Tavily credit balance. Each network request waits at most 30 seconds. Previously attempted URLs are skipped; another run can try remaining candidates.</p>
+          {[ ["queries", "Search queries", [3, 6, 9, 12]], ["documents", "Document attempts per run", [6, 12, 24, 48]], ["seconds", "Research time (seconds)", [60, 180, 300, 600]] ].map(([key, label, choices]) =>
+            <label key={key}>{label} <select disabled={collectBusy} value={researchLimits[key]} onChange={e => setResearchLimits(old => ({ ...old, [key]: Number(e.target.value) }))}>
+              {choices.map(value => <option key={value} value={value}>{value}</option>)}
+            </select> </label>)}
+        </details>
+        {machineProgress?.noticeId === selected.notice_id && <section aria-label="Machine draft progress">
+          <p role="status">{machineProgress.elapsed_s}s elapsed · {machineProgress.stage}</p>
+          <details><summary>Run activity and cutoffs</summary><ol>{machineProgress.history?.map((stage, i) => <li key={i}>{stage}</li>)}</ol></details>
+        </section>}
+            <button type="button" disabled={collectBusy} onClick={() => onMachineDraft(researchLimits)}>{collectBusy ? "Working…" : "Research and draft assessment"}</button>
+          </section>
+          <details><summary>Collection questions and cue validation</summary>
+            <BriefView packet={packet} notice={selected} mode="collection" />
+            <button type="button" disabled={collectBusy} onClick={() => onCollect(selected, ["validate"])}>Validate existing cue</button>
+          </details>
         </section>
         <section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden={activeTab !== "notes"}>{notes}</section>
       </div>
