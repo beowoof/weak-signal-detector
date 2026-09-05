@@ -901,7 +901,35 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .workflow-panel { margin: 1.5rem 0; }
 .workflow-panel label { display: block; margin: .75rem 0; }
 .workflow-panel input:not([type=checkbox]), .workflow-panel textarea { display: block; width: 100%; box-sizing: border-box; padding: .6rem; margin-top: .35rem; font: inherit; color: inherit; background: var(--bg, #fff); border: 1px solid #87949c; border-radius: 4px; }
-.workflow-panel button { margin: .35rem .5rem .35rem 0; }
+.workflow-panel button {
+  background: var(--surface);
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: .35rem;
+  padding: .35rem .65rem;
+  font-size: .85rem;
+  margin: .35rem .5rem .35rem 0;
+  line-height: 1.35;
+  cursor: pointer;
+}
+.workflow-panel button:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+.workflow-version-row {
+  line-height: 1.8;
+  margin: .6rem 0;
+}
+.workflow-version-row .export-label {
+  font-weight: 600;
+  color: var(--muted);
+  font-size: .85rem;
+  margin-left: .25rem;
+}
+.workflow-version-row button {
+  padding: .2rem .55rem;
+  font-size: .8rem;
+  margin: .15rem .25rem;
+}
 .workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; max-height: 38rem; overflow-y: auto; padding: 1rem; border: 1px solid #87949c; }
 .review-controls { border-top: 1px solid #87949c; margin-top: 1rem; }
 .brief-signoff { margin: 1rem 0; padding: 1rem; border: 1px solid #87949c; }

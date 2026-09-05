@@ -436,3 +436,33 @@ def test_export_brief_html_formatting_and_no_raw_json(desk):
     assert re.search(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}\.\d+", html_out) is None
     # Assert clean UTC datetimes
     assert re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC", html_out) is not None
+
+
+def test_export_brief_pdf_generation_and_api(desk):
+    import io
+    from pypdf import PdfReader
+    root, _ = desk
+    action(root, "review", proposal_id="claim-1", status="accepted")
+    action(root, "review", proposal_id="claim-2", status="rejected", reason="Unsupported")
+    action(root, "review", proposal_id="decision", status="accepted")
+    save_report(root, "desk-case", "notice-abc", notes="Analyst assessment paragraph.")
+    action(root, "prepare", title="Human Assessment")
+    action(root, "sign_off", version=1, reviewer="Reviewer", acknowledged=True)
+
+    pdf_bytes = export_brief(root, "desk-case", "notice-abc", 1, "pdf")
+    assert isinstance(pdf_bytes, bytes)
+    assert pdf_bytes.startswith(b"%PDF")
+
+    reader = PdfReader(io.BytesIO(pdf_bytes))
+    assert len(reader.pages) >= 1
+    extracted = "\n".join(p.extract_text() or "" for p in reader.pages)
+    assert "Human Assessment" in extracted
+    assert "Signed off by Reviewer" in extracted
+
+    client = TestClient(create_app(project_root=root))
+    query = {"scenario": "desk-case", "notice_id": "notice-abc", "version": 1, "format": "pdf"}
+    res = client.get("/api/analyst-workflow/export", params=query)
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "application/pdf"
+    assert res.headers["content-disposition"] == 'attachment; filename="assessment-v1.pdf"'
+    assert res.content.startswith(b"%PDF")

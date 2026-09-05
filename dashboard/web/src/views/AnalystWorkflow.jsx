@@ -145,9 +145,32 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
           </div>}
         </>}
         {!!workflow.briefs.length && <details><summary>Versions and exports ({workflow.briefs.length})</summary>
-          {workflow.briefs.slice().reverse().map(brief => <p key={brief.version}>Version {brief.version} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC · {" "}
-            <a href={`/api/analyst-workflow/export?${query}&version=${brief.version}&format=md`}>Download Markdown</a>{" · "}
-            <a href={`/api/analyst-workflow/export?${query}&version=${brief.version}&format=html`}>Download printable HTML</a>{" · "}
+          {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">Version {brief.version} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC · {" "}
+            <span className="export-label">Download as:</span>{" "}
+            <button type="button" disabled={disabled} onClick={() => {
+              const link = document.createElement("a");
+              link.href = `/api/analyst-workflow/export?${query}&version=${brief.version}&format=md`;
+              link.download = `assessment-v${brief.version}.md`;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            }}>Markdown</button>
+            <button type="button" disabled={disabled} onClick={() => {
+              const link = document.createElement("a");
+              link.href = `/api/analyst-workflow/export?${query}&version=${brief.version}&format=html`;
+              link.download = `assessment-v${brief.version}.html`;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            }}>HTML</button>
+            <button type="button" disabled={disabled} onClick={() => {
+              const link = document.createElement("a");
+              link.href = `/api/analyst-workflow/export?${query}&version=${brief.version}&format=pdf`;
+              link.download = `assessment-v${brief.version}.pdf`;
+              document.body.appendChild(link);
+              link.click();
+              link.remove();
+            }}>PDF</button>{" · "}
             <button type="button" disabled={disabled} onClick={async () => {
               if (!window.confirm(`Remove brief version ${brief.version} from this assessment? Its audit record will be kept.`)) return;
               if (await act("remove_brief", { version: brief.version })) clearDraft(`brief:${scenario}:${noticeId}:${brief.version}`, localStorage);

@@ -869,9 +869,103 @@ def export_brief(root, scenario, notice_id, version, format):
             + "\n".join(rendered)
             + "</body></html>"
         )
+    if format == "pdf":
+        return _render_brief_pdf(
+            text,
+            title=brief.get("title") or "Intelligence assessment",
+            footer_label=f"{notice_id} · Version {version}",
+        )
     if format != "md":
         raise ValueError("Unsupported export format")
     return text
+
+
+def _render_brief_pdf(text: str, title: str = "Intelligence assessment", footer_label: str = "") -> bytes:
+    import io
+    from reportlab.lib import colors
+    from reportlab.lib.pagesizes import A4
+    from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+    from reportlab.lib.units import mm
+    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer
+
+    buf = io.BytesIO()
+    doc = SimpleDocTemplate(
+        buf,
+        pagesize=A4,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+        title=title,
+        author="OSINT Analyst",
+    )
+    base = getSampleStyleSheet()
+    ink = colors.HexColor("#17211d")
+    muted = colors.HexColor("#5f6b65")
+    accent = colors.HexColor("#006b55")
+    rule = colors.HexColor("#d4d8d3")
+
+    styles = {
+        "title": ParagraphStyle("b_title", parent=base["Title"], fontName="Helvetica-Bold", fontSize=15, leading=19, textColor=ink, alignment=0, spaceAfter=2 * mm),
+        "h2": ParagraphStyle("b_h2", parent=base["Heading2"], fontName="Helvetica-Bold", fontSize=11, leading=14, textColor=ink, spaceBefore=4 * mm, spaceAfter=1.5 * mm, keepWithNext=True),
+        "h3": ParagraphStyle("b_h3", parent=base["Heading3"], fontName="Helvetica-Bold", fontSize=9.5, leading=12, textColor=ink, spaceBefore=3 * mm, spaceAfter=1 * mm, keepWithNext=True),
+        "h4": ParagraphStyle("b_h4", parent=base["Heading4"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=muted, spaceBefore=2 * mm, spaceAfter=1 * mm, keepWithNext=True),
+        "body": ParagraphStyle("b_body", parent=base["Normal"], fontName="Helvetica", fontSize=8.5, leading=11.5, textColor=ink, spaceAfter=1.5 * mm),
+        "bullet": ParagraphStyle("b_bullet", parent=base["Normal"], fontName="Helvetica", fontSize=8.5, leading=11.5, textColor=ink, leftIndent=3 * mm, spaceAfter=1 * mm),
+        "subbullet": ParagraphStyle("b_subbullet", parent=base["Normal"], fontName="Helvetica", fontSize=8, leading=11, textColor=ink, leftIndent=6 * mm, spaceAfter=1 * mm),
+        "status": ParagraphStyle("b_status", parent=base["Normal"], fontName="Helvetica-Bold", fontSize=8.5, leading=11, textColor=accent, spaceAfter=2 * mm),
+    }
+
+    def _format_inline(safe: str) -> str:
+        safe = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", safe)
+        safe = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"<i>\1</i>", safe)
+        safe = re.sub(r"`([^`]+?)`", r"<font face=Courier>\1</font>", safe)
+        return safe
+
+    def draw_page(canvas, doc_obj):
+        canvas.saveState()
+        width, height = A4
+        canvas.setStrokeColor(accent)
+        canvas.setLineWidth(1.2)
+        canvas.line(18 * mm, height - 12 * mm, width - 18 * mm, height - 12 * mm)
+        canvas.setFont("Helvetica", 8)
+        canvas.setFillColor(accent)
+        canvas.drawString(18 * mm, height - 10 * mm, "INTELLIGENCE ASSESSMENT")
+        canvas.setFillColor(muted)
+        canvas.drawRightString(width - 18 * mm, height - 10 * mm, "OSINT  |  UNCLASSIFIED")
+        canvas.setStrokeColor(rule)
+        canvas.setLineWidth(0.4)
+        canvas.line(18 * mm, 14 * mm, width - 18 * mm, 14 * mm)
+        canvas.setFont("Helvetica", 7.5)
+        canvas.setFillColor(muted)
+        if footer_label:
+            canvas.drawString(18 * mm, 8 * mm, footer_label)
+        canvas.drawRightString(width - 18 * mm, 8 * mm, f"{doc_obj.page}")
+        canvas.restoreState()
+
+    story = []
+    for line in text.splitlines():
+        if line.startswith("Status: "):
+            story.append(Paragraph(_format_inline(html.escape(line)), styles["status"]))
+        elif line.startswith("# "):
+            story.append(Paragraph(_format_inline(html.escape(line[2:])), styles["title"]))
+        elif line.startswith("## "):
+            story.append(Paragraph(_format_inline(html.escape(line[3:])), styles["h2"]))
+        elif line.startswith("### "):
+            story.append(Paragraph(_format_inline(html.escape(line[4:])), styles["h3"]))
+        elif line.startswith("#### "):
+            story.append(Paragraph(_format_inline(html.escape(line[5:])), styles["h4"]))
+        elif line.startswith("  - "):
+            story.append(Paragraph("• " + _format_inline(html.escape(line[4:])), styles["subbullet"]))
+        elif line.startswith("- "):
+            story.append(Paragraph("• " + _format_inline(html.escape(line[2:])), styles["bullet"]))
+        elif line.strip():
+            story.append(Paragraph(_format_inline(html.escape(line)), styles["body"]))
+        else:
+            story.append(Spacer(1, 1.5 * mm))
+
+    doc.build(story, onFirstPage=draw_page, onLaterPages=draw_page)
+    return buf.getvalue()
 
 
 def clean_notes(notes):
