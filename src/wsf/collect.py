@@ -981,7 +981,7 @@ def _search(
         ran_at=now,
         summary=(
             harvested.get("reason")
-            or f"{len(items)} cutoff-safe Tavily hits."
+            or f"{len(items)} dated search leads; document versions require verification."
         ),
         items=items,
         notes=notes,

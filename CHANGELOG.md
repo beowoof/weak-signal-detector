@@ -1,11 +1,47 @@
 # Changelog
 
+## 2026-09-05 — Align delivery around the complete intelligence workflow
+
+- Make public-source investigation through assessment and a finished brief the product objective, with manual detours feeding automation.
+- Specify durable review decisions, assessment integration, brief revision/sign-off/export, and a practical retrospective gate for a bounded live pilot.
+- Separate detector research claims from product delivery gates and reconcile conflicting README guidance. Documentation only; the missing workflow is specified, not implemented.
+
 All notable enhancements to this project are recorded here. The project follows an iterative research workflow rather than promising semantic-version compatibility during the PoC.
 
 ## Unreleased
 
+### Documentation
+
+- Clarify README regeneration examples: packet builds rewrite evidence and watch-summary exports under a stable ID; PDF rendering, machine assessment drafting and final editorial synthesis are separate actions. Document UI refresh, API restart and assessment reset.
+
+### Changed
+
+- **Analytical briefing presentation:** notice overviews and regenerated notice exports lead with a two-sentence BLUF, analytical confidence/rationale and an explicit public-source assessment. Display-only probability ranges follow PHIA's published yardstick on first use without changing stored observations or hypotheses.
+- **Editorial output contract:** requires BLUF (maximum two sentences/60 words), confidence and source assessment before supporting judgements. Model input includes relevant source provenance and warns against invented reliability, independent corroboration or confidence ratings. Existing saved brief versions are preserved.
+
+
+### Added
+
+- **Editorial brief synthesis:** preparation now calls configured Ollama with saved assessment, retained proposal wording and review limitations, producing referenced key judgements, significance, alternatives and outlook. Strict section/reference/length checks, retained attempt inputs/outputs, stale-input rejection and duplicate-generation protection preserve existing briefs on failure. Analyst amendments create unsigned versions with the annex retained.
+- **Testing reset and brief removal:** reset archives saved state and clears the active assessment, review decisions and briefs while retaining research; successful UI reset also clears local drafts. Individual brief removal hides its exports while retaining audit history. No reset or generation was performed on the user's assessment during implementation.
+
+
+### Changed
+
+- **Useful weak-signal findings:** the draft prompt requires observation-capable sources for negative findings, keeps relevant coverage gaps under unknowns, and encourages attributed affirmative reporting without demanding direct deployment imagery. Existing model outputs remain unchanged until rerun.
+- **Review navigation:** saved proposals collapse into labelled summaries with reopening; numbered steps and navigation connect retained-material preview, assessment editing/saving and brief naming/preparation in page order.
+
+### Added
+
+- **Complete local review-to-brief path:** persisted, version-bound finding/hypothesis/action decisions and history; explicit reviewed-material merge that preserves surrounding analyst prose; immutable brief content versions with evidence annex, stale-state detection, reviewer sign-off, Markdown and printable HTML export. No distribution, new research or model call occurs during brief preparation. API revision checks reject stale writes; tests cover lifecycle, changed proposals using the same bundle, preservation and escaped export.
+
+
 ### Fixed
 
+- **Prompt-JSON quotation recovery:** malformed unescaped quotations are repaired only when one longest interpretation is an exact substring of the cited admitted evidence. Raw output remains unchanged, repair metadata is recorded, and the resulting draft is forced to human review rather than automatic application. An explicit rerun can revalidate a rejected, completed response when its prompt hash and model match, avoiding another Ollama generation.
+- **Long and token-limited drafts:** Ollama now receives a deterministic model view capped at 32,000 characters rather than the full 76k-character Ukraine bundle. Round-robin evidence-class selection prevents numeric rows from consuming the whole prompt while the immutable full bundle remains available for review. The output contract removes duplicated notes/sections/citations, caps claims and renders Markdown deterministically. Explicit length-stopped responses and timing counters are retained under the attempt but never applied or automatically continued. CLI output now exposes prompt/item limits and new research-call counts; a cache-only rerun reports zero enrichment calls.
+- **Historical draft input admission:** undated official search hits no longer get a special exemption. All cached search snippets remain leads until a content version is established; generic official/packet prose cannot reintroduce excluded search claims. Genuine pre-cutoff warnings can be retained as versioned evidence. The original contaminated checkpoint remains on disk for audit, and an old draft is not automatically regenerated.
+- **Automatic draft application:** `--apply` now also requires the reference-review checks to pass; incomplete grounding stays visible and does not automatically seed even an empty human report. Explicit manual editing/saving remains available.
 - **pytest temporary-directory vulnerability:** raised both runtime and dev requirements to `pytest>=9.0.3,<10` and updated `uv.lock` from 8.4.2 to 9.0.3. This addresses Dependabot alerts #1 and #2 for the same Unix temporary-directory issue, [CVE-2025-71176 / GHSA-6w46-j5rx-g56g](https://github.com/advisories/GHSA-6w46-j5rx-g56g). Existing Python Docker images must be rebuilt to receive the patched dependency; source bind mounts alone do not update installed packages.
 - **Structured draft sections:** model-authored lists and objects in `sections` are converted to readable Markdown before validation. The raw response and conversion metadata are preserved; malformed and empty assessments remain rejected. The prompt now explicitly requests string-valued sections, and cutoff-language checks include saved sections even when `notes` takes display precedence.
 - **Ollama structured-output compatibility:** an explicit HTTP 501 `structured output is unavailable` response gets one resubmission without native JSON mode. Prompt JSON is still validated before saving; other errors and uncertain timeouts are not retried. Draft sidecars record the output mode.
@@ -15,7 +51,13 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Added
 
-- **Bounded machine draft:** `wsd packet draft --replay` (desk button **Machine draft**) runs bounded Tavily search into the packet (`open_source_search`, no vote), then local Ollama drafts the working assessment using server-side `.env` configuration. Historical queries request the episode-end cutoff; date and forbidden-term filters apply, but undated official results currently remain admitted as unverified (known limitation below). The draft is a sidecar (`machine_draft.md`); it does not open notices, vote, or overwrite saved human notes unless `--apply` on an empty report. `--no-search` reuses saved search material rather than removing it from the prompt.
+- **Checksummed OSINT search index:** exact Tavily requests are reused project-wide across packets and scenarios using a normalized query/date/options checksum and a content-addressed result object. Every cache read verifies both checksums; corrupt entries fail closed, and an identical in-flight query is deferred rather than charged twice. Cache hits work without an API key, and the legacy collector no longer retries an uncertain search automatically. Search snippets remain outside the model prompt and do not become admitted evidence. Per-run CLI telemetry distinguishes new Tavily requests from index hits.
+- **Phase 5a first implementation:** a versioned `desk_evidence_v1` input bundle now supplies item-level observations, official events, physical records and chronology. Exclusions and deterministic context-budget omissions are explicit; original packet/collection files are not rewritten. Exact model inputs and raw completions (including structurally rejected output) are retained per attempt.
+- **Bounded requirement-led research:** drafting can run up to six contextual/counterevidence searches and six document attempts, with a 180-second scheduling budget and per-request timeouts. Historical text requires an exact pre-cutoff archive capture; HTML/text extraction, hashes, truncation, source identity and unresolved provenance are recorded. Request checkpoints avoid silently repeating paid, failed or uncertain requests; this is not an unrestricted research agent.
+- **Claim and hypothesis review:** source-ID and exact-quotation checks flag unsupported references; model proposals can revise hypothesis likelihoods without changing detector facts. The Notes view exposes evidence, source passages, changed hypotheses, exclusions and research gaps. Accept/reject marks are session-only; saved assessments remain human-owned. Citation presence is not semantic verification, and labour savings are not yet measured.
+- **Phase 5a verification:** 291 offline Python tests passed (1 skipped, 3 deselected), 11 frontend tests passed, and the production build and mocked browser hand-off test passed. No live model generation was used for implementation verification; real-source usefulness and analyst effort reduction remain unqualified.
+
+- **Bounded machine draft:** `wsd packet draft --replay` (desk button **Machine draft**) uses local Ollama and server-side `.env` configuration. Phase 5a replaces the original snippet-based input with versioned evidence and optional bounded research. The draft is a sidecar (`machine_draft.md`); it does not open notices or vote. `--apply` requires an empty report, clear cutoff-language checks and passing reference checks. `--no-search` uses collected evidence and cached admitted documents, not unverified search snippets; it is not a signals-only ablation.
 - **Analyst-controlled draft hand-off:** the UI offers preview / use / keep assessment; replacing editor text requires confirmation. Saved notes remain unchanged until an explicit save, and switching notices does not silently reapply a machine draft. A mocked browser smoke test covers these behaviours.
 - **4 September checkpoint:** the owner completed a real host CLI → Docker API → Ollama draft in about 78 seconds, with three citation entries and `applied: false`. Offline verification reached 257 passed, 1 skipped and 3 deselected. This demonstrates execution, not factual correctness, clean replay provenance or measured labour savings.
 - **`wsd run workflow`:** one command for validate → collect → review → measure → emit. Stops on `no_go` (exit 2) and prints the `--focus` resume. `--from` / `--through` skip or cut stages. Measure defaults to `--exploratory`. Does not freeze, prune, call Ollama, or build packets. This is the **backtest** operator path (replay a closed window). The live desk is continuous, scheduled, and event-driven (ROADMAP phase 7); do not cron this command as a watch.
@@ -41,7 +83,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Changed
 
-- **Next roadmap increment:** phase 5a explicitly prioritises analyst labour reduction: repair replay admission, expose collected evidence to the model, perform requirement-led research, build a claim/evidence ledger, propose evidence-backed hypothesis revisions, and provide source-linked human review. These are planned, not implemented. Removed the unsupported “70–80% first pass” claim and added measurable effort/grounding acceptance checks.
+- **Next roadmap increment:** phase 5a explicitly prioritises analyst labour reduction: evidence admission, detailed collected evidence, requirement-led research, claim/evidence review and proposed hypothesis revisions. The first engineering slice is implemented; source/model qualification, persistent review decisions, richer investigation and measured effort savings remain outstanding. Removed the unsupported “70–80% first pass” claim and added measurable effort/grounding acceptance checks.
 - **Operating mode:** ROADMAP now distinguishes batch backtest (`wsd run workflow` on a closed window) from the later live desk (continuous, per-source schedules, event-driven measure/emit). README and HOWTO no longer call the batch command the live path.
 - **Desk draft vs frozen interpretation:** sitting-desk draft is `desk_draft_v0` on Ollama + Tavily. Frozen `intent_triage_v0` (Ollama, four conditions, `enabled: false`) is unchanged.
 - **Analytic state:** Escalation requires a prior notice in the same scoring window. A first cue at the research window’s last days is Watch. Window geometry is not observable system state; `days_before_window_end` no longer promotes Escalation. Ukraine 21–23 Feb stays Escalation because 10–12 Feb already opened.
@@ -58,7 +100,9 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Known limitations at the 4 September checkpoint
 
-- **Replay contamination:** three of six saved Tavily hits for the 12 February 2022 Ukraine packet were undated official-source results, including a January 2024 map. They reached the draft input despite being marked `date_unverified`. Existing “cutoff-safe” artefact summaries overstate admission quality. The artefacts are retained as audit evidence; fixing admission and revalidating cached/derived context is the first phase 5a task, not a completed fix.
+These describe the original owner-run checkpoint, before the phase 5a changes above. Its artefacts have not been regenerated or qualified as a clean replay.
+
+- **Replay contamination:** three of six saved Tavily hits for the 12 February 2022 Ukraine packet were undated official-source results, including a January 2024 map. They reached the draft input despite being marked `date_unverified`. Existing “cutoff-safe” artefact summaries overstate admission quality. The artefacts are retained as audit evidence; new drafts use the revised admission path, verified with offline fixtures but not yet a fresh owner-run assessment.
 - **Investigation versus summarisation:** drafting uses fixed searches and snippets, plus packet summaries and official notes. It does not yet consume the detailed official/physical collection, investigate released imagery or geolocated movement reporting, or validate claim-level citations. The prompt constrains likelihood revision to the initial packet. Human evidence discovery and corroboration remain the major unautomated work.
 
 ### Added

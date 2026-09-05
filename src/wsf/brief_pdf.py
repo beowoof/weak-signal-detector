@@ -11,7 +11,8 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from wsf.packet import Packet
+from wsf.briefing_standards import packet_presentation
+from wsf.packet import Packet, ProductBrief
 
 INK = colors.HexColor("#17211d")
 MUTED = colors.HexColor("#5f6b65")
@@ -65,6 +66,7 @@ def _styles() -> dict[str, ParagraphStyle]:
         "h": ParagraphStyle(
             "h",
             parent=base["Heading2"],
+            keepWithNext=True,
             fontName="Helvetica-Bold",
             fontSize=11,
             leading=14,
@@ -177,6 +179,7 @@ def write_brief_pdf(packet: Packet, path: Path) -> Path:
         )
     else:
         story.append(Paragraph("PREPARATORY ACTIVITY WATCH", styles["kicker"]))
+        product = ProductBrief.model_validate(packet_presentation(packet.model_dump()))
         story.append(Paragraph(_plain(product.headline), styles["title"]))
         story.append(
             Paragraph(
@@ -197,6 +200,18 @@ def write_brief_pdf(packet: Packet, path: Path) -> Path:
                 styles["meta"],
             )
         )
+        story.append(Paragraph("BLUF", styles["h"]))
+        story.append(Paragraph(_plain(product.bluf), styles["body"]))
+        story.append(
+            Paragraph(
+                _plain(
+                    f"Analytical confidence: {product.confidence}. {product.confidence_rationale}"
+                ),
+                styles["body"],
+            )
+        )
+        story.append(Paragraph("Source assessment", styles["h"]))
+        story.append(Paragraph(_plain(product.source_assessment), styles["meta"]))
         if product.keys:
             story.append(Paragraph(_plain("Keys: " + "; ".join(product.keys)), styles["meta"]))
         for warning in product.availability_warnings:
@@ -222,7 +237,10 @@ def write_brief_pdf(packet: Packet, path: Path) -> Path:
         if product.hypotheses:
             story.append(Paragraph("Competing explanations", styles["h"]))
             story.append(
-                Paragraph("Likelihoods use the PHIA Probability Yardstick.", styles["meta"])
+                Paragraph(
+                    "Likelihoods use the PHIA Probability Yardstick.",
+                    ParagraphStyle("yardstick", parent=styles["meta"], keepWithNext=True),
+                )
             )
             story.append(
                 _table(

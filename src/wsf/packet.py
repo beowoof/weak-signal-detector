@@ -162,6 +162,8 @@ class BriefSection(BaseModel):
 
 
 class ProductBrief(BaseModel):
+    bluf: str = ""
+    source_assessment: str = ""
     headline: str
     period: str
     available_by: str
@@ -957,9 +959,7 @@ def _moex_observation(notice: Notice, observations: list[Observation], clocks: P
     if not pairs:
         return "Exchange-rate conditions were not knowable at cutoff."
     peak_day, peak_z = max(pairs, key=lambda item: abs(item[1]))
-    rows = _knowable_ok(
-        observations, clocks, series_id, notice.trigger.start, notice.trigger.end
-    )
+    rows = _knowable_ok(observations, clocks, series_id, notice.trigger.start, notice.trigger.end)
     last = next((row.value for row in reversed(rows) if row.value is not None), None)
     text = f"USD/RUB reached {peak_z:.2f}σ on {_fmt_short_day(peak_day)}"
     if last is not None:
@@ -1023,10 +1023,7 @@ def _firms_observation(
     days = ", ".join(_fmt_short_day(_as_dt(row.event_time).date()) for row in hits)
     noun = "detection" if total == 1 else "detections"
     count = "one" if total == 1 else str(total)
-    return (
-        f"FIRMS recorded {count} thermal {noun} within the monitored staging AOIs "
-        f"on {days}."
-    )
+    return f"FIRMS recorded {count} thermal {noun} within the monitored staging AOIs on {days}."
 
 
 def _navarea_observation(
@@ -1077,9 +1074,7 @@ def _watchlist(
             [z for _, z in _ok_z_pairs(notice, observations, clocks, "market.cbr_funding_spread")],
         )
     elif "dyad.moex_usdrub" in contributing or "dyad.fx" in contributing:
-        series_id = (
-            "dyad.moex_usdrub" if "dyad.moex_usdrub" in contributing else "dyad.fx"
-        )
+        series_id = "dyad.moex_usdrub" if "dyad.moex_usdrub" in contributing else "dyad.fx"
         add(
             financial_label,
             _moex_observation(notice, observations, clocks),
@@ -1195,11 +1190,7 @@ def _named_elevation(notice: Notice, frame: dict[str, Any]) -> str:
         if capital:
             bit += f" (CBR, {capital})"
         bits.append(bit)
-    elif (
-        "market" in domains
-        or "dyad.moex_usdrub" in series
-        or "dyad.fx" in series
-    ):
+    elif "market" in domains or "dyad.moex_usdrub" in series or "dyad.fx" in series:
         bits.append(f"{adj} financial conditions".strip() or "financial conditions")
     if "digital_infrastructure" in domains or "net.ripe_prefixes" in series:
         bits.append(f"{adj} RIPEstat prefixes".strip() or "RIPEstat prefixes")
@@ -1288,10 +1279,7 @@ def _assessment_paragraphs(state: str, notice: Notice, frame: dict[str, Any]) ->
             "The decision this supports is collection against independent physical "
             "posture on those AOIs."
             if geo
-            else (
-                "The decision this supports is collection against independent physical "
-                "posture."
-            )
+            else ("The decision this supports is collection against independent physical posture.")
         )
         paras += [
             (
@@ -1771,7 +1759,9 @@ def save_packet(project_root: Path, packet: Packet, notice: Notice) -> Path:
     brief_path = path.with_name("brief.md")
     lines: list[str] = []
     if packet.product:
-        p = packet.product
+        from wsf.briefing_standards import packet_presentation
+
+        p = ProductBrief.model_validate(packet_presentation(packet.model_dump()))
         lines.extend(
             [
                 f"# {p.headline}",
@@ -1781,6 +1771,16 @@ def save_packet(project_root: Path, packet: Packet, notice: Notice) -> Path:
                 f"**Analytic state:** {p.analytic_state_label}  ",
                 f"**Analytical confidence (AnCR):** {p.confidence}  ",
                 f"**Change:** {p.change}",
+                "",
+                "## BLUF",
+                "",
+                p.bluf,
+                "",
+                p.confidence_rationale,
+                "",
+                "## Source assessment",
+                "",
+                p.source_assessment,
                 "",
             ]
         )

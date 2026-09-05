@@ -12,17 +12,19 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from wsf.analysis.coupling import evaluate_window_coupling
+from wsf.analyst_workflow import export_brief, load_workflow, update_workflow
 from wsf.brief_pdf import render_existing_packet
+from wsf.briefing_standards import packet_presentation
 from wsf.collect import HARVEST_KINDS, load_collection, run_collection
 from wsf.db import desk_health
 from wsf.draft import run_desk_draft
-from wsf.notice import apply_action_at_path, emit_notices_for_measurement
-from wsf.packet import build_and_save
+from wsf.notice import apply_action_at_path, emit_notices_for_measurement, load_notice
+from wsf.packet import build_and_save, packet_directory
 from wsf.progress import load_collect_progress
 from wsf.report import load_report, save_report
 
@@ -297,6 +299,22 @@ class StrictJSONResponse(JSONResponse):
         return json.dumps(content, allow_nan=False, separators=(",", ":")).encode()
 
 
+class WorkflowBody(BaseModel):
+    scenario: str
+    notice_id: str
+    revision: int
+    action: str
+    review_version: str = ""
+    proposal_id: str = ""
+    status: str = ""
+    reason: str = ""
+    text: str = ""
+    title: str = ""
+    version: int = 0
+    reviewer: str = ""
+    acknowledged: bool = False
+
+
 def create_app(
     *,
     api_only: bool | None = None,
@@ -417,7 +435,9 @@ def create_app(
         path = app.state.scenarios_root / scenario / "interpretation" / packet_id / "evidence.json"
         if not path.is_file():
             raise HTTPException(status_code=404, detail="Unknown packet")
-        return read_json(path)
+        payload = read_json(path)
+        payload["presentation"] = packet_presentation(payload)
+        return payload
 
     @app.get("/api/packet/pdf")
     def api_packet_pdf(
@@ -460,6 +480,21 @@ def create_app(
             raise HTTPException(status_code=404, detail="Unknown notice") from exc
         except (ValueError, OSError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/packet/draft/review")
+    def api_draft_review(scenario: str, notice_id: str) -> dict:
+        try:
+            notice = load_notice(app.state.project_root, scenario, notice_id)
+            if not notice.workflow.packet_id:
+                return {"review": None}
+            path = packet_directory(app.state.project_root, scenario, notice.workflow.packet_id)
+            path = path / "machine_draft.json"
+            if not path.exists():
+                return {"review": None}
+            record = json.loads(path.read_text())
+            return {"review": record.get("review"), "created_at": record.get("created_at")}
+        except (KeyError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail="Draft review unavailable") from exc
 
     @app.post("/api/packet/draft/stream")
     def api_packet_draft_stream(body: PacketDraftBody) -> StreamingResponse:
@@ -521,6 +556,34 @@ def create_app(
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Unknown notice") from exc
         except (ValueError, OSError, FileNotFoundError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/analyst-workflow")
+    def api_workflow(scenario: str, notice_id: str) -> dict:
+        try:
+            return load_workflow(app.state.project_root, scenario, notice_id)
+        except (KeyError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.post("/api/analyst-workflow")
+    def api_workflow_update(body: WorkflowBody) -> dict:
+        try:
+            return update_workflow(app.state.project_root, **body.model_dump())
+        except (KeyError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/analyst-workflow/export")
+    def api_workflow_export(scenario: str, notice_id: str, version: int, format: str = "md"):
+        try:
+            content = export_brief(app.state.project_root, scenario, notice_id, version, format)
+            return Response(
+                content,
+                media_type="text/html" if format == "html" else "text/markdown",
+                headers={
+                    "Content-Disposition": f'attachment; filename="assessment-v{version}.{format}"'
+                },
+            )
+        except (KeyError, ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/results")
