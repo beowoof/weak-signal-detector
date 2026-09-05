@@ -10,6 +10,10 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ## Unreleased
 
+### Changed
+
+- Brief preparation now reports input preparation, model drafting, validation and saving stages. The UI polls during generation and shows elapsed time with an indeterminate bar while the model runs, rather than inventing a completion percentage.
+
 ### Documentation
 
 - Clarify README regeneration examples: packet builds rewrite evidence and watch-summary exports under a stable ID; PDF rendering, machine assessment drafting and final editorial synthesis are separate actions. Document UI refresh, API restart and assessment reset.

@@ -18,6 +18,20 @@ from wsf.report import load_report, report_directory, report_id_for, save_report
 
 _LOCK = RLock()
 _PREPARING = set()
+_PROGRESS = {}
+
+
+def _brief_progress(root, scenario, notice_id, stage, completed):
+    key = (str(root), scenario, notice_id)
+    with _LOCK:
+        now = datetime.now(UTC).isoformat()
+        _PROGRESS[key] = {
+            "started_at": _PROGRESS.get(key, {}).get("started_at", now),
+            "updated_at": now,
+            "stage": stage,
+            "completed": completed,
+            "total": 4,
+        }
 
 
 def digest(value):
@@ -135,6 +149,7 @@ def load_workflow(root, scenario, notice_id):
             "fingerprint": fingerprint,
             "report": report,
             "preparing": (str(root), scenario, notice_id) in _PREPARING,
+            "brief_progress": _PROGRESS.get((str(root), scenario, notice_id)),
         }
 
 
@@ -196,6 +211,8 @@ def update_workflow(root, scenario, notice_id, *, revision, action, review_versi
             if key in _PREPARING:
                 raise ValueError("Brief synthesis is already running for this notice")
             _PREPARING.add(key)
+            _PROGRESS.pop(key, None)
+            _brief_progress(root, scenario, notice_id, "Preparing assessment and sources", 0)
     try:
         result = _update_workflow(
             root,
@@ -206,12 +223,18 @@ def update_workflow(root, scenario, notice_id, *, revision, action, review_versi
             review_version=review_version,
             **fields,
         )
+    except Exception:
+        if action == "prepare":
+            _brief_progress(root, scenario, notice_id, "Failed — existing briefs retained", 0)
+        raise
     finally:
         if action == "prepare":
             with _LOCK:
                 _PREPARING.discard(key)
     if action == "prepare":
+        _brief_progress(root, scenario, notice_id, "Complete — ready for review", 4)
         result["preparing"] = False
+        result["brief_progress"] = _PROGRESS[key]
     return result
 
 
@@ -232,7 +255,11 @@ def _update_workflow(root, scenario, notice_id, *, revision, action, review_vers
             report,
             initial["review"],
             initial["active_decisions"],
+            progress=lambda stage, completed: _brief_progress(
+                root, scenario, notice_id, stage, completed
+            ),
         )
+        _brief_progress(root, scenario, notice_id, "Saving the brief and evidence annex", 3)
     with _LOCK:
         view = load_workflow(root, scenario, notice_id)
         if revision != view["revision"]:

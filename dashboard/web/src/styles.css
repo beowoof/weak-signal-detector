@@ -911,3 +911,7 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .proposal-card > summary { cursor:pointer; line-height:1.6; overflow-wrap:anywhere; }
 .proposal-card:not([open]) { padding:.7rem 1rem; }
 #working-assessment, #prepare-brief, #assemble-assessment, #review-proposals { scroll-margin-top: 2rem; }
+
+.brief-generation-progress { padding: 1rem; margin: 1rem 0; border: 1px solid #87949c; border-radius: 6px; }
+.brief-generation-progress progress { display: block; width: 100%; height: 1rem; margin: .8rem 0; accent-color: #006d59; }
+.brief-generation-progress p { margin: .4rem 0; }
