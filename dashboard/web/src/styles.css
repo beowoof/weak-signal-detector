@@ -943,3 +943,25 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .brief-generation-progress { padding: 1rem; margin: 1rem 0; border: 1px solid #87949c; border-radius: 6px; }
 .brief-generation-progress progress { display: block; width: 100%; height: 1rem; margin: .8rem 0; accent-color: #006d59; }
 .brief-generation-progress p { margin: .4rem 0; }
+
+/* Navigation stays in the header; commands live with the work they affect. */
+.notice-management { display: flex; align-items: center; justify-content: flex-end; gap: .7rem; }
+.notice-management .action-menu summary { font-size: .75rem; min-height: 2rem; padding: .35rem .6rem; }
+.packet-tools { border-bottom: 1px solid var(--border); padding-bottom: 1rem; margin-bottom: 1.25rem; }
+.packet-tools h3 { margin-bottom: .4rem; }
+.workflow-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .25rem; padding: 0 0 1rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.workflow-steps button { display: flex; align-items: center; gap: .5rem; text-align: left; border: 0; border-bottom: 3px solid transparent; border-radius: 0; background: transparent; color: var(--muted); padding: .7rem .4rem; }
+.workflow-steps button span { display: grid; place-items: center; width: 1.5rem; height: 1.5rem; flex-shrink: 0; border: 1px solid var(--border); border-radius: 50%; font-size: .75rem; }
+.workflow-steps button[aria-current="step"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 650; }
+.workflow-steps button[aria-current="step"] span { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.brief-success { padding: .8rem 1rem; border-left: 3px solid var(--accent); background: var(--surface-2); }
+.workflow-maintenance { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); }
+.assessment-panel [hidden] { display: none !important; }
+@media (max-width: 700px) {
+  .workflow-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.assessment-panel button.primary-action { background: var(--accent); color: var(--surface); border-color: var(--accent); }
+.brief-method { margin: .75rem 0; color: var(--muted); }
+.brief-method summary { cursor: pointer; }
+@media (max-width: 700px) { .notice-management .workflow-badge { display: none; } }

@@ -55,7 +55,7 @@ The collection cueing desk runs as Docker Compose (`compose.yaml`): Postgres, Fa
 | Component | Boundary | Reason |
 |---|---|---|
 | Desk stack | `docker compose up` | `db`, `api`, `agent`, `web` as one app |
-| Scientific harvest files | Bind mount `./scenarios`, `./data` | Not ingested into Postgres |
+| Scientific harvest files | Bind mount `./scenarios`, `./data` | Local only. Git tracks `scenario.json` contracts, not notices, packets, briefs or harvests |
 | Python tests and one-shot CLI | Host process managed by `uv` | Ephemeral and easy to reproduce from `pyproject.toml` |
 | Scientific configuration | Versioned YAML | Human-readable experiment contract |
 | Raw and derived analytical data | Parquet / JSONL files | Portable, immutable, tabular |

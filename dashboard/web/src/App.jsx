@@ -419,6 +419,7 @@ export default function App() {
           if (selectedRef.current === noticeId) setPacket(nextPacket);
         }
       }
+      return payload;
     } catch (err) {
       setOpsError(err.message);
       setActionError(err.message);
@@ -492,7 +493,7 @@ export default function App() {
         onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
         packet={currentPacket} collection={ownResources ? collection : null}
         collectBusy={collectBusy || opsBusy} onCollect={runCollect}
-        onAddNotes={openNotes} onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
+        onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
         machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
         activeTab={route.tab} onTabChange={(tab) => navigate({ tab })}

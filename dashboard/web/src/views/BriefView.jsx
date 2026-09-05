@@ -79,7 +79,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
     return (
       <section className="brief-layers">
         <h3>Brief</h3>
-        <p className="notice-timing">No brief available yet. Choose More actions → Build brief to create one.</p>
+        <p className="notice-timing">No evidence packet available yet. Open Evidence → Build evidence packet to create one.</p>
       </section>
     );
   }

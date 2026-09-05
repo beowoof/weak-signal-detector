@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { readDraft, writeDraft, clearDraft as removeDraft } from "../lib/drafts.js";
 import AnalystWorkflow from "./AnalystWorkflow.jsx";
 
@@ -12,6 +12,9 @@ function Prose({ text }) {
 }
 
 export default function ReportView({ scenario, noticeId, report, busy, onSave, onDraftChange, machineSeed, evidenceReview, onReset }) {
+  const panel = useRef(null);
+  const [workflowStep, setWorkflowStep] = useState(() => readDraft(noticeId, localStorage) !== null ? "assessment" : "review");
+  useEffect(() => { panel.current?.closest(".notice-body")?.scrollTo(0, 0); }, [workflowStep]);
   const [draft, setDraft] = useState(() => readDraft(noticeId, localStorage));
   const [editing, setEditing] = useState(draft !== null);
   const [storageError, setStorageError] = useState("");
@@ -44,16 +47,16 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
   async function save() {
     setSaveError("");
     const savedReport = await onSave(value);
-    if (savedReport) { clearDraft(); setEditing(false); document.getElementById("prepare-brief")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
+    if (savedReport) { clearDraft(); setEditing(false); setWorkflowStep("brief"); }
     else setSaveError("Notes were not saved. Your draft is retained; please retry.");
   }
-  return <section className="assessment-panel">
+  return <section ref={panel} className="assessment-panel">
     <div className="section-heading"><div><p className="eyebrow">Human assessment</p><h3>Your notes & assessment</h3></div>
       <span className={dirty ? "draft-badge" : "notice-timing"}>{dirty ? "Unsaved draft" : report?.updated_at && !report.empty ? `Saved ${String(report.updated_at).replace("T", " ").slice(0, 19)} UTC` : "No saved assessment"}</span>
     </div>
     <p className="notice-timing">Your interpretation, separate from the generated brief. Unsaved drafts are retained in this browser for each notice.</p>
     <AnalystWorkflow scenario={scenario} noticeId={noticeId} report={report} evidenceReview={evidenceReview}
-      dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
+      step={workflowStep} onStepChange={setWorkflowStep} dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
         const start = "<!-- reviewed-material:start -->";
         const end = "<!-- reviewed-material:end -->";
         const block = `${start}\n${material}\n${end}`;
@@ -63,8 +66,8 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
           change(value.slice(0, from) + block + value.slice(to + end.length));
         } else change([value.trim(), block].filter(Boolean).join("\n\n"));
         setEditing(true);
-        requestAnimationFrame(() => document.getElementById("working-assessment")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-      }} />
+        setWorkflowStep("assessment");
+      }}>
     {pendingSeed && <section className="brief-callout" aria-label="Machine draft ready">
       <h3>Machine draft ready for review</h3>
       <p>This is the original, unfiltered machine draft. It does not incorporate your review decisions. Use reviewed material above to build from retained findings; check any whole-draft import for rejected claims.</p>
@@ -94,7 +97,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
       <button type="button" className="primary-action" onClick={() => setEditing(true)}>{value ? "Edit assessment" : "Write assessment"}</button>
       {value ? <Prose text={value} /> : <p className="empty">No assessment yet. Record your interpretation, alternative explanations, and next questions here.</p>}
     </>}
-    <div className="workflow-panel" id={`brief-destination-${noticeId}`} />
+    </AnalystWorkflow>
     {storageError && <p role="alert" className="error">{storageError}</p>}
     {saveError && <p role="alert" className="error">{saveError}</p>}
   </section>;

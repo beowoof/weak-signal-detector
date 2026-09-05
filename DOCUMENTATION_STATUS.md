@@ -43,8 +43,8 @@ The deterministic packet compiler no longer raises explanatory confidence merely
 | weak-signal-fusion-spec.md | Original design/date preserved, current implementation pointers clarified |
 | data/fixtures/README.md | Synthetic-only boundary reviewed; fixture data unchanged |
 | brief-editorial-example.md | Example/reference mapping preserved; not represented as a model or collection result |
-| scenarios/*/interpretation/*/brief.md | Generated historical packet snapshots reviewed as records; not hand-edited or regenerated |
-| scenarios/*/interpretation/*/machine_draft.md | Local generated draft, not an operator guide; remains a reviewable historical artefact |
+| scenarios/*/interpretation/* | Local runtime products (packets, briefs, collection, drafts). Not tracked in git |
+| scenarios/*/notices/* | Local notice workflow state. Not tracked in git |
 
 Generated records can contain older phrasing. Rewriting them to match today's documentation would erase what the system actually produced. Use the explicit collection/draft/brief actions to produce new results.
 
