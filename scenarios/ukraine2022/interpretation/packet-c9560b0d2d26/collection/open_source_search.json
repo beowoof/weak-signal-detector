@@ -6,75 +6,47 @@
   "status": "complete",
   "posture": "focused",
   "knowledge_cutoff": "2022-02-12T23:59:59Z",
-  "ran_at": "2026-09-04T16:46:13.758632Z",
-  "summary": "6 cutoff-safe Tavily hits.",
+  "ran_at": "2026-09-05T19:58:29.312500Z",
+  "summary": "3 dated search leads; document versions require verification.",
   "items": [
     {
-      "title": "Safety and security - Ukraine travel advice",
-      "url": "https://www.gov.uk/foreign-travel-advice/ukraine/safety-and-security",
-      "published": null,
-      "date_unverified": true,
-      "snippet": "## Surrogacy\n\nDue to the security challenges across all of Ukraine, we must currently advise against commissioning any surrogacy arrangements there. Further information about surrogacy overseas can be found here.\n\nCommissioning a surrogacy will not automatically mean that the child holds British citizenship. If you want to bring your child born through surrogacy from Ukraine to the UK, you must apply for a full British passport.\n\nThe FCDO cannot facilitate your departure from Ukraine. [...] There is a hazard from unexploded weapons throughout Ukraine, but particularly in the South and East of the country along the current conflict frontlines, and in areas where ground fighting occurred (particularly since 2022). Drone and missile strikes occur frequently across Ukraine and can deposit unex",
-      "score": 0.7055624,
-      "votes": false,
-      "query_id": "official_uk"
-    },
-    {
-      "title": "Ukraine travel advice",
-      "url": "https://www.gov.uk/foreign-travel-advice/ukraine",
-      "published": null,
-      "date_unverified": true,
-      "snippet": "The situation in Ukraine can change quickly. Local rules and measures may change at short notice or with no notification. FCDO cannot confirm that all information here reflects the latest situation in Ukraine.\n\n## Support from the UK government\n\nWe continue to advise British nationals in regions where FCDO advises against all travel, to leave these areas, if they judge it safe to do so. [...] The British Embassy in Kyiv is unable to help you in person. FCDO cannot facilitate your departure from Ukraine or your evacuation.\n\n## If you are in Ukraine\n\nMartial law is in place. Follow the instructions of the Ukrainian authorities and check any measures in place in your location, as they will vary by region.\n\nIf you are in Ukraine, you should: [...] British nationals fighting in Ukraine have bee",
-      "score": 0.69274646,
-      "votes": false,
-      "query_id": "official_uk"
-    },
-    {
-      "title": "Ukraine: Travel Advice",
-      "url": "https://assets.publishing.service.gov.uk/media/65ae336a75154600107b4a8d/FCDO__TA__044_-_Ukraine_Travel_Advice_Ed11.pdf",
-      "published": null,
-      "date_unverified": true,
-      "snippet": "©Crown Copyright 2024 FCDO (TA) 044 Edition 11 (January 2024) Ukraine: Travel Advice [...] LVIVSKA OBLAST CHERNIHIVSKA OBLAST MISTO KYIV ZHYTOMYRSKA OBLAST POLTAVSKA OBLAST DNIPROPETROVSKA OBLAST LUHANSKA OBLAST S e a o f A z o v Kakhovske Vodoskhovyshche Kremenchutske Vodoskhovyshche Kyivske Vodoskhovyshche B L A C K S E A (D ni ep er ) Dn ip ro C r i m e a Shepetivka Pryluky Izium Kadiivka Izmail Novohrad-Volynskyi Bilhorod-Dnistrovskyi Lysychansk Lozova Romny Bila Tserkva Chortkiv Kremenets Stryi Mohyliv-Podilskyi Starobilsk Korosten Chervonohrad Kalush Rakhiv Nikopol Berdiansk [...] U K R A I N E R U S S I A R U S S I A R O M A N I A P O L A N D B E L A R U S SLOVAKIA HUNGARY MOLDOVA TERNOPILSKA OBLAST DONETSKA OBLAST ODESKA OBLAST AVTONOMNA RESPUBLIKA KRYM (CRIMEA) KHERSONSKA OBLAST I",
-      "score": 0.4504325,
-      "votes": false,
-      "query_id": "official_uk"
-    },
-    {
-      "title": "US orders evacuation of most embassy staff in Ukraine as ...",
-      "url": "https://www.cnn.com/2022/02/12/politics/us-embassy-ukraine-evacation",
-      "published": "2022-02-12",
+      "title": "Here are the countries withdrawing embassy staffers from Ukraine as fears of a Russian invasion mount - The Washington Post",
+      "url": "https://www.washingtonpost.com/world/2022/01/25/ukraine-embassy-evacuations",
+      "published": "2022-01-25",
       "date_unverified": false,
-      "snippet": "The United States has moved some US forces out of Ukraine and ordered the evacuation of most of its embassy staff on Saturday as fears mount",
-      "score": 0.19966704,
+      "evidence_status": "lead_requires_content_version",
+      "snippet": "# These countries are withdrawing embassy staffers from Ukraine amid growing fears of an invasion by Russia\n\nAs tensions over the Russia-Ukraine conflict soared, the United States in late Januaryordered the departure of all family members of U.S. Embassy personnel, citing the “threat of Russian military action.” It also told nonessential staffers that they could leave.\n\n## Company\n\n## Sections\n\n## Get The Post\n\n## Contact Us\n\n## Terms of Use\n\n## Company\n\n## Sections\n\n## Get The Post [...] ## Get The Post\n\n## Contact Us\n\npixel",
+      "score": 0.35300484,
       "votes": false,
       "query_id": "diplomatic"
     },
     {
-      "title": "US evacuating most Ukraine embassy staff over invasion ...",
-      "url": "https://www.wistv.com/2022/02/12/us-evacuate-ukraine-embassy-amid-russian-invasion-fears",
-      "published": "2022-02-12",
-      "date_unverified": false,
-      "snippet": "WASHINGTON (AP) — The United States is evacuating almost all of the staff from its embassy in Kyiv as Western intelligence officials warn",
-      "score": 0.17486103,
-      "votes": false,
-      "query_id": "diplomatic"
-    },
-    {
-      "title": "Ukraine: Russia and Belarus hold joint military exercises - CNN",
+      "title": "Ukraine: Russia and Belarus hold joint military exercises | CNN",
       "url": "https://www.cnn.com/2022/02/10/europe/ukraine-russia-news-thursday-military-exercises-intl",
       "published": "2022-02-10",
       "date_unverified": false,
+      "evidence_status": "lead_requires_content_version",
       "snippet": "The military drills, called “Allied Resolve-2022,” began in Belarus and will end February 20, the Russian Ministry of Defense announced Thursday in a statement.\n\n“The purpose of the exercise is to work out the tasks of suppressing and repelling external aggression while conducting a defensive operation, countering terrorism and protecting the interests of the Union State,” the statement said. [...] On Thursday, the Russian Defense Ministry posted images of six large amphibious landing ships at the port of Sevastopol in Crimea, after they transited into the Black Sea earlier this week.\n\nRussia has declared a wide swath of the Sea of Azov and Black Sea unsafe as it performs missile and artillery fire exercises between February 14 and 19, the Ukrainian Naval Forces Command said in a Thursday ",
-      "score": 0.90452427,
+      "score": 0.902481,
       "votes": false,
       "query_id": "reporting"
+    },
+    {
+      "title": "The TikTok buildup: Videos reveal Russian forces closing ...",
+      "url": "https://www.washingtonpost.com/world/2022/02/11/russia-ukraine-military-videos-tiktok",
+      "published": "2022-02-11",
+      "date_unverified": false,
+      "evidence_status": "lead_requires_content_version",
+      "snippet": "Videos posted on social media also appear to show units from Russia's 41st Combined Arms Army — which had been gathering in Yelnya, about 160",
+      "score": 0.40260404,
+      "votes": false,
+      "query_id": "place_Yelnya"
     }
   ],
   "notes": [
     "Tavily news search is dated to the packet cutoff. Hits do not vote.",
     "Undated results and anything published after cutoff are dropped.",
-    "6 kept, 30 dropped, 6 queries.",
-    "3 official-domain hits have no publish date; treat as unverified."
+    "3 kept, 33 dropped, 6 queries."
   ],
   "analyst_question": "Do contemporaneous public reports corroborate, contradict, or leave unresolved the quantitative cue?",
   "plan": {
@@ -90,44 +62,50 @@
       {
         "id": "official_uk",
         "query": "UK FCDO travel advice Ukraine 2022",
-        "n_kept": 3,
-        "n_dropped": 3,
-        "error": null
+        "n_kept": 0,
+        "n_dropped": 6,
+        "error": null,
+        "cache_hit": false
       },
       {
         "id": "official_us",
         "query": "US State Department travel advisory Ukraine 2022",
         "n_kept": 0,
         "n_dropped": 6,
-        "error": null
+        "error": null,
+        "cache_hit": false
       },
       {
         "id": "diplomatic",
         "query": "Russia Ukraine embassy personnel February 2022",
-        "n_kept": 2,
-        "n_dropped": 4,
-        "error": null
+        "n_kept": 1,
+        "n_dropped": 5,
+        "error": null,
+        "cache_hit": false
       },
       {
         "id": "reporting",
         "query": "Russia Ukraine military exercises February 2022",
         "n_kept": 1,
         "n_dropped": 5,
-        "error": null
+        "error": null,
+        "cache_hit": false
       },
       {
         "id": "place_Yelnya",
         "query": "Yelnya Russia troops February 2022",
-        "n_kept": 0,
-        "n_dropped": 6,
-        "error": null
+        "n_kept": 1,
+        "n_dropped": 5,
+        "error": null,
+        "cache_hit": false
       },
       {
         "id": "place_Klintsy",
         "query": "Klintsy Russia troops February 2022",
         "n_kept": 0,
         "n_dropped": 6,
-        "error": null
+        "error": null,
+        "cache_hit": false
       }
     ],
     "aois": [

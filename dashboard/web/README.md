@@ -1,5 +1,19 @@
 # Analyst workspace UI
 
+**Reviewed 2026-09-05.** Current UI workflow; see Secondary collection below for the entry point and source-job sequence.
+
+## Secondary collection
+
+On a notice, click **Secondary collection**. The Collection tab has one sequence:
+
+1. **Start secondary collection:** select government actions, satellite availability/recorded observations, chronology and/or public reporting leads. The source descriptions say what each job actually does. Starting these jobs does not invoke Ollama.
+2. **Review collection results:** returned status, explanation and last-run timestamp are visible immediately. Detailed results and cue validation are expandable.
+3. **Research and draft assessment:** document retrieval/checks and Ollama drafting are a separate action. Research limits sit here, with streamed elapsed time/activity and explicit stopping reasons. Review proposals and save judgement under Notes & assessment, then prepare the final brief there.
+
+The defaults remain 6 queries, 6 document attempts and 180 research seconds. UI controls allow up to 12 queries, 48 attempts and 600 seconds. Failed retrievals count; model time is additional. Limits do not reflect Tavily credit balance and do not control the earlier connector jobs. Research results distinguish total recorded requests from new requests in this invocation.
+
+The mocked `node tests/machine-draft-smoke.cjs` suite exercises this path, including source selection and immediate result display, and prevents real collection/model POSTs. Set `WSD_UI_URL` to the test UI; use `NODE_PATH` if Playwright is installed outside this package. See [the documentation checkpoint](../../DOCUMENTATION_STATUS.md).
+
 ## Scenarios and collection artefacts
 
 Open **Scenarios** in the top navigation. All scenario files are listed, including

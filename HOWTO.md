@@ -1,8 +1,19 @@
 # Operator HOWTO: Scenario to Frozen Corpus
 
+**Reviewed 2026-09-05.** Current operator guide. Secondary collection and assessment research are separate actions; see the session update below.
+
+## Secondary collection and assessment — current UI
+
+1. Open the notice and click **Secondary collection**.
+2. Select source jobs and click **Start secondary collection**. Review statuses, summaries and last-run times directly below; open detailed results as needed.
+3. Use **Research and draft assessment** to retrieve/check documents and generate Ollama proposals. Set query, document-attempt and research-time limits beside that button before running. Source jobs in step 2 are separate from these limits.
+4. Review retained findings in **Notes & assessment**, save your judgement, then **Prepare new brief version**. Brief preparation does editorial synthesis, not further collection.
+
+The [2026-09-05 checkpoint](DOCUMENTATION_STATUS.md) explains exact limits, per-run continuation, reasons for missing data and the inspected six-document archive failure. A generic “missing” record does not establish cloud cover. A returned source job or retrieved document does not establish that the research question was answered.
+
 ## Current experiment (read this first)
 
-Development has stopped. Read [`FINDINGS.md`](FINDINGS.md) first.
+The original detector claim is closed; analyst-desk development continues. Read [`FINDINGS.md`](FINDINGS.md) for the historical measurement conclusions.
 
 `ukraine2022` is a **development showcase**, not held-out evidence. Do **not** change `z_threshold`, `k`, amber persistence, or coincidence rules after seeing February 2022. Do **not** add another media feed. Do **not** harvest `GRC-TUR-2020`.
 
@@ -14,6 +25,7 @@ Order (all development_showcase, none of them held-out):
   2. deu2018quiet      hard negative: quiet German autumn
   3. usachn2018trade   hard negative: loud 2018 tariff talk, no mobilisation
 Do not harvest GRC-TUR-2020 yet.
+```
 
 For each historical scenario, one **backtest** command runs validate → collect → review → measure → emit on that closed window. The live desk (later) is continuous, scheduled, and event-driven; do not treat this batch job as that watch.
 
@@ -39,10 +51,7 @@ recollect. Measure is development scoring until semantic review and freeze.
 Do not retune from Ukraine. If emit opens notices, the JSON `next` field lists
 `wsd packet build --scenario <id> --notice <id> --replay`.
 
-Ollama / Qwen is not part of this path. A later analyst step will retrieve
-cutoff-safe packets from a vector store (Chroma + embeddings), not dump the harvest
-into a general-purpose aggregator.
-```
+Ollama / Qwen is not part of this measurement path. The separate, implemented desk assessment step uses cutoff-safe evidence bundles and bounded public-document research; it does not require Chroma.
 
 ---
 
@@ -371,7 +380,7 @@ They do not edit trigger facts. **Request more information** (or `wsd packet col
 
 Clicking **Physical posture** or **Official posture** on the brief runs the job *and* returns a collection plan: sources (desk harvest vs analyst search), named AOIs, dates admissible at cutoff, and what would discriminate each hypothesis. Physical posture also searches the Copernicus catalogue for Sentinel-1 GRD and Sentinel-2 L1C granules over those AOIs. It stores pointers (product name, sensing date, knowable-at-cutoff), not scenes, and they do not vote. OSM, NOTAMs and official statements remain analyst search.
 
-**Add Notes** (top of the alert) opens one text box. **Machine draft** uses a cutoff-dated Tavily search plus Ollama (`wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay`). The model and server come from `OLLAMA_MODEL` and `OLLAMA_BASE_URL` in `.env`; exported environment values take precedence. No xAI key or hosted-model credits are required. Edit, then save. The machine write-up is a sidecar; it does not vote or overwrite a saved human report. CLI save: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
+**Your assessment** opens the saved notes/editor. Under **Secondary collection**, **Research and draft assessment** uses a cutoff-dated Tavily search plus Ollama (`wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay`). The model and server come from `OLLAMA_MODEL` and `OLLAMA_BASE_URL` in `.env`; exported environment values take precedence. No xAI key or hosted-model credits are required. Edit, then save. The machine write-up is a sidecar; it does not vote or overwrite a saved human report. CLI save: `wsd packet report --scenario ukraine2022 --notice notice-8f9869999a00 --notes "…"`.
 
 To draft from already collected material without another Tavily request, add `--no-search`:
 
@@ -389,9 +398,12 @@ An old draft is not automatically repaired or regenerated.
 `--no-search` performs no network research. It uses the collected item-level
 evidence and any versioned documents cached for the same research plan/cutoff;
 legacy Tavily snippets are excluded until document verification. Without the flag,
-the API performs bounded requirement-led research: up to six queries, six document
-attempts, 12,000 retained characters per document and a 180-second scheduling budget
-(individual requests have timeouts). Historical HTML/text is retrieved through
+the API performs requirement-led research. Defaults are six queries, six document
+attempts per invocation, 12,000 retained characters per document and 180 seconds.
+The UI exposes query/document/time controls before drafting (up to 12 queries,
+48 document attempts and 600 seconds); these are application limits, not Tavily
+credit limits. Each request waits at most 30 seconds, bounded by time remaining.
+Failed document retrievals consume attempts; stopping reasons and counts are visible. Historical HTML/text is retrieved through
 exact Wayback captures; PDFs, imagery interpretation and independent video
 geolocation are not implemented. Present-day extraction uses Tavily Extract;
 documents retrieved after a fixed packet cutoff are excluded, so live use needs
@@ -400,7 +412,8 @@ not yet through an owner-run live search/model comparison.
 
 Packet-local `research/` records the plan, requests, results and failures. Reruns
 reuse completed requests and do not silently repeat failed or uncertain paid
-calls. Project-wide `scenarios/.osint_search_index/` also indexes exact Tavily
+calls. A rerun can attempt remaining URLs up to its per-invocation allowance;
+increasing only document/time limits preserves the same-plan checkpoint. Project-wide `scenarios/.osint_search_index/` also indexes exact Tavily
 requests across packets and scenarios. Whitespace/case-normalised query text plus
 date window and search options form the request checksum; the complete result list
 is stored once under its own content checksum. Checksums are verified on every read
@@ -446,7 +459,7 @@ In **Notes & assessment**, the latest source-linked review (including CLI-genera
 
 1. Inspect each finding's passages and the proposed hypothesis revisions. **Accept finding** saves it for assessment. **Edit proposal** saves your revised wording; rejection, editing and unresolved decisions require a reason. Decisions survive navigation and reopening. Saved proposals collapse to a status summary; open them to revisit. Numbered links guide you through review, preview, editing/saving and brief preparation. A changed draft invalidates the old decisions even if its evidence bundle ID is unchanged; history remains available.
 2. **Preview reviewed material → Merge reviewed material into assessment** builds a cited starting point from retained proposals. The merge updates a marked review section; writing outside that section is preserved. Updating an existing section asks before replacing edits inside it. The original **Use machine draft** option imports the unfiltered draft and does not apply review decisions.
-3. Add your key judgement, implications, alternatives, uncertainty and next questions, then **Save assessment**. Collection recommendations do not themselves run searches: use the existing Collection jobs and Machine draft action when more evidence is needed, then review the new version.
+3. Add your key judgement, implications, alternatives, uncertainty and next questions, then **Save assessment**. Collection recommendations do not themselves run searches: use the Secondary collection source jobs and Research and draft assessment action when more evidence is needed, then review the new version.
 4. **Prepare new brief version** calls the configured Ollama model for editorial synthesis: BLUF (maximum two sentences), analytical confidence and its rationale, source assessment, key judgements, significance, alternatives/uncertainty and outlook. It uses the saved assessment, retained proposals and review limitations, makes no new searches, and appends the preserved evidence annex. Input references are checked mechanically, not for semantic entailment. Preview it, use **Edit brief wording** if needed, then **Save revised brief** to create a new unsigned version before sign-off. Failed/incomplete outputs are retained under `brief_runs/` and do not replace existing versions. Assessment changes during generation prevent stale output being published.
 5. Review all proposals (explicitly unresolved with a reason is allowed), enter your name and confirm the assessment/source checks, then **Sign off this version**. Download Markdown, printable HTML or PDF under **Versions and exports** (**Download as: [Markdown] [HTML] [PDF]**). Neither signing nor downloading distributes the brief.
 
@@ -493,7 +506,8 @@ The frozen interpretation protocol and its settings are unchanged.
 The host `wsd packet draft` command submits to `POST /api/packet/draft/stream`;
 its final JSON reports the prompt character/item budget, configured output-token limit,
 and search/document requests made by that invocation (cached requests report zero).
-the **Machine draft** button retains the JSON endpoint `POST /api/packet/draft`.
+The UI **Research and draft assessment** action also consumes the streaming endpoint.
+`POST /api/packet/draft` remains available for JSON API clients.
 Both run the same server-side drafting function. The CLI uses `WSD_API_BASE_URL` (default
 `http://127.0.0.1:8000`), not `OLLAMA_BASE_URL`. Start the Docker stack first.
 The CLI reads its API settings from the project `.env`, with exported values
@@ -583,7 +597,7 @@ python3 run_unit_tests.py --with-model
 | Recollect | Links the new revision to prior gaps | Verify it addressed gaps without changing the hypothesis | Review passes |
 | Freeze | Pins scenario, collection, review, and hashes | Confirm rehearsal versus real status | `freeze.json` is correct |
 | Measure | `wsd measure --exploratory` scores the active development harvest | Read strict, amber, control, and null results | Scientific only after real GO and freeze |
-| Interpret | Future owner-run Ollama packets | Not implemented yet | — |
+| Desk assessment | Public-source research and Ollama proposals | Review sources, retain/edit findings, save assessment, prepare a brief | Human review and sign-off; separate from scientific interpretation experiments |
 
 The “ball” is always either with the system (a command is running) or the operator (a named file must be reviewed). There is no automatic jump from corpus collection to scientific analysis.
 

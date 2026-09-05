@@ -1,5 +1,7 @@
 # Russia/Ukraine: Reported forward staging strengthens concern over military preparation
 
+**Reviewed 2026-09-05.** Editorial example against assessment-v4.pdf, not a new source collection or saved workflow brief. Original reference mapping and cutoff are preserved.
+
 Information cutoff: 12 February 2022, 23:59:59 UTC.
 
 Editorial example for review, composed from the analyst material reproduced in assessment-v4.pdf. This is not a new collection result, an Ollama output, or a saved/distributed workflow brief. A-references below refer to that PDF's editorial input references, not to independently verified sources. The PDF is marked stale; this example illustrates writing quality against that snapshot.

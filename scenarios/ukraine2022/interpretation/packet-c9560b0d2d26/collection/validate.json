@@ -6,13 +6,13 @@
   "status": "complete",
   "posture": "focused",
   "knowledge_cutoff": "2022-02-12T23:59:59Z",
-  "ran_at": "2026-09-03T19:48:37.899941Z",
+  "ran_at": "2026-09-05T19:50:44.786139Z",
   "summary": "Checklist from the packet: substrate, chorus breadth, holes, latency. No new harvest.",
   "items": [
     {
       "id": "substrate",
       "status": "warn",
-      "text": "attn.wiki_pageviews, talk.gdelt_cameo share public_reporting. Do not count them as independent corroboration."
+      "text": "attn.wiki_pageviews, talk.gdelt_cameo share public_reporting."
     },
     {
       "id": "chorus",
@@ -27,7 +27,7 @@
     {
       "id": "viirs_latency",
       "status": "warn",
-      "text": "VIIRS: awaiting availability. Absence must not be interpreted as absence of activity."
+      "text": "VIIRS NTL 2022-02-10–2022-02-12: not yet available (3-day reconstructed latency)."
     },
     {
       "id": "imaging",
@@ -38,5 +38,6 @@
   "notes": [
     "Confirm the multi-domain effect is not duplicated reporting or one common exogenous event."
   ],
-  "analyst_question": "Is the chorus real, or is it one information environment counted twice?"
+  "analyst_question": "Is the chorus real, or is it one information environment counted twice?",
+  "plan": null
 }

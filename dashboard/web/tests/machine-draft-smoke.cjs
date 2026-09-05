@@ -7,6 +7,7 @@ const { chromium } = require("playwright");
   try {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
     let requests = 0;
+    let collectionRequests = 0;
     const reviews = new Map();
     const workflows = new Map();
     const reports = new Map();
@@ -18,6 +19,11 @@ const { chromium } = require("playwright");
     const reply = (route, data) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(data) });
     await context.route("**/*", (route) => {
       const req = route.request();
+      if (req.url().endsWith("/api/packet/collect") && req.method() === "POST") {
+        collectionRequests++;
+        assert.deepEqual(req.postDataJSON().tasks, ["official_pack", "refresh_physical", "open_source_search"]);
+        return reply(route, { tasks: req.postDataJSON().tasks.map(kind => ({ kind, title: kind, status: "partial", summary: "Fixture result: one source needs review.", ran_at: "2026-09-05T20:00:00Z" })) });
+      }
       if (req.url().includes("/api/analyst-workflow")) {
         if (req.method() === "GET") return reply(route, workflow(new URL(req.url()).searchParams.get("notice_id")));
         const body = req.postDataJSON(), state = workflow(body.notice_id);
@@ -84,7 +90,14 @@ const { chromium } = require("playwright");
     await page.getByRole("button", { name: /^(Edit|Write) assessment$/ }).click();
     const editor = page.getByLabel("Your notes and assessment", { exact: true });
     await editor.fill("My unsaved assessment");
-    await page.getByRole("button", { name: "Machine draft", exact: true }).click();
+    await page.getByRole("button", { name: "Secondary collection", exact: true }).click();
+    await page.getByRole("button", { name: "Start secondary collection", exact: true }).click();
+    await page.getByText(/Source jobs returned/).waitFor();
+    await page.getByText("Government actions: partial", { exact: true }).waitFor();
+    assert.equal(collectionRequests, 1);
+    assert.equal(requests, 0, "Collecting sources must not invoke drafting");
+    await page.screenshot({ path: "/tmp/wsd-secondary-collection.png", fullPage: true });
+    await page.getByRole("button", { name: "Research and draft assessment", exact: true }).click();
     await page.getByRole("heading", { name: "Machine draft ready for review" }).waitFor();
     assert.equal(await editor.inputValue(), "My unsaved assessment");
     const reviewPanel = page.getByRole("region", { name: "Evidence and assessment review" });
@@ -106,7 +119,8 @@ const { chromium } = require("playwright");
     await page.getByRole("button", { name: "Edit assessment", exact: true }).click();
     await editor.fill("My unsaved assessment");
     // Recreate the import offer after reload; no real model call is made.
-    await page.getByRole("button", { name: "Machine draft", exact: true }).click();
+    await page.getByRole("button", { name: "Secondary collection", exact: true }).click();
+    await page.getByRole("button", { name: "Research and draft assessment", exact: true }).click();
     page.once("dialog", (dialog) => dialog.dismiss());
     await page.getByRole("button", { name: "Use machine draft", exact: true }).click();
     assert.equal(await editor.inputValue(), "My unsaved assessment");
@@ -117,7 +131,8 @@ const { chromium } = require("playwright");
     await page.locator(".alert-row").nth(1).click();
     await page.locator(".alert-row").first().click();
     assert.equal(await editor.inputValue(), "Human revision of draft", "Remount must not reapply seed");
-    await page.getByRole("button", { name: "Machine draft", exact: true }).click();
+    await page.getByRole("button", { name: "Secondary collection", exact: true }).click();
+    await page.getByRole("button", { name: "Research and draft assessment", exact: true }).click();
     await page.getByRole("heading", { name: "Machine draft ready for review" }).waitFor();
     await page.getByRole("button", { name: "Keep my assessment", exact: true }).click();
     assert.equal(await editor.inputValue(), "Human revision of draft");

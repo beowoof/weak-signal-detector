@@ -1,12 +1,14 @@
 # Strategic Coupling & Weak Signal Fusion: Blueprint for Salvaging the Intent
 
+**Reviewed 2026-09-05.** Research proposals and historical motivation, not the implemented feature list. Current delivery status is in [ROADMAP](ROADMAP.md); evaluation results are in [COUPLING_EVALUATION](COUPLING_EVALUATION.md) and [EWS_EVALUATION](EWS_EVALUATION.md).
+
 This document records the architectural, mathematical, and data-source blueprints for salvaging the core thesis of the **Weak Signal Detector** following the findings in [`FINDINGS.md`](FINDINGS.md).
 
 ---
 
 ## 1. Executive Summary & Core Shift
 
-The PoC established an important empirical fact: **soft public indicators (attention, news tone, market volatility) did co-move in a statistically anomalous cluster before 24 February 2022, while hard negatives and controls stayed quiet.** 
+The PoC recorded co-movement in selected public indicators before 24 February 2022. The later evaluations do not establish a generally significant preparation detector: the domain-count permutation results are about 0.43, and the rolling-correlation results are mixed. News-event counts do not measure news tone. The proposals below remain hypotheses rather than validated findings.
 
 The failure was not the phenomenon of **strategic coupling**; the failure was the **instrument and structural assumptions**:
 1. It evaluated point-in-time marginal thresholds ($z \ge 2.5$) rather than measuring statistical dependence/phase-coupling directly.

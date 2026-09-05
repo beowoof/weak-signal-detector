@@ -286,6 +286,7 @@ export default function App() {
           if (selectedRef.current === notice.notice_id) setPacket(nextPacket);
         }
       }
+      return payload;
     } catch (err) {
       setActionError(err.message);
     } finally {
