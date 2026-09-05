@@ -403,9 +403,15 @@ attempts per invocation, 12,000 retained characters per document and 180 seconds
 The UI exposes query/document/time controls before drafting (up to 12 queries,
 48 document attempts and 600 seconds); these are application limits, not Tavily
 credit limits. Each request waits at most 30 seconds, bounded by time remaining.
-Failed document retrievals consume attempts; stopping reasons and counts are visible. Historical HTML/text is retrieved through
-exact Wayback captures; PDFs, imagery interpretation and independent video
-geolocation are not implemented. Present-day extraction uses Tavily Extract;
+Failed document retrievals consume attempts; stopping reasons and counts are visible.
+YouTube, social video, PDFs, images and URL dates after cutoff are skipped without
+consuming that attempt budget. Preferred queries name AOIs and contemporaneous
+official/imagery sources first; if those searches return no fetchable leads, a
+broader fallback search runs while query budget remains. Outcomes record whether
+retained documents are preferred sources or fallback public reporting. Historical
+HTML/text is retrieved through exact Wayback captures, including gzip-compressed
+captures; binary bodies are rejected. PDFs, imagery interpretation and independent
+video geolocation are not implemented. Present-day extraction uses Tavily Extract;
 documents retrieved after a fixed packet cutoff are excluded, so live use needs
 an appropriately timed packet. This first implementation is qualified offline,
 not yet through an owner-run live search/model comparison.
@@ -444,6 +450,16 @@ crowd out official, physical, documentary or contradictory material. The prompt 
 the full, selected and unselected item counts plus both content-addressed IDs. This is a
 deterministic first retrieval layer, not semantic RAG; source passages remain available
 from the full bundle in the review UI.
+
+Admitted documents are stored in full in the packet evidence bundle and in a
+content-addressed passage index (`scenarios/.document_index/`). Drafting embeds
+those passages with local Ollama (`OLLAMA_EMBED_MODEL`, default `mxbai-embed-large`)
+and puts the retrieved slices in the model view with the parent evidence ID,
+character offsets and source URL. The review bundle is the citation source; a
+passage that was not retrieved is not evidence of absence. If embeddings are
+unavailable, lexical overlap is used. qwen3.8:27b-mlx lists a 256K context; the
+desk still sends a compact retrieved view rather than whole pages, so `OLLAMA_NUM_CTX`
+need only exceed the prompt plus `OLLAMA_MAX_OUTPUT_TOKENS`.
 
 The compact model output includes one short summary, claim/evidence IDs, supporting quotations, proposed changes
 for every hypothesis and a collection decision. Unknown IDs, quotations absent

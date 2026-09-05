@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gzip
 import hashlib
 import ipaddress
 import json
@@ -11,11 +12,16 @@ from datetime import UTC, datetime, timedelta
 from html.parser import HTMLParser
 from pathlib import Path
 from urllib.error import HTTPError
-from urllib.parse import urlencode, urlsplit
+from urllib.parse import unquote, urlencode, urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 from wsf.connectors.http import HttpResponse, HttpTransport, UrllibTransport
-from wsf.connectors.tavily import TAVILY_SEARCH_URL, tavily_api_key
+from wsf.connectors.tavily import (
+    OFFICIAL_DOMAINS,
+    TAVILY_SEARCH_URL,
+    _date_from_url,
+    tavily_api_key,
+)
 from wsf.evidence_bundle import canonical, digest, document_rejection
 from wsf.packet import Packet
 from wsf.search_index import SearchIndex, SearchIndexBusy
@@ -63,6 +69,115 @@ def public_url(url: str) -> bool:
         return False
 
 
+PREFERRED_DOMAINS = OFFICIAL_DOMAINS + (
+    "maxar.com",
+    "france24.com",
+    "reuters.com",
+    "apnews.com",
+    "bbc.co.uk",
+    "bbc.com",
+    "citeam.org",
+    "bellingcat.com",
+    "theguardian.com",
+    "nytimes.com",
+    "washingtonpost.com",
+    "aljazeera.com",
+    "dw.com",
+)
+SKIP_HOSTS = frozenset(
+    {
+        "youtube.com",
+        "youtu.be",
+        "facebook.com",
+        "fb.com",
+        "twitter.com",
+        "x.com",
+        "instagram.com",
+        "tiktok.com",
+        "reddit.com",
+    }
+)
+SKIP_SUFFIXES = (".pdf", ".jpg", ".jpeg", ".png", ".gif", ".webp", ".mp4", ".zip")
+
+
+def _hostname(url: str) -> str:
+    host = (urlsplit(url).hostname or "").lower()
+    return host.removeprefix("www.")
+
+
+def preferred_source(url: str) -> bool:
+    host = _hostname(url)
+    return any(host == domain or host.endswith("." + domain) for domain in PREFERRED_DOMAINS)
+
+
+def _urls_equivalent(left: str, right: str) -> bool:
+    def parts(url: str):
+        parsed = urlsplit(url)
+        host = (parsed.hostname or "").lower().removeprefix("www.")
+        path = unquote(parsed.path).rstrip("/") or "/"
+        return host, path, parsed.query
+
+    try:
+        return parts(left) == parts(right)
+    except ValueError:
+        return False
+
+
+def lead_skip_reason(url: str, cutoff: datetime) -> str | None:
+    if not public_url(url):
+        return "not a public document URL"
+    host = _hostname(url)
+    if host in SKIP_HOSTS or any(host.endswith("." + item) for item in SKIP_HOSTS):
+        return "Unsupported media host; remains a lead"
+    path = urlsplit(url).path.lower()
+    if path.endswith(SKIP_SUFFIXES):
+        return "Archive document type unsupported; imagery/PDF remains a lead"
+    dated = _date_from_url(url)
+    if dated and dated > cutoff.date():
+        return "URL date is after the knowledge cutoff"
+    return None
+
+
+def _actor_place_period(packet: Packet) -> tuple[str, str, str]:
+    keys = list(packet.product.keys if packet.product else [])
+    period = packet.clocks.knowledge_cutoff.strftime("%B %Y")
+    actors = " ".join(keys[:2]) if keys else packet.scenario_id
+    places = [key for key in keys[4:] if key]
+    place_clause = " ".join(places[:5]) or " ".join(keys[2:4])
+    return actors, place_clause, period
+
+
+def _preferred_query(title: str, actors: str, places: str, period: str) -> str:
+    lowered = title.lower()
+    where = " ".join(part for part in (actors, places, period) if part)
+    if any(
+        word in lowered for word in ("physical", "imagery", "preparation", "movement", "deployment")
+    ):
+        return f"{where} satellite imagery troop deployment Maxar"[:400]
+    if any(word in lowered for word in ("official", "government", "travel", "embassy", "posture")):
+        return f"{actors} {period} FCDO travel advice State Department embassy"[:400]
+    if any(word in lowered for word in ("financial", "bank", "funding")):
+        return f"{actors} {period} central bank interbank funding rate"[:400]
+    if any(word in lowered for word in ("information", "reporting", "statements")):
+        return f"{actors} {period} official public statements"[:400]
+    return f"{where} {title}"[:400]
+
+
+def _fallback_query(title: str, why: str, actors: str, places: str, period: str) -> str:
+    frame = " ".join(part for part in (actors, places) if part) or actors
+    return f"{frame} {period} {title} {why}"[:400]
+
+
+def _decode_archive_body(body: bytes, headers: dict) -> bytes:
+    encoding = {k.lower(): v for k, v in headers.items()}.get("content-encoding", "").lower()
+    if body.startswith(b"\x1f\x8b") or "gzip" in encoding:
+        try:
+            return gzip.decompress(body)
+        except gzip.BadGzipFile as exc:
+            raise ValueError("Archive body is compressed but not valid gzip") from exc
+    return body
+
+
 class _NoRedirect(HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         raise ValueError("Archive redirected; version not verified")
@@ -74,8 +189,9 @@ class ResearchTransport(UrllibTransport):
         if urlsplit(url).netloc != "web.archive.org" or not url.startswith("https://"):
             raise ValueError("Only the public archive may be fetched directly")
         opener = build_opener(_NoRedirect())
+        request_headers = {"Accept-Encoding": "identity", **(headers or {})}
         try:
-            with opener.open(Request(url, headers=headers or {}), timeout=timeout) as response:
+            with opener.open(Request(url, headers=request_headers), timeout=timeout) as response:
                 body = response.read(2_000_001)
                 if len(body) > 2_000_000:
                     raise ValueError("Archive response exceeds 2 MB limit")
@@ -104,20 +220,38 @@ class _Text(HTMLParser):
             self.parts.append(data)
 
 
+def _archive_text(body: bytes, content_type: str) -> str:
+    if b"\x00" in body[:1024]:
+        raise ValueError("Archive document is binary; imagery/PDF remains a lead")
+    try:
+        decoded = body.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Archive document is not UTF-8 text; imagery/PDF remains a lead") from exc
+    if "text/html" in content_type:
+        parser = _Text()
+        parser.feed(decoded)
+        decoded = "".join(parser.parts)
+    text = "\n".join(line.strip() for line in decoded.splitlines() if line.strip())
+    if not text:
+        raise ValueError("Document contains no usable text")
+    return text
+
+
 def research_plan(packet: Packet, limits: ResearchLimits) -> list[dict]:
     product = packet.product
-    frame = " ".join((product.keys if product else [])[:4]) or packet.scenario_id
-    period = packet.clocks.knowledge_cutoff.strftime("%B %Y")
+    actors, places, period = _actor_place_period(packet)
     requirements = product.collection if product else []
     plan = []
     for index, requirement in enumerate(requirements):
         title = requirement.get("title", "Context")
+        why = requirement.get("why", "")
         ident = "requirement-" + str(index + 1)
         plan.append(
             {
                 "requirement_id": ident,
                 "purpose": title,
-                "query": f"{frame} {period} {title} {requirement.get('why', '')}"[:400],
+                "query": _preferred_query(title, actors, places, period),
+                "fallback_query": _fallback_query(title, why, actors, places, period),
             }
         )
     if requirements and limits.queries > 1:
@@ -125,12 +259,20 @@ def research_plan(packet: Packet, limits: ResearchLimits) -> list[dict]:
             {
                 "requirement_id": "physical-corroboration",
                 "purpose": "Independent physical corroboration",
-                "query": f"{frame} {period} released imagery geolocated movement reporting",
+                "query": f"{actors} {places} {period} released imagery geolocated movement".strip()[
+                    :400
+                ],
+                "fallback_query": (
+                    f"{actors} {places} {period} released imagery geolocated movement reporting"
+                ).strip()[:400],
             },
             {
                 "requirement_id": "counterevidence",
                 "purpose": "Counterevidence and alternative explanations",
-                "query": f"{frame} {period} verified withdrawal exercise completion",
+                "query": f"{actors} {period} verified withdrawal exercise completion"[:400],
+                "fallback_query": (
+                    f"{actors} {places} {period} verified withdrawal exercise completion"
+                ).strip()[:400],
             },
         ]
         # Keep at least one original requirement and reserve a counterevidence slot.
@@ -185,10 +327,18 @@ def collection_outcomes(state: dict, packet: Packet) -> list[dict]:
                 {"url": url, "status": request.get("status", "not_attempted"), "reason": reason}
             )
         if usable:
-            status, reason = (
-                "documents_obtained",
-                "Assess whether the retrieved material answers the question",
-            )
+            tiers = {d.get("source_tier") for d in usable}
+            if tiers <= {"fallback"}:
+                status, reason = (
+                    "documents_obtained",
+                    "Preferred sources unavailable; retained fallback public reporting. "
+                    "Assess whether the retrieved material answers the question",
+                )
+            else:
+                status, reason = (
+                    "documents_obtained",
+                    "Assess whether the retrieved material answers the question",
+                )
         elif query.get("status") == "complete" and not leads:
             status, reason = "no_usable_leads", "Search returned no usable public document links"
         elif attempts:
@@ -210,8 +360,16 @@ def collection_outcomes(state: dict, packet: Packet) -> list[dict]:
                 "requirement_id": requirement,
                 "question": entry["purpose"],
                 "query": entry["query"],
+                "fallback_query": entry.get("fallback_query"),
                 "status": status,
                 "reason": reason,
+                "source_tier": (
+                    "preferred"
+                    if any(d.get("source_tier") == "preferred" for d in usable)
+                    else "fallback"
+                    if usable
+                    else "none"
+                ),
                 "documents": [d["url"] for d in usable],
                 "attempts": attempts,
             }
@@ -254,26 +412,25 @@ def _document(
         )
         if response.status != 200:
             raise ValueError(f"Archive index HTTP {response.status}")
-        rows = json.loads(response.body)
+        rows = json.loads(_decode_archive_body(response.body, response.headers))
         if len(rows) < 2 or rows[0] != ["timestamp", "original"]:
             raise ValueError("No usable pre-cutoff archive capture")
         stamp, original = rows[-1]
         when = datetime.strptime(stamp, "%Y%m%d%H%M%S").replace(tzinfo=UTC)
-        if original != url or when > cutoff:
+        if when > cutoff:
+            raise ValueError("Archive returned a later version")
+        if not _urls_equivalent(original, url):
             raise ValueError("Archive returned a different URL or later version")
-        archive = f"https://web.archive.org/web/{stamp}id_/{url}"
+        archive = f"https://web.archive.org/web/{stamp}id_/{original}"
         response = transport.get(archive, timeout=timeout())
         if response.status != 200 or response.url != archive:
             raise ValueError("Archive content unavailable or redirected")
+        body = _decode_archive_body(response.body, response.headers)
         content_type = {k.lower(): v for k, v in response.headers.items()}.get("content-type", "")
         if not any(t in content_type for t in ("text/html", "text/plain")):
             raise ValueError("Archive document type unsupported; imagery/PDF remains a lead")
-        decoded = response.body.decode("utf-8", errors="replace")
-        if "text/html" in content_type:
-            parser = _Text()
-            parser.feed(decoded)
-            decoded = "".join(parser.parts)
-        text = "\n".join(line.strip() for line in decoded.splitlines() if line.strip())
+        text = _archive_text(body, content_type)
+        url = original
         provenance = {
             "archive_url": archive,
             "version_at": when.isoformat(),
@@ -449,83 +606,112 @@ def run_research(
         finally:
             _save(path, state)
 
-    try:
-        for i, entry in enumerate(plan):
-            if progress:
-                progress(f"Research query {i + 1}/{len(plan)}: {entry['purpose']}", 1)
+    cutoff = packet.clocks.knowledge_cutoff
 
-            def search(entry=entry):
-                request_body = {
-                    "query": entry["query"],
-                    "max_results": 4,
-                    "topic": "general",
-                    "search_depth": "basic",
-                    "include_answer": False,
-                    "start_date": (packet.clocks.knowledge_cutoff - timedelta(days=32))
-                    .date()
-                    .isoformat(),
-                    "end_date": packet.clocks.knowledge_cutoff.date().isoformat(),
-                }
+    def add_leads(found, requirement_id, search_tier):
+        seen = {row["url"] for row in state["leads"] if row.get("requirement_id") == requirement_id}
+        added = []
+        for rank, lead in enumerate(found or []):
+            if not isinstance(lead, dict):
+                continue
+            url = str(lead.get("url", ""))
+            if not public_url(url) or url in seen:
+                continue
+            row = {
+                "url": url,
+                "title": lead.get("title", ""),
+                "requirement_id": requirement_id,
+                "result_rank": rank,
+                "search_tier": search_tier,
+            }
+            state["leads"].append(row)
+            seen.add(url)
+            added.append(row)
+        return added
 
-                def fetch():
-                    if not api_key:
-                        state["blocked"] = (
-                            "TAVILY_API_KEY is not set; only indexed search results are usable"
-                        )
-                        raise ResearchDeferred("No indexed result and TAVILY_API_KEY is not set")
-                    state["run_usage"]["search_requests"] += 1
-                    response = client.post(
-                        TAVILY_SEARCH_URL,
-                        headers=headers,
-                        timeout=timeout(),
-                        data=json.dumps(request_body).encode(),
-                    )
-                    if response.status != 200:
-                        raise ValueError(f"Search HTTP {response.status}")
-                    return json.loads(response.body).get("results", [])[:4]
+    def fetchable(rows):
+        return [row for row in rows if lead_skip_reason(row["url"], cutoff) is None]
 
-                found, cache_hit = search_index.fetch(request_body, fetch)
-                if cache_hit:
-                    state["run_usage"]["search_cache_hits"] += 1
-                return found
+    def search_query(query_text):
+        request_body = {
+            "query": query_text,
+            "max_results": 4,
+            "topic": "general",
+            "search_depth": "basic",
+            "include_answer": False,
+            "start_date": (cutoff - timedelta(days=32)).date().isoformat(),
+            "end_date": cutoff.date().isoformat(),
+        }
 
-            found = checkpoint_request("query-" + str(i), search)
-            if found is not None:
-                for rank, lead in enumerate(found):
-                    if isinstance(lead, dict) and public_url(str(lead.get("url", ""))):
-                        state["leads"].append(
-                            {
-                                "url": lead["url"],
-                                "title": lead.get("title", ""),
-                                "requirement_id": entry["requirement_id"],
-                                "result_rank": rank,
-                            }
-                        )
-                _save(path, state)
-        cached = [
-            r
-            for t in collection.get("tasks", [])
-            if t.get("kind") == "open_source_search"
-            for r in t.get("items", [])
+        def fetch():
+            if not api_key:
+                state["blocked"] = (
+                    "TAVILY_API_KEY is not set; only indexed search results are usable"
+                )
+                raise ResearchDeferred("No indexed result and TAVILY_API_KEY is not set")
+            state["run_usage"]["search_requests"] += 1
+            response = client.post(
+                TAVILY_SEARCH_URL,
+                headers=headers,
+                timeout=timeout(),
+                data=json.dumps(request_body).encode(),
+            )
+            if response.status != 200:
+                raise ValueError(f"Search HTTP {response.status}")
+            return json.loads(response.body).get("results", [])[:4]
+
+        found, cache_hit = search_index.fetch(request_body, fetch)
+        if cache_hit:
+            state["run_usage"]["search_cache_hits"] += 1
+        return found
+
+    def can_search():
+        return state["run_usage"]["search_requests"] < limits.queries
+
+    def admitted_for(requirement_id):
+        lead_urls = {
+            row["url"] for row in state["leads"] if row.get("requirement_id") == requirement_id
+        }
+        return [
+            doc
+            for doc in state["documents"]
+            if (doc.get("requirement_id") == requirement_id or doc.get("url") in lead_urls)
+            and not document_rejection(doc, cutoff, packet.clocks.mode)
         ]
-        candidates = list(
-            {
-                r["url"]: r for r in [*state["leads"], *cached] if public_url(str(r.get("url", "")))
-            }.values()
+
+    def preferred_fetchable(requirement_id):
+        return [
+            row
+            for row in state["leads"]
+            if row.get("requirement_id") == requirement_id
+            and row.get("search_tier") != "fallback"
+            and lead_skip_reason(row["url"], cutoff) is None
+        ]
+
+    def consider_documents(leads):
+        ordered = sorted(
+            leads,
+            key=lambda lead: (
+                0 if preferred_source(lead["url"]) else 1,
+                lead.get("result_rank", 4),
+            ),
         )
-        # Visit the first result of each query before spending the budget on its remainder.
-        candidates.sort(key=lambda lead: lead.get("result_rank", 4))
-        for lead in candidates:
+        for lead in ordered:
             if packet.clocks.mode == "live" and not api_key:
                 state["blocked"] = "TAVILY_API_KEY is not set; live document extraction cannot run"
-                break
-            attempted = state["run_usage"]["document_attempts"]
+                return
             ident = "document-" + digest(lead["url"])[:16]
             if ident in state["requests"]:
                 continue
+            skip = lead_skip_reason(lead["url"], cutoff)
+            if skip:
+                state["requests"][ident] = {"status": "skipped", "reason": skip}
+                _save(path, state)
+                continue
+            attempted = state["run_usage"]["document_attempts"]
             if attempted >= limits.documents:
                 state["limit_reached"] = "documents"
-                break
+                return
             if progress:
                 progress(f"Checking document version {attempted + 1}/{limits.documents}", 1)
             doc = checkpoint_request(
@@ -540,9 +726,61 @@ def run_research(
                         **doc,
                         # A present-day search title is not part of the archived document.
                         "requirement_id": lead.get("requirement_id"),
+                        "source_tier": "preferred" if preferred_source(lead["url"]) else "fallback",
                     }
                 )
                 _save(path, state)
+
+    def run_fallback_search(i, entry):
+        fallback_ident = f"query-{i}-fallback"
+        if (
+            fallback_ident in state["requests"]
+            or not entry.get("fallback_query")
+            or not can_search()
+            or admitted_for(entry["requirement_id"])
+            or preferred_fetchable(entry["requirement_id"])
+        ):
+            return
+        if progress:
+            progress(f"Preferred sources unavailable; fallback search for {entry['purpose']}", 1)
+        fallback = checkpoint_request(
+            fallback_ident,
+            lambda text=entry["fallback_query"]: search_query(text),
+        )
+        add_leads(fallback, entry["requirement_id"], "fallback")
+        _save(path, state)
+
+    try:
+        for i, entry in enumerate(plan):
+            if not can_search() and "query-" + str(i) not in state["requests"]:
+                break
+            if progress:
+                progress(f"Research query {i + 1}/{len(plan)}: {entry['purpose']}", 1)
+            found = checkpoint_request(
+                "query-" + str(i), lambda text=entry["query"]: search_query(text)
+            )
+            added = (
+                add_leads(found, entry["requirement_id"], "preferred") if found is not None else []
+            )
+            _save(path, state)
+            if found is not None and not fetchable(added):
+                run_fallback_search(i, entry)
+        cached = [
+            r
+            for t in collection.get("tasks", [])
+            if t.get("kind") == "open_source_search"
+            for r in t.get("items", [])
+        ]
+        candidates = list(
+            {
+                r["url"]: r for r in [*state["leads"], *cached] if public_url(str(r.get("url", "")))
+            }.values()
+        )
+        consider_documents(candidates)
+        if state["run_usage"]["document_attempts"] < limits.documents:
+            for i, entry in enumerate(plan):
+                run_fallback_search(i, entry)
+            consider_documents(state["leads"])
     except TimeoutError:
         state["limit_reached"] = "time"
     finally:
@@ -553,7 +791,10 @@ def run_research(
         )
         state["usage"] = {
             "search_requests": sum(k.startswith("query-") for k in state["requests"]),
-            "document_attempts": sum(k.startswith("document-") for k in state["requests"]),
+            "document_attempts": sum(
+                k.startswith("document-") and v.get("status") != "skipped"
+                for k, v in state["requests"].items()
+            ),
             "elapsed_s": state["elapsed_s"],
             "cost": "not_measured",
             "independent_sources": "not_verified",
