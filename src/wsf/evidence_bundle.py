@@ -66,7 +66,11 @@ def document_rejection(item: dict, cutoff: datetime, mode: str) -> str | None:
 
 
 def build_bundle(
-    packet: Packet, collection: dict, *, documents: list[dict] | None = None, max_chars: int = 60000
+    packet: Packet,
+    collection: dict,
+    *,
+    documents: list[dict] | None = None,
+    max_chars: int = 160000,
 ) -> dict:
     if max_chars < 1000:
         raise ValueError("Evidence input budget must be at least 1000 characters")
@@ -175,7 +179,7 @@ def build_bundle(
     for row in documents or []:
         add(
             "document",
-            row,
+            dict(row),
             "research/documents/" + digest(row),
             available=row.get("version_at"),
             retrieved=row.get("retrieved_at"),
@@ -183,19 +187,33 @@ def build_bundle(
             verification="versioned_document_not_fact_verification",
         )
     product = packet.product
-    # Prefer the cue and new discriminating evidence over repetitive lookback rows.
+    # Admitted documents are never dropped for budget: quotes must be checkable
+    # against the full stored text. Other kinds fill the remaining characters.
     priority = {
         "observation": 0,
         "coverage_hole": 0,
         "official_event": 1,
         "physical_observation": 2,
-        "document": 3,
-        "catalogue_pointer": 4,
-        "chronology": 5,
-        "administrative_observation": 6,
+        "catalogue_pointer": 3,
+        "chronology": 4,
+        "administrative_observation": 5,
     }
     candidates, items = items, []
-    for item in sorted(candidates, key=lambda row: priority.get(row["kind"], 9)):
+    kept_docs = [
+        row
+        for row in sorted(
+            candidates,
+            key=lambda row: 0 if (row.get("data") or {}).get("source_tier") == "preferred" else 1,
+        )
+        if row["kind"] == "document"
+    ]
+    items.extend(kept_docs)
+    used = sum(len(canonical(row)) for row in items)
+
+    def sort_key(row):
+        return priority.get(row["kind"], 9)
+
+    for item in sorted((row for row in candidates if row["kind"] != "document"), key=sort_key):
         size = len(canonical(item))
         if used + size > max_chars:
             omitted.append(
@@ -227,13 +245,14 @@ def build_bundle(
         "budget": {
             "max_item_chars": max_chars,
             "used_item_chars": used,
-            "selection": "cue_then_official_physical_documents_catalogue_chronology_admin",
+            "selection": "admitted_documents_then_cue_official_physical_catalogue_chronology_admin",
         },
         "cautions": [
             "Initial prose summaries and geopolitical context are not evidence inputs.",
             "Official events retain collector provenance; primary verification may be missing.",
             "Catalogue pointers do not establish scene content or observed deployment.",
             "Document versions establish availability, not factual truth or source independence.",
+            "The model receives retrieved passages; the bundle keeps admitted documents in full.",
         ],
     }
     bundle["bundle_id"] = "bundle-" + digest(bundle)[:20]
@@ -253,7 +272,13 @@ def save_bundle(directory: Path, bundle: dict) -> Path:
     return path
 
 
-def model_input(bundle: dict, *, max_chars: int = 32000, collection_outcomes=None) -> dict:
+def model_input(
+    bundle: dict,
+    *,
+    max_chars: int = 32000,
+    collection_outcomes=None,
+    passages: list[dict] | None = None,
+) -> dict:
     """Build a bounded model view while retaining the complete bundle as the audit source."""
     if max_chars < 8000:
         raise ValueError("Model input budget must be at least 8000 characters")
@@ -284,6 +309,13 @@ def model_input(bundle: dict, *, max_chars: int = 32000, collection_outcomes=Non
                 "available_at",
                 "url",
             ),
+            "document": (
+                "url",
+                "version_at",
+                "source_tier",
+                "originating_source",
+                "content_sha256",
+            ),
         }.get(kind)
         if keep:
             data = {key: data[key] for key in keep if key in data}
@@ -304,8 +336,42 @@ def model_input(bundle: dict, *, max_chars: int = 32000, collection_outcomes=Non
     by_kind: dict[str, list[dict]] = {}
     for item in bundle["items"]:
         by_kind.setdefault(item["kind"], []).append(compact(item))
+    parent_ids = {
+        item["data"].get("content_sha256"): item["id"]
+        for item in bundle["items"]
+        if item["kind"] == "document"
+    }
+    retrieved = []
+    for passage in passages or []:
+        parent = parent_ids.get(passage.get("content_sha256"))
+        if not parent or not isinstance(passage.get("text"), str):
+            continue
+        retrieved.append(
+            {
+                "id": parent,
+                "kind": "document_passage",
+                "source_ref": (
+                    f"document_index#{passage.get('content_sha256')}#{passage.get('start')}"
+                ),
+                "available_at": passage.get("version_at"),
+                "verification": "retrieved_passage_of_admitted_document",
+                "data": {
+                    "url": passage.get("url"),
+                    "text": passage["text"],
+                    "source_tier": passage.get("source_tier"),
+                    "originating_source": passage.get("originating_source"),
+                    "char_start": passage.get("start"),
+                    "char_end": passage.get("end"),
+                    "retrieval": passage.get("retrieval"),
+                    "cite": parent,
+                },
+            }
+        )
+    if retrieved:
+        by_kind["document_passage"] = retrieved
     order = (
         "observation",
+        "document_passage",
         "coverage_hole",
         "official_event",
         "physical_observation",
@@ -347,15 +413,23 @@ def model_input(bundle: dict, *, max_chars: int = 32000, collection_outcomes=Non
             if len(canonical(trial)) <= max_chars:
                 selected.append(candidate)
         index += 1
+
+    def summarise(rows):
+        passages = sum(1 for row in rows if row["kind"] == "document_passage")
+        from_bundle = len(rows) - passages
+        return {
+            "model_items": len(rows),
+            "retrieved_passages": passages,
+            "not_selected_for_model": max(0, len(bundle["items"]) - from_bundle),
+        }
+
     base["evidence"] = selected
-    base["admission_summary"]["model_items"] = len(selected)
-    base["admission_summary"]["not_selected_for_model"] = len(bundle["items"]) - len(selected)
+    base["admission_summary"].update(summarise(selected))
     base["model_input_id"] = "input-" + digest(base)[:20]
     while selected and len(canonical(base)) > max_chars:
         selected.pop()
         base["evidence"] = selected
-        base["admission_summary"]["model_items"] = len(selected)
-        base["admission_summary"]["not_selected_for_model"] = len(bundle["items"]) - len(selected)
+        base["admission_summary"].update(summarise(selected))
         del base["model_input_id"]
         base["model_input_id"] = "input-" + digest(base)[:20]
     if len(canonical(base)) > max_chars:

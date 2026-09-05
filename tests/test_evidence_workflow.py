@@ -1,7 +1,9 @@
+import gzip
 import hashlib
 import json
 from copy import deepcopy
 from datetime import UTC, datetime
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -19,7 +21,14 @@ from wsf.evidence_bundle import (
     save_bundle,
 )
 from wsf.packet import EvidenceItem, Packet, packet_path
-from wsf.research import ResearchLimits, public_url, research_plan, run_research
+from wsf.research import (
+    ResearchLimits,
+    _urls_equivalent,
+    lead_skip_reason,
+    public_url,
+    research_plan,
+    run_research,
+)
 
 
 @pytest.fixture
@@ -135,6 +144,72 @@ def test_bundle_includes_details_with_honest_provenance(packet):
     assert pointer["verification"] == "reconstructed_catalogue_availability_not_imagery"
     assert len(bundle["excluded"]) == 1
     assert "Leave now" in canonical(bundle)
+
+
+def test_preferred_documents_are_kept_when_budget_is_tight(packet):
+    long_fallback = document("Fallback chrome. " * 800)
+    long_fallback["url"] = "https://example.com/fallback"
+    long_fallback["archive_url"] = (
+        "https://web.archive.org/web/20220211090000id_/https://example.com/fallback"
+    )
+    preferred = document("TikTok videos show Russian forces advancing closer to Ukraine. " * 20)
+    preferred["url"] = "https://www.washingtonpost.com/world/2022/02/11/story"
+    preferred["source_tier"] = "preferred"
+    preferred["archive_url"] = (
+        "https://web.archive.org/web/20220211090000id_/"
+        "https://www.washingtonpost.com/world/2022/02/11/story"
+    )
+    bundle = build_bundle(packet, {}, documents=[long_fallback, preferred], max_chars=12000)
+    docs = [row for row in bundle["items"] if row["kind"] == "document"]
+    assert {row["data"]["url"] for row in docs} == {
+        long_fallback["url"],
+        preferred["url"],
+    }
+    assert any("TikTok videos" in row["data"]["text"] for row in docs)
+    omitted_docs = [row for row in bundle["omitted"] if row["kind"] == "document"]
+    assert omitted_docs == []
+
+
+def test_model_input_uses_retrieved_passages_not_whole_pages(packet):
+    body = ("Satellite images show new tents. " * 40) + ("Cookie banner chrome. " * 40)
+    doc = {
+        "url": "https://www.washingtonpost.com/world/2022/02/11/story",
+        "text": body,
+        "content_sha256": hashlib.sha256(body.encode()).hexdigest(),
+        "version_at": "2022-02-11T09:00:00+00:00",
+        "version_basis": "archive_capture",
+        "archive_url": (
+            "https://web.archive.org/web/20220211090000id_/"
+            "https://www.washingtonpost.com/world/2022/02/11/story"
+        ),
+        "retrieved_at": "2026-09-05T00:00:00+00:00",
+        "source_tier": "preferred",
+    }
+    bundle = build_bundle(packet, {}, documents=[doc])
+    stored = next(row for row in bundle["items"] if row["kind"] == "document")
+    assert stored["data"]["text"] == body
+    view = model_input(
+        bundle,
+        max_chars=8000,
+        passages=[
+            {
+                "content_sha256": doc["content_sha256"],
+                "url": doc["url"],
+                "text": "Satellite images show new tents. " * 2,
+                "start": 0,
+                "end": 66,
+                "source_tier": "preferred",
+                "retrieval": "embedding",
+                "version_at": doc["version_at"],
+            }
+        ],
+    )
+    passages = [row for row in view["evidence"] if row["kind"] == "document_passage"]
+    stubs = [row for row in view["evidence"] if row["kind"] == "document"]
+    assert passages
+    assert passages[0]["id"] == stored["id"]
+    assert "Satellite images show new tents" in passages[0]["data"]["text"]
+    assert all("Cookie banner" not in (row.get("data") or {}).get("text", "") for row in stubs)
 
 
 @pytest.mark.parametrize(
@@ -346,12 +421,11 @@ class ArchiveFixture:
         self.calls.append((url, kwargs))
         if "/cdx/" in url:
             stamp = "20240101000000" if self.later else "20220211090000"
+            original = parse_qs(urlsplit(url).query).get("url", ["https://example.com/report"])[0]
             return HttpResponse(
                 url,
                 200,
-                json.dumps(
-                    [["timestamp", "original"], [stamp, "https://example.com/report"]]
-                ).encode(),
+                json.dumps([["timestamp", "original"], [stamp, original]]).encode(),
                 {},
             )
         return HttpResponse(
@@ -422,6 +496,24 @@ def test_counterevidence_survives_many_requirements(packet):
     assert len(plan) == 6
     assert plan[-1]["requirement_id"] == "counterevidence"
     assert plan[-2]["requirement_id"] == "physical-corroboration"
+
+
+def test_research_plan_uses_places_and_keeps_a_broader_fallback(packet):
+    packet.product.keys = [
+        "Russia",
+        "Ukraine",
+        "Moscow",
+        "Ukrainian border",
+        "Yelnya",
+        "Klintsy",
+    ]
+    plan = research_plan(packet, ResearchLimits(queries=3, documents=1, seconds=5))
+    assert len(plan) == 3
+    assert "Yelnya" in plan[0]["query"]
+    assert "satellite imagery" in plan[0]["query"]
+    assert "Physical posture" in plan[0]["fallback_query"]
+    assert "withdrawal" in plan[-1]["query"]
+    assert plan[0]["query"] != plan[0]["fallback_query"]
 
 
 def test_collection_outcomes_explain_disabled_and_unplanned_questions(packet, tmp_path):
@@ -552,6 +644,230 @@ def test_missing_search_key_defers_cache_miss_for_later_retry(packet, tmp_path, 
 )
 def test_non_public_document_targets_are_rejected(url):
     assert not public_url(url)
+
+
+def test_archive_accepts_equivalent_wayback_urls(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+    assert _urls_equivalent(
+        "https://www.washingtonpost.com/world/2022/02/11/story",
+        "http://washingtonpost.com/world/2022/02/11/story/",
+    )
+    assert not _urls_equivalent(
+        "https://www.washingtonpost.com/world/2022/02/11/story",
+        "https://www.washingtonpost.com/world/2022/02/12/story",
+    )
+
+    class SlashCapture(ArchiveFixture):
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            if "/cdx/" in url:
+                original = parse_qs(urlsplit(url).query).get("url", ["https://example.com/report"])[
+                    0
+                ]
+                return HttpResponse(
+                    url,
+                    200,
+                    json.dumps(
+                        [["timestamp", "original"], ["20220211090000", original + "/"]]
+                    ).encode(),
+                    {},
+                )
+            return HttpResponse(
+                url,
+                200,
+                b"<p>Canonicalised archive capture.</p>",
+                {"content-type": "text/html"},
+            )
+
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=SlashCapture(),
+        limits=ResearchLimits(queries=1, documents=1, seconds=5),
+    )
+    assert result["admitted_documents"] == 1
+    assert result["documents"][0]["url"].endswith("/")
+
+
+def test_gzip_archive_html_is_admitted_and_binary_is_not(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+
+    class GzipArchive(ArchiveFixture):
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            if "/cdx/" in url:
+                original = parse_qs(urlsplit(url).query).get("url", ["https://example.com/report"])[
+                    0
+                ]
+                return HttpResponse(
+                    url,
+                    200,
+                    json.dumps([["timestamp", "original"], ["20220211090000", original]]).encode(),
+                    {},
+                )
+            return HttpResponse(
+                url,
+                200,
+                gzip.compress(b"<p>Archived warning from a contemporaneous page.</p>"),
+                {"content-type": "text/html", "content-encoding": "gzip"},
+            )
+
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=GzipArchive(),
+        limits=ResearchLimits(queries=1, documents=1, seconds=5),
+    )
+    assert result["admitted_documents"] == 1
+    assert "Archived warning" in result["documents"][0]["text"]
+
+    class BinaryGzip(GzipArchive):
+        def get(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            if "/cdx/" in url:
+                original = parse_qs(urlsplit(url).query).get("url", ["https://example.com/report"])[
+                    0
+                ]
+                return HttpResponse(
+                    url,
+                    200,
+                    json.dumps([["timestamp", "original"], ["20220211090000", original]]).encode(),
+                    {},
+                )
+            return HttpResponse(
+                url,
+                200,
+                gzip.compress(b"\x00\x01\x02\xff binary"),
+                {"content-type": "text/html"},
+            )
+
+    failed = run_research(
+        tmp_path / "binary",
+        packet,
+        tmp_path / "binary",
+        collection={},
+        transport=BinaryGzip(),
+        limits=ResearchLimits(queries=1, documents=1, seconds=5),
+    )
+    assert failed["admitted_documents"] == 0
+    assert any("binary" in (row.get("reason") or "") for row in failed["requests"].values())
+
+
+def test_unusable_leads_are_skipped_without_burning_attempts(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+    cutoff = packet.clocks.knowledge_cutoff
+    assert lead_skip_reason("https://www.youtube.com/watch?v=abc", cutoff)
+    assert lead_skip_reason("https://example.com/report.pdf", cutoff)
+    assert lead_skip_reason("https://example.com/2023/07/30/later", cutoff)
+
+    class MixedLeads(ArchiveFixture):
+        def post(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            return HttpResponse(
+                url,
+                200,
+                json.dumps(
+                    {
+                        "results": [
+                            {"url": "https://www.youtube.com/watch?v=abc", "title": "Video"},
+                            {"url": "https://example.com/report.pdf", "title": "PDF"},
+                            {
+                                "url": "https://example.com/2023/07/30/later",
+                                "title": "Later",
+                            },
+                            {"url": "https://example.com/report", "title": "Usable"},
+                        ]
+                    }
+                ).encode(),
+                {},
+            )
+
+    fake = MixedLeads()
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=fake,
+        limits=ResearchLimits(queries=1, documents=1, seconds=5),
+    )
+    assert result["run_usage"]["document_attempts"] == 1
+    assert result["admitted_documents"] == 1
+    skipped = [row for row in result["requests"].values() if row.get("status") == "skipped"]
+    assert len(skipped) == 3
+    cdx_urls = [url for url, _ in fake.calls if isinstance(url, str) and "/cdx/" in url]
+    assert not any("/watch?v=abc" in url for url in cdx_urls)
+
+
+def test_preferred_domains_are_fetched_before_fallback_leads(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+
+    class RankedLeads(ArchiveFixture):
+        def post(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            return HttpResponse(
+                url,
+                200,
+                json.dumps(
+                    {
+                        "results": [
+                            {"url": "https://example.com/report", "title": "Broad"},
+                            {
+                                "url": "https://www.france24.com/en/europe/20220212-satellite",
+                                "title": "Imagery",
+                            },
+                        ]
+                    }
+                ).encode(),
+                {},
+            )
+
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=RankedLeads(),
+        limits=ResearchLimits(queries=1, documents=1, seconds=5),
+    )
+    assert result["admitted_documents"] == 1
+    assert result["documents"][0]["source_tier"] == "preferred"
+    assert "france24.com" in result["documents"][0]["url"]
+    outcome = next(row for row in result["collection_outcomes"] if row["documents"])
+    assert outcome["source_tier"] == "preferred"
+
+
+def test_fallback_search_runs_when_preferred_leads_are_unusable(packet, tmp_path, monkeypatch):
+    monkeypatch.setenv("TAVILY_API_KEY", "fixture-key")
+
+    class PreferredThenFallback(ArchiveFixture):
+        def post(self, url, **kwargs):
+            self.calls.append((url, kwargs))
+            query = json.loads(kwargs["data"])["query"]
+            if "satellite imagery" in query or "released imagery" in query or "withdrawal" in query:
+                results = [{"url": "https://www.youtube.com/watch?v=abc", "title": "Video"}]
+            else:
+                results = [{"url": "https://example.com/report", "title": "Broader hit"}]
+            return HttpResponse(url, 200, json.dumps({"results": results}).encode(), {})
+
+    result = run_research(
+        tmp_path,
+        packet,
+        tmp_path,
+        collection={},
+        transport=PreferredThenFallback(),
+        limits=ResearchLimits(queries=2, documents=1, seconds=5),
+    )
+    assert result["run_usage"]["search_requests"] == 2
+    assert result["admitted_documents"] == 1
+    assert result["documents"][0]["source_tier"] == "fallback"
+    outcome = next(row for row in result["collection_outcomes"] if row["documents"])
+    assert "Preferred sources unavailable" in outcome["reason"]
+    assert any(key.endswith("-fallback") for key in result["requests"])
 
 
 def test_no_search_makes_no_requests(packet, tmp_path):

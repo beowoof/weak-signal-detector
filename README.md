@@ -140,7 +140,8 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 | `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft`, Research and draft assessment and Prepare new brief version |
 | `OLLAMA_TIMEOUT_SECONDS` | Local generation timeout, default 900 seconds | Optional; one attempt, no automatic regeneration on timeout |
 | `OLLAMA_MAX_OUTPUT_TOKENS` | Desk draft output limit, default 4096 | Optional; compact output should fit; truncated responses are retained diagnostically and never replace drafts |
-| `OLLAMA_NUM_CTX` | Context window, default 32768 | Optional; must exceed output limit |
+| `OLLAMA_NUM_CTX` | Context window, default 32768 | Optional; must exceed output limit. qwen3.8:27b-mlx lists 256K; raise this if the prompt needs it. |
+| `OLLAMA_EMBED_MODEL` | Passage embeddings for admitted-document retrieval, default `mxbai-embed-large` | Optional; drafts fall back to lexical overlap if embeddings fail |
 
 Google Cloud will not be configured or used without an explicit decision after the GDELT bulk acquisition sample. Live source calls and model calls are never part of default tests.
 

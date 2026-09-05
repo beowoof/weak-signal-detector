@@ -24,6 +24,7 @@ scenarios/*/interpretation/*/evidence_bundles/
 scenarios/*/interpretation/*/draft_runs/
 scenarios/*/interpretation/*/research/
 scenarios/.osint_search_index/
+scenarios/.document_index/
 
 # Dashboard frontend
 dashboard/web/node_modules/
