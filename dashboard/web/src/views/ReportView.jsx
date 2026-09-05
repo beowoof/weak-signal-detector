@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { readDraft, writeDraft, clearDraft as removeDraft } from "../lib/drafts.js";
+import AnalystWorkflow from "./AnalystWorkflow.jsx";
 
 // A seed offered once must not replace edited text when this notice is remounted.
 const handledMachineSeeds = new Set();
@@ -10,7 +11,7 @@ function Prose({ text }) {
     /^#{1,6}\s/.test(part) ? <h4 key={index}>{part.replace(/^#{1,6}\s/, "")}</h4> : <p key={index}>{part}</p>)}</div>;
 }
 
-export default function ReportView({ noticeId, report, busy, onSave, onDraftChange, machineSeed }) {
+export default function ReportView({ scenario, noticeId, report, busy, onSave, onDraftChange, machineSeed, evidenceReview, onReset }) {
   const [draft, setDraft] = useState(() => readDraft(noticeId, localStorage));
   const [editing, setEditing] = useState(draft !== null);
   const [storageError, setStorageError] = useState("");
@@ -43,7 +44,7 @@ export default function ReportView({ noticeId, report, busy, onSave, onDraftChan
   async function save() {
     setSaveError("");
     const savedReport = await onSave(value);
-    if (savedReport) { clearDraft(); setEditing(false); }
+    if (savedReport) { clearDraft(); setEditing(false); document.getElementById("prepare-brief")?.scrollIntoView({ behavior: "smooth", block: "start" }); }
     else setSaveError("Notes were not saved. Your draft is retained; please retry.");
   }
   return <section className="assessment-panel">
@@ -51,9 +52,22 @@ export default function ReportView({ noticeId, report, busy, onSave, onDraftChan
       <span className={dirty ? "draft-badge" : "notice-timing"}>{dirty ? "Unsaved draft" : report?.updated_at && !report.empty ? `Saved ${String(report.updated_at).replace("T", " ").slice(0, 19)} UTC` : "No saved assessment"}</span>
     </div>
     <p className="notice-timing">Your interpretation, separate from the generated brief. Unsaved drafts are retained in this browser for each notice.</p>
+    <AnalystWorkflow scenario={scenario} noticeId={noticeId} report={report} evidenceReview={evidenceReview}
+      dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
+        const start = "<!-- reviewed-material:start -->";
+        const end = "<!-- reviewed-material:end -->";
+        const block = `${start}\n${material}\n${end}`;
+        const from = value.indexOf(start), to = value.indexOf(end);
+        if (from >= 0 && to >= from) {
+          if (!window.confirm("Update the reviewed material section? Edits inside that section will be replaced; your writing outside it is retained.")) return;
+          change(value.slice(0, from) + block + value.slice(to + end.length));
+        } else change([value.trim(), block].filter(Boolean).join("\n\n"));
+        setEditing(true);
+        requestAnimationFrame(() => document.getElementById("working-assessment")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+      }} />
     {pendingSeed && <section className="brief-callout" aria-label="Machine draft ready">
       <h3>Machine draft ready for review</h3>
-      <p>Your existing text has not been changed. Check this draft before using it.</p>
+      <p>This is the original, unfiltered machine draft. It does not incorporate your review decisions. Use reviewed material above to build from retained findings; check any whole-draft import for rejected claims.</p>
       <details><summary>Preview machine draft</summary><Prose text={machineSeed.notes} /></details>
       <div className="notice-actions">
         <button type="button" disabled={busy} onClick={() => {
@@ -64,6 +78,8 @@ export default function ReportView({ noticeId, report, busy, onSave, onDraftChan
         <button type="button" onClick={() => { handledMachineSeeds.add(seedKey); setHandledSeed(seedKey); }}>Keep my assessment</button>
       </div>
     </section>}
+    <h3 id="working-assessment">3. Add your judgement and save the assessment</h3>
+    <p>Develop the key judgement, implications and alternatives below. Saving takes you to step 4 to name and prepare the brief.</p>
     {!report && <p role="status">Assessment unavailable or loading. You can still write a local draft.</p>}
     {editing ? <>
       <label className="sr-only" htmlFor="assessment-text">Your notes and assessment</label>
@@ -78,6 +94,7 @@ export default function ReportView({ noticeId, report, busy, onSave, onDraftChan
       <button type="button" className="primary-action" onClick={() => setEditing(true)}>{value ? "Edit assessment" : "Write assessment"}</button>
       {value ? <Prose text={value} /> : <p className="empty">No assessment yet. Record your interpretation, alternative explanations, and next questions here.</p>}
     </>}
+    <div className="workflow-panel" id={`brief-destination-${noticeId}`} />
     {storageError && <p role="alert" className="error">{storageError}</p>}
     {saveError && <p role="alert" className="error">{saveError}</p>}
   </section>;

@@ -7,8 +7,10 @@ import pytest
 from wsf.connectors.http import HttpResponse
 from wsf.draft import (
     OllamaConfig,
+    _extract_json_with_grounded_repairs,
     _leakage_hits,
     _normalise_sections,
+    _recoverable_completion,
     _section_markdown,
     complete_chat,
     ollama_config,
@@ -140,6 +142,46 @@ def test_leakage_scan_catches_invasion_language() -> None:
     assert "full-scale invasion" in hits
 
 
+def test_only_uniquely_grounded_unescaped_quote_is_repaired() -> None:
+    evidence_id = "ev-bc45cd56e49f8138"
+    bundle = {
+        "items": [
+            {
+                "id": evidence_id,
+                "data": {"day": "2022-02-12", "value": 1.0},
+            }
+        ]
+    }
+    raw = "\n".join(
+        [
+            "{",
+            '  "claims": [{',
+            '    "quotes": {',
+            f'      "{evidence_id}": "value": 1.0"',
+            "    }",
+            "  }]",
+            "}",
+        ]
+    )
+    parsed, repairs = _extract_json_with_grounded_repairs(raw, bundle)
+    assert parsed["claims"][0]["quotes"][evidence_id] == '"value": 1.0'
+    assert repairs[0]["kind"] == "grounded_unescaped_quote"
+    with pytest.raises(json.JSONDecodeError):
+        _extract_json_with_grounded_repairs(raw, {"items": []})
+
+
+def test_rejected_completion_can_be_revalidated_without_model_call(tmp_path) -> None:
+    run = tmp_path / "draft_runs" / "attempt"
+    run.mkdir(parents=True)
+    (run / "input.json").write_text(json.dumps({"prompt_sha256": "prompt"}))
+    completion = {"model": "model", "done": True, "done_reason": "stop"}
+    (run / "completion.json").write_text(json.dumps(completion))
+    (run / "rejected.json").write_text(json.dumps({"reason": "invalid JSON"}))
+    recovered = _recoverable_completion(tmp_path, "prompt", "model")
+    assert recovered == (completion, str(run / "completion.json"))
+    assert _recoverable_completion(tmp_path, "different", "model") is None
+
+
 def test_draft_writes_sidecar_and_does_not_clobber_report(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("OLLAMA_MODEL", "local-test-model")
@@ -224,7 +266,7 @@ def test_missing_model_fails_before_collection(tmp_path, monkeypatch, ollama_env
     def forbidden(*args, **kwargs):
         pytest.fail("Invalid configuration must not start search or load a notice")
 
-    monkeypatch.setattr("wsf.draft.run_collection", forbidden)
+    monkeypatch.setattr("wsf.draft.run_research", forbidden)
     monkeypatch.setattr("wsf.draft.load_notice", forbidden)
     with pytest.raises(ValueError, match="OLLAMA_MODEL"):
         run_desk_draft(tmp_path, "desk-case", "notice-abc")
@@ -287,6 +329,31 @@ def test_chat_failures_are_clear_and_never_retry_generation(body, status, expect
             transport=fake,
         )
     assert fake.calls == 1
+
+
+def test_token_limited_run_preserves_partial_response(tmp_path, monkeypatch, ollama_env):
+    monkeypatch.setenv("OLLAMA_MODEL", "model")
+    _notice(tmp_path)
+    directory = tmp_path / "scenarios/desk-case/interpretation/packet-test"
+    (directory / "machine_draft.md").write_text("Previous draft")
+    response = {
+        "done": True,
+        "done_reason": "length",
+        "message": {"content": '{"summary":"partial'},
+        "eval_count": 4096,
+    }
+    with pytest.raises(ValueError, match="partial response was retained"):
+        run_desk_draft(
+            tmp_path,
+            "desk-case",
+            "notice-abc",
+            search=False,
+            chat_transport=FixedResponse(json.dumps(response).encode(), 200),
+        )
+    rejected = list((directory / "draft_runs").glob("*/rejected_completion.json"))
+    assert len(rejected) == 1
+    assert json.loads(rejected[0].read_text())["eval_count"] == 4096
+    assert (directory / "machine_draft.md").read_text() == "Previous draft"
 
 
 def test_structured_output_rejection_uses_prompt_json_once():
@@ -506,8 +573,8 @@ def test_leakage_in_structured_sections_blocks_apply_even_with_clean_notes(
     assert result["applied"] is False
 
 
-@pytest.mark.parametrize("leaky,applied", [(False, True), (True, False)])
-def test_apply_only_seeds_empty_report_when_leakage_check_passes(
+@pytest.mark.parametrize("leaky,applied", [(False, False), (True, False)])
+def test_apply_does_not_seed_ungrounded_report_even_with_clean_language(
     tmp_path,
     monkeypatch,
     ollama_env,

@@ -25,6 +25,7 @@ export default function App() {
   selectedRef.current = selectedNoticeId;
   const resultRequest = useRef(0);
   const reportRevision = useRef(0);
+  const evidenceRevision = useRef(0);
   const [loadedKey, setLoadedKey] = useState("");
   const [resourceOwner, setResourceOwner] = useState("");
   const [resourceError, setResourceError] = useState("");
@@ -49,6 +50,7 @@ export default function App() {
   const [report, setReport] = useState(null);
   const [reportBusy, setReportBusy] = useState(false);
   const [machineSeed, setMachineSeed] = useState(null);
+  const [evidenceReview, setEvidenceReview] = useState(null);
   const [actionError, setActionError] = useState("");
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
@@ -187,7 +189,7 @@ export default function App() {
     if (ownerRef.current !== selectedNoticeId) {
       ownerRef.current = selectedNoticeId;
       setResourceOwner(selectedNoticeId);
-      setPacket(null); setCollection(null); setReport(null);
+      setPacket(null); setCollection(null); setReport(null); setEvidenceReview(null);
       setActionError(""); setResourceError("");
     }
     const packetId = notice?.workflow?.packet_id;
@@ -195,6 +197,7 @@ export default function App() {
     if (!notice || !scenario) return;
     let cancelled = false;
     const reportReadRevision = reportRevision.current;
+    const evidenceReadRevision = evidenceRevision.current;
     const read = async (path, label) => {
       const response = await fetch(path);
       if (!response.ok) throw new Error(`${label} could not be loaded (${response.status}).`);
@@ -208,6 +211,8 @@ export default function App() {
     ];
     if (packetId) {
       tasks.push(
+        read(`/api/packet/draft/review?scenario=${encodeURIComponent(scenario)}&notice_id=${encodeURIComponent(notice.notice_id)}`, "Draft evidence review")
+          .then((payload) => { if (!cancelled && evidenceRevision.current === evidenceReadRevision) setEvidenceReview(payload.review || null); }),
         read(`/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`, "Brief")
           .then((payload) => { if (!cancelled) setPacket(payload); }),
         read(`/api/packet/collection?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(packetId)}`, "Collection")
@@ -329,6 +334,10 @@ export default function App() {
         setActionError(`Machine draft flagged leakage: ${payload.leakage.join(", ")}. Edit before saving.`);
       }
       setMachineSeed({ noticeId: notice.notice_id, notes: payload.notes || "", at: Date.now() });
+      if (selectedRef.current === notice.notice_id) {
+        evidenceRevision.current += 1;
+        setEvidenceReview(payload.review || null);
+      }
       if (payload.collection || payload.packet_id) {
         const data = await loadNotices();
         setNotices(data.notices || []);
@@ -474,8 +483,11 @@ export default function App() {
         loading={loading && !notices.length} drafts={drafts}
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
+          scenario={selectedNotice.scenario_id || selectedNotice.trigger?.scenario_id}
           report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
           machineSeed={machineSeed}
+          evidenceReview={ownResources ? evidenceReview : null}
+          onReset={(payload) => { reportRevision.current += 1; setReport(payload); setMachineSeed(null); }}
           onSave={(notes) => saveReport(selectedNotice, notes)} />}
       />}
       {surface === "anomaly" && <>

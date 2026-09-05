@@ -461,11 +461,11 @@ def packet_draft(
     ),
     search: bool = typer.Option(
         True,
-        help="Run cutoff-dated Tavily search into the packet first.",
+        help="Run bounded requirement-led research; --no-search uses cached evidence only.",
     ),
     apply: bool = typer.Option(
         False,
-        help="Copy the draft into an empty human report. Never overwrites saved notes.",
+        help="Copy a draft passing reference checks into an empty report. Never overwrites notes.",
     ),
     quiet: bool = typer.Option(False, help="Suppress stderr progress lines."),
 ) -> None:
@@ -519,6 +519,10 @@ def packet_draft(
             "leakage": payload["leakage"],
             "applied": payload["applied"],
             "n_citations": payload["n_citations"],
+            "bundle_id": payload.get("bundle_id"),
+            "review_status": (payload.get("review") or {}).get("status"),
+            "input_stats": payload.get("input_stats"),
+            "research_calls": (payload.get("research") or {}).get("run_usage"),
             "votes": False,
         }
     )

@@ -379,11 +379,82 @@ To draft from already collected material without another Tavily request, add `--
 wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay --no-search
 ```
 
-**Known replay limitation (4 September 2026):** undated official-source Tavily hits
-are currently admitted as unverified, including later material in this Ukraine
-packet. `--no-search` reuses those saved hits; it does not remove them or establish
-a clean replay. See ROADMAP phase 5a for the planned admission and evidence-input
-fixes. Draft completion and an empty `leakage` list are not historical validation.
+**Evidence admission:** the original 4 September draft admitted undated official
+hits, including later material. Those artefacts are preserved as an audit record.
+New drafts rebuild a `desk_evidence_v1` bundle: cached search snippets are leads,
+not admitted document text. Replay documents need a matching pre-cutoff archive
+capture, content hash and recorded retrieval; dates in URLs alone do not suffice.
+An old draft is not automatically repaired or regenerated.
+
+`--no-search` performs no network research. It uses the collected item-level
+evidence and any versioned documents cached for the same research plan/cutoff;
+legacy Tavily snippets are excluded until document verification. Without the flag,
+the API performs bounded requirement-led research: up to six queries, six document
+attempts, 12,000 retained characters per document and a 180-second scheduling budget
+(individual requests have timeouts). Historical HTML/text is retrieved through
+exact Wayback captures; PDFs, imagery interpretation and independent video
+geolocation are not implemented. Present-day extraction uses Tavily Extract;
+documents retrieved after a fixed packet cutoff are excluded, so live use needs
+an appropriately timed packet. This first implementation is qualified offline,
+not yet through an owner-run live search/model comparison.
+
+Packet-local `research/` records the plan, requests, results and failures. Reruns
+reuse completed requests and do not silently repeat failed or uncertain paid
+calls. Project-wide `scenarios/.osint_search_index/` also indexes exact Tavily
+requests across packets and scenarios. Whitespace/case-normalised query text plus
+date window and search options form the request checksum; the complete result list
+is stored once under its own content checksum. Checksums are verified on every read
+and corruption fails closed rather than spending another credit. An identical
+in-flight query is deferred, not duplicated. Cache hits remain usable without an
+API key; a cache miss without a key is deferred for an explicit later retry.
+
+Search results remain discovery leads and are not placed in the model prompt.
+Only separately admitted, versioned documents can enter the evidence input, so
+indexing results saves search credits without turning duplicated snippets into
+corroboration. A process crash may leave a `.lock`; inspect API logs and request
+state before manually clearing a confirmed stale lock. Research does not edit the
+measurement or original packet. Search snippets and publication dates are not
+substitutes for reviewing the underlying document version.
+
+`evidence_bundles/` contains immutable, content-addressed inputs; `draft_runs/`
+contains the exact system/user prompt and raw response per attempt. Both are
+ignored by Git, like machine drafts. Selection prioritises the cue, official
+events, physical observations and admitted documents before catalogue/chronology
+records, with a 60,000-character item budget. Every omission is listed, not silently
+treated as absence. Legacy dated official events retain their collector provenance;
+they are not labelled independently verified. Catalogue pointers are not scene analysis.
+
+The complete evidence bundle remains the audit and source-review object. Ollama receives
+a separate `desk_model_input_v1` projection capped at 32,000 characters. Repeated metadata
+is removed and evidence classes are selected round-robin so a long numeric series cannot
+crowd out official, physical, documentary or contradictory material. The prompt records
+the full, selected and unselected item counts plus both content-addressed IDs. This is a
+deterministic first retrieval layer, not semantic RAG; source passages remain available
+from the full bundle in the review UI.
+
+The compact model output includes one short summary, claim/evidence IDs, supporting quotations, proposed changes
+for every hypothesis and a collection decision. Unknown IDs, quotations absent
+from the referenced text, missing hypotheses and unrecognised citation URLs are
+flagged. Passing these checks does not prove factual truth, entailment, source
+independence or full grounding of every prose sentence. `--apply` requires the
+reference checks to pass as well as an empty report and no language-review flags.
+The analyst can always edit and explicitly save their own assessment.
+
+### Finish an assessment and brief in the UI
+
+In **Notes & assessment**, the latest source-linked review (including CLI-generated drafts) loads alongside saved analyst decisions.
+
+1. Inspect each finding's passages and the proposed hypothesis revisions. **Accept finding** saves it for assessment. **Edit proposal** saves your revised wording; rejection, editing and unresolved decisions require a reason. Decisions survive navigation and reopening. Saved proposals collapse to a status summary; open them to revisit. Numbered links guide you through review, preview, editing/saving and brief preparation. A changed draft invalidates the old decisions even if its evidence bundle ID is unchanged; history remains available.
+2. **Preview reviewed material → Merge reviewed material into assessment** builds a cited starting point from retained proposals. The merge updates a marked review section; writing outside that section is preserved. Updating an existing section asks before replacing edits inside it. The original **Use machine draft** option imports the unfiltered draft and does not apply review decisions.
+3. Add your key judgement, implications, alternatives, uncertainty and next questions, then **Save assessment**. Collection recommendations do not themselves run searches: use the existing Collection jobs and Machine draft action when more evidence is needed, then review the new version.
+4. **Prepare new brief version** calls the configured Ollama model for editorial synthesis: BLUF (maximum two sentences), analytical confidence and its rationale, source assessment, key judgements, significance, alternatives/uncertainty and outlook. It uses the saved assessment, retained proposals and review limitations, makes no new searches, and appends the preserved evidence annex. Input references are checked mechanically, not for semantic entailment. Preview it, use **Edit brief wording** if needed, then **Save revised brief** to create a new unsigned version before sign-off. Failed/incomplete outputs are retained under `brief_runs/` and do not replace existing versions. Assessment changes during generation prevent stale output being published.
+5. Review all proposals (explicitly unresolved with a reason is allowed), enter your name and confirm the assessment/source checks, then **Sign off this version**. Download Markdown or printable HTML under **Versions and exports**. Neither signing nor downloading distributes the brief.
+
+Decisions, history and briefing versions persist in the notice's report directory as `workflow.json`, alongside `report.json` and `report.md`. `GET/POST /api/analyst-workflow` uses revision checks to reject conflicting writes. Changed saved notes or review decisions mark existing briefs stale; prepare and sign off a new version. Brief contents retain their original snapshot, including evidence and caveats. Unsaved editor changes must be saved before preparation or sign-off.
+
+To test again, expand **Reset assessment for a fresh test → Reset assessment**. Confirming clears saved notes, review decisions, active briefs and this browser's drafts. Prior saved state is copied under `resets/`; source evidence, research and machine proposals remain available. Nothing is reset until you press the button. Individual briefs have **Remove version** under Versions and exports; removal hides them from active exports while retaining the audit record. A reset is not secure erasure and does not clear drafts on other browsers.
+
+This completes the local review-to-export path. Adaptive research follow-up, measured labour savings and retrospective qualification across independent cases remain roadmap work; a signed-off local brief is not evidence those gates have passed.
 
 The [native Ollama chat API](https://docs.ollama.com/api/chat) is used with JSON output,
 model-token streaming and thinking disabled, temperature 0, and seed 42.
@@ -394,7 +465,20 @@ saving. The sidecar records `output_mode` as `native_json` or `prompt_json`.
 Timeouts and other failures never trigger this compatibility resubmission. Desk limits default to
 900 seconds, 4096 output tokens, and 32768 context tokens; override them with
 `OLLAMA_TIMEOUT_SECONDS`, `OLLAMA_MAX_OUTPUT_TOKENS`, and `OLLAMA_NUM_CTX`.
+The model is not asked to repeat its answer as free-form notes, duplicate sections and
+a claim ledger. Markdown notes are rendered deterministically from the compact response.
 Malformed, empty, and token-truncated output is rejected before replacing draft files.
+On an explicit token-limit stop, `draft_runs/<attempt>/rejected_completion.json` retains
+the partial response and timing counters. It is never continued or applied automatically;
+inspect it before deliberately raising the output limit and retrying.
+Prompt-only JSON can occasionally leave quotation marks unescaped. The parser does
+not run a general or model-assisted repair. It repairs a malformed evidence-quotation
+line only when the cited evidence ID exists and one longest interpretation occurs
+verbatim in that admitted record. The untouched raw completion and repair metadata
+are retained, and any repaired draft remains `needs_review` and cannot auto-apply.
+When a completed response was rejected and an explicit rerun has the same prompt
+hash and model, the API revalidates that retained completion instead of invoking
+Ollama again. A changed prompt or model always requires a new generation.
 Section values returned as lists or objects are deterministically rendered as
 Markdown before schema validation (for example, hypotheses as labelled records
 and findings as bullet lists). Existing Markdown strings are unchanged. The raw
@@ -407,6 +491,8 @@ the analyst still reviews grounding, alternative explanations and cutoff complia
 The frozen interpretation protocol and its settings are unchanged.
 
 The host `wsd packet draft` command submits to `POST /api/packet/draft/stream`;
+its final JSON reports the prompt character/item budget, configured output-token limit,
+and search/document requests made by that invocation (cached requests report zero).
 the **Machine draft** button retains the JSON endpoint `POST /api/packet/draft`.
 Both run the same server-side drafting function. The CLI uses `WSD_API_BASE_URL` (default
 `http://127.0.0.1:8000`), not `OLLAMA_BASE_URL`. Start the Docker stack first.
@@ -500,3 +586,10 @@ python3 run_unit_tests.py --with-model
 | Interpret | Future owner-run Ollama packets | Not implemented yet | — |
 
 The “ball” is always either with the system (a command is running) or the operator (a named file must be reviewed). There is no automatic jump from corpus collection to scientific analysis.
+
+
+### Briefing presentation standards
+
+Notice overviews show BLUF, analytical confidence and source limitations near the top. The displayed notice BLUF is a concise extract of its existing assessment plus its collection purpose, not a new model judgement. Source identity does not establish reliability; provenance, corroboration and misinformation remain explicit assessment questions. Notice PDFs and newly generated Markdown use the same presentation.
+
+On first use, likelihood terms display the approximate ranges in the [published PHIA Probability Yardstick](https://www.gov.uk/government/publications/explaining-uncertainty-in-uk-intelligence-assessment/explaining-uncertainty-in-uk-intelligence-assessment). These explain language rather than numerical model probabilities. Analytical confidence remains separate. New editorial briefs must include a maximum two-sentence BLUF and prominent confidence/source assessments; regenerate an existing brief to apply the new model contract. Saved versions and trigger facts are not retroactively rewritten.

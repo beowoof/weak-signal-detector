@@ -1,5 +1,7 @@
 # Weak Signal Fusion
 
+**Product direction:** automate public-source investigation through a draft assessment, analyst contributions and a finished intelligence brief. Prove the complete workflow retrospectively, then qualify a bounded live pilot. [ROADMAP.md](ROADMAP.md) governs this delivery sequence; the detector experiment below remains a separate research record.
+
 Weak Signal Fusion is an evidence-first proof of concept for a narrow question:
 
 > When several individually weak public indicators become unusual together, do they provide useful incremental information for strategic-intent triage?
@@ -8,13 +10,13 @@ The phenomenon under test is closer to **strategic coupling**: during costly sta
 
 Strategic intent is not directly observable. The first layer therefore measures unusual mobilisation or costly activation with deterministic time-series rules. A later, separately scored interpretation layer will compare an explicit historical prior with the same prior plus cutoff-safe signal evidence.
 
-The scientific output remains headless: a reproducible alert episode, its contributing indicators, source health, provenance, and an evidence packet suitable for analyst review. A local read-only results viewer can plot those files for diagnosis, but a broader analyst or operational dashboard remains contingent on the headless PoC passing its investment gate.
+The scientific output remains headless: a reproducible alert episode, its contributing indicators, source health, provenance, and an evidence packet suitable for analyst review. The results viewer supports diagnosis. The analyst workflow and its live-pilot readiness gate are defined separately in [ROADMAP.md](ROADMAP.md); they do not depend on a positive result from this detector experiment.
 
 ## Current status
 
 The v1 detector claim is closed: [`FINDINGS.md`](FINDINGS.md). Public series do move together in late February 2022; hard negatives stay quiet; that is not a proof of invasion and not a smoking-gun tripwire.
 
-Work continues as a **collection cueing desk**: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
+The entry point is a **collection cueing desk** within the investigation-to-brief workflow: when several independent weak series become unusual together, cue more collection and read the news environment. Physical sensors (VIIRS/FIRMS/SAR on frontier staging AOIs) corroborate or leave a coverage gap; they do not certify intent. Do not retune frozen `coincidence_v1` thresholds on Ukraine.
 
 The desk is a Docker Compose app. Start it with [Desk API and UI](#desk-api-and-ui). Day-to-day work is the UI (Notices, Anomaly, Operations). The CLI remains for tests and harvests.
 
@@ -127,9 +129,9 @@ Populate only the credentials you have. `.env` and `.env.*` are ignored; `.env.e
 | `WSD_API_BASE_URL` | Docker desk API, default `http://127.0.0.1:8000` | Host `wsd packet draft` submits work here |
 | `WSD_API_TIMEOUT_SECONDS` | API request timeout, default 1800 seconds | No automatic retries or local fallback |
 | `OLLAMA_BASE_URL` | Ollama URL reachable from the API container, e.g. `http://host.docker.internal:11434` | Server-side desk drafting |
-| `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft` and the Machine draft button |
+| `OLLAMA_MODEL` | Desk draft model from `.env`, e.g. `qwen3.8:27b-mlx` | Required for `wsd packet draft`, Machine draft and Prepare new brief version |
 | `OLLAMA_TIMEOUT_SECONDS` | Local generation timeout, default 900 seconds | Optional; one attempt, no automatic regeneration on timeout |
-| `OLLAMA_MAX_OUTPUT_TOKENS` | Desk draft output limit, default 4096 | Optional; truncated responses do not replace existing drafts |
+| `OLLAMA_MAX_OUTPUT_TOKENS` | Desk draft output limit, default 4096 | Optional; compact output should fit; truncated responses are retained diagnostically and never replace drafts |
 | `OLLAMA_NUM_CTX` | Context window, default 32768 | Optional; must exceed output limit |
 
 Google Cloud will not be configured or used without an explicit decision after the GDELT bulk acquisition sample. Live source calls and model calls are never part of default tests.
@@ -160,7 +162,56 @@ docker compose exec agent wsd run workflow --scenario ukraine2022
 
 That is validate → collect → review → exploratory measure → notice emit. It stops on a `no_go` review (exit 2) and prints the `--focus` resume. After a harvest already exists: `--from review`. It does not freeze, prune VIIRS, call Ollama, or build packets, and it is not the live watch (schedules and events come later). The same stages remain available as individual commands (`wsd corpus collect`, `wsd measure --exploratory`, `wsd notice emit`).
 
-The UI polls `/api/result` every 8s. Source under `dashboard/web/src` and `src/` is bind-mounted, so Vite and uvicorn still reload. Websocket invalidation of that poll is next.
+Frontend source is bind-mounted and Vite reloads UI changes. After changing Python code, run `docker compose restart api` to load it in the running API. Reload an open notice after rebuilding its packet from the CLI; an unchanged packet ID does not mean cached output.
+
+### Rebuild a notice or regenerate a brief
+
+These are separate stages. The examples use the existing Ukraine preparatory-window notice; substitute your own scenario and notice IDs. Run them from the repository root with the project environment active, or prefix a CLI command with `docker compose exec agent`.
+
+| What you want to refresh | Action | Model call? |
+|---|---|---|
+| Notice evidence and watch summary | `wsd packet build` | No |
+| Printable notice PDF from its current packet | `wsd packet pdf` | No |
+| Proposed findings and working-assessment draft | `wsd packet draft` or **Machine draft** | Yes, except when revalidating a retained failed completion |
+| Final editorial brief from your saved assessment | **Prepare new brief version** in the UI | Yes |
+
+**Rebuild the notice packet and its watch-summary exports:**
+
+```bash
+wsd packet build --scenario ukraine2022 --notice notice-8f9869999a00 --replay
+```
+
+This rebuilds `evidence.json`, `brief.md` and `brief.pdf` from the recorded inputs. It does not recollect sources or invoke the model. The packet ID can remain `packet-c9560b0d2d26`: rebuilding overwrites those packet artifacts at the same path, rather than assigning a new ID. There is no `--force` flag needed. Reload the notice's **Overview** to see the result.
+
+**Regenerate only the notice PDF:**
+
+```bash
+wsd packet pdf --scenario ukraine2022 --notice notice-8f9869999a00
+```
+
+This renders `brief.pdf` from the current `evidence.json` using the current PDF layout. It does not rebuild the evidence or generate an editorial assessment.
+
+**Generate proposed findings and a working-assessment draft:**
+
+```bash
+# Use collected/cached evidence without additional search.
+wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay --no-search
+
+# Alternatively, enable bounded public-source research before drafting.
+wsd packet draft --scenario ukraine2022 --notice notice-8f9869999a00 --replay
+```
+
+Choose one of these alternatives. Both use the running API and its Ollama configuration. They produce machine proposals for review and leave your saved assessment unchanged without `--apply`. They are not the final editorial brief.
+
+**Generate the final editorial brief with the latest model instructions:**
+
+1. Open the notice's **Notes & assessment** tab.
+2. Review the findings, preview and merge retained material, add your judgement, then **Save assessment**.
+3. In step 4, choose a title and click **Prepare new brief version**. This calls Ollama for editorial synthesis, including BLUF, analytical confidence, source assessment and supporting analysis; it performs no new research.
+4. Preview the output, optionally **Edit brief wording → Save revised brief**, then sign off and export the version you want.
+
+Rebuilding the notice packet does **not** regenerate this final brief. Existing editorial versions are retained; after prompt changes, use **Prepare new brief version** to create a fresh one. To start a fresh test, use **Reset assessment for a fresh test → Reset assessment**: saved work is archived, active notes/decisions/briefs and this browser's drafts are cleared, and research remains available. Use **Remove version** to remove an individual brief from active use.
+
 
 Host-only fallback (no Docker): `uv sync --extra dev`, then `uv run python dashboard/server.py --api-only` and `cd dashboard/web && npm install && npm run dev`.
 
@@ -341,22 +392,16 @@ A positive result justifies further human investment. It does not validate auton
 
 ## Safety and no-gos
 
-- Retrospective research only; no current operational alerting or targeting.
-- No live web search inside historical interpretation packets.
+- Current delivery is retrospective qualification; a bounded live pilot follows the roadmap readiness gate. Targeting is outside this product.
+- Historical research may retrieve public sources now, but only established pre-cutoff content enters replay assessment evidence; current search results are leads, not proof of historical availability.
 - No LLM-generated observation or deterministic alert score.
 - No missingness interpreted as meaningful silence without a declared baseline. A cloudy VIIRS night is missing, not a reason to stop watching other sources.
 - No stale daily carry, post-hoc threshold tuning, AOI splitting into extra votes, or hidden source substitution.
 - No synthetic fixture reported as a scientific result.
-- No broader analyst, operational, or current-monitoring dashboard before the headless investment gate. The local read-only result visualiser is diagnostic only.
+- Analyst workflow development follows the product roadmap. Live monitoring requires its retrospective readiness gate; scientific-result labels retain their separate requirements.
 
 ## Roadmap
 
-1. Offline contracts, run identity, fixtures, z-scores, and coincidence — complete.
-2. Scenario lifecycle, mocked corpus gates, review queue, and operator HOWTO — complete.
-3. Live connectors across causal domains (Wikipedia, GDELT, ICEWS zip, MOEX, VIIRS, FIRMS NOAA-20, official cadence, CT, RIPEstat) plus `wsd measure` — current checkpoint.
-4. Owner-run Ollama corpus-review worker with bounded, resumable batches.
-5. Lookback harvest, synchrony/permutation test, interpretation, and report pipeline.
-6. Frozen held-out measurement and interpretation.
-7. Broader corpus and analyst dashboard only after a positive investment decision. OpenSky Trino and Sentinel-1 stay out until explicitly opted in.
+The authoritative product sequence is in [ROADMAP.md](ROADMAP.md): complete bounded research, durable review and assessment assembly, generate the finished brief, qualify across historical cases, then implement continuous live watch. Manual walkthroughs supply examples and targeted repairs for automation. Frozen detector and interpretation experiments remain separately versioned; they do not gate completion of the analyst product.
 
 See `CHANGELOG.md` for the enhancement history.

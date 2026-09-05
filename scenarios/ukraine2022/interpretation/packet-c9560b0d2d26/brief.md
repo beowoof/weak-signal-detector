@@ -6,6 +6,16 @@
 **Analytical confidence (AnCR):** Low  
 **Change:** Broadening multi-domain anomaly
 
+## BLUF
+
+We assess it is almost certain (approximately 95% to less than 100%) that abnormal activity is present across several Russian observables with bearing on Ukraine. Targeted public-source collection is needed to distinguish the competing explanations.
+
+The information base is incomplete: independent physical reporting is not yet available; official-posture collection is missing; public-reporting series share a substrate.
+
+## Source assessment
+
+Source base: Central Bank of Russia funding series, FIRMS thermal-detection series, GDELT-coded public reporting, ICEWS-coded public reporting, MOEX USD/RUB series, NAVAREA warning series, RIPEstat network-prefix series, Sentinel-1 backscatter series, Wikipedia pageviews (public attention). Public-source provenance is not independent verification. Originator reliability, corroboration and misinformation have not been fully assessed; repeated reporting must not be counted as independent confirmation.
+
 **Keys:** Russia; Ukraine; Moscow; Ukrainian border; Yelnya; Klintsy; Belgorod; Valuyki; Boguchar; Millerovo; Dzhankoi
 
 _Notice notice-8f9869999a00 · cutoff `2022-02-12T23:59:59+00:00` (replay)._
@@ -14,9 +24,9 @@ _Notice notice-8f9869999a00 · cutoff `2022-02-12T23:59:59+00:00` (replay)._
 
 We assess it is almost certain that abnormal activity is present across several Russian observables with bearing on Ukraine.
 
-Russian financial conditions (CBR, Moscow), Russian RIPEstat prefixes and public reporting on Russia and Ukraine are simultaneously elevated relative to their recent baselines. The signal is co-movement across those channels.
+Russian financial conditions (CBR, Moscow), Russian RIPEstat prefixes, public reporting on Russia and Ukraine and physical activity are simultaneously elevated relative to their recent baselines. The signal is co-movement across those channels.
 
-It is a realistic possibility that this reflects reversible preparation, defensive readiness, routine variation or exercise activity. Present reporting does not discriminate among those explanations.
+It is a realistic possibility (approximately 40% to less than 50%) that this reflects reversible preparation, defensive readiness, routine variation or exercise activity. Present reporting does not discriminate among those explanations.
 
 The decision this supports is collection against independent physical posture on those AOIs.
 
@@ -43,7 +53,7 @@ Likelihoods use the PHIA Probability Yardstick.
 - **Defensive readiness** — Realistic possibility. What would discriminate: Persistent posture indicators without further domain broadening.
 - **Reversible preparation** — Realistic possibility. What would discriminate: Additional independent logistical, financial or spatial indicators.
 - **Preparation for overt action** — Realistic possibility. What would discriminate: Sustained multi-domain increase plus corroborating physical or official-posture evidence.
-- **Measurement artefact** — Unlikely. What would discriminate: Anomalies disappear after source or baseline validation.
+- **Measurement artefact** — Unlikely (approximately 25% to 35%). What would discriminate: Anomalies disappear after source or baseline validation.
 
 ## Collection requirements
 

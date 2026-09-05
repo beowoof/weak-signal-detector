@@ -16,7 +16,7 @@ test("explicit links take precedence over remembered choices", () => {
   assert.equal(readRoute("", storage).notice, "remembered");
 });
 test("triage labels expose readable workflow without changing its value", () => {
-  assert.equal(workflowLabel("in_packet"), "Brief ready");
+  assert.equal(workflowLabel("in_packet"), "Evidence ready");
   assert.equal(workflowLabel("context_requested"), "Context requested");
   assert.equal(noticeTitle({ scenario_id: "ukraine2022" }), "ukraine · 2022");
 });

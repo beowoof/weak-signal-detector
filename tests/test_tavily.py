@@ -3,6 +3,7 @@ from datetime import date
 from wsf.connectors.http import HttpResponse
 from wsf.connectors.tavily import search_open_source, search_queries
 from wsf.notice import CollectionPosture, Notice, NoticeTrigger
+from wsf.search_index import SearchIndex
 
 
 class FakeTransport:
@@ -86,11 +87,13 @@ def test_drops_undated_after_cutoff_and_forbidden() -> None:
     )
     kept_urls = [hit["url"] for hit in result["kept"]]
     assert "https://example.com/a" in kept_urls
-    assert any("gov.uk" in url for url in kept_urls)
+    assert not any("gov.uk" in url for url in kept_urls)
     reasons = {row["url"]: row["reason"] for row in result["dropped"]}
     assert reasons["https://example.com/b"] == "undated"
     assert reasons["https://example.com/c"] == "after_cutoff"
-    assert reasons["https://example.com/d"] == "forbidden_term"
+    # A dated warning is a lead, not rejected just for resembling the later outcome.
+    assert "https://example.com/d" in kept_urls
+    assert all(hit["evidence_status"] == "lead_requires_content_version" for hit in result["kept"])
 
 
 def test_query_with_forbidden_term_is_not_sent() -> None:
@@ -106,6 +109,33 @@ def test_query_with_forbidden_term_is_not_sent() -> None:
     assert transport.calls == []
     assert result["kept"] == []
     assert result["dropped"][0]["reason"] == "query_contains_forbidden_term"
+
+
+def test_search_result_index_avoids_duplicate_call_and_does_not_require_key(tmp_path) -> None:
+    transport = FakeTransport(
+        {
+            "results": [
+                {
+                    "title": "Contemporaneous report",
+                    "url": "https://example.com/a",
+                    "content": "exercises near the border",
+                    "published_date": "2022-02-11",
+                }
+            ]
+        }
+    )
+    kwargs = {
+        "start": date(2022, 1, 13),
+        "cutoff": date(2022, 2, 12),
+        "transport": transport,
+        "search_index": SearchIndex(tmp_path),
+    }
+    first = search_open_source("Russia Ukraine exercises", api_key="test", **kwargs)
+    second = search_open_source("  RUSSIA  ukraine EXERCISES ", api_key="", **kwargs)
+    assert first["cache_hit"] is False
+    assert second["cache_hit"] is True
+    assert second["kept"] == first["kept"]
+    assert len(transport.calls) == 1
 
 
 def test_search_queries_are_contemporaneous() -> None:

@@ -140,7 +140,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
     });
   }
 
-  const product = packet.product;
+  const product = packet.presentation || packet.product;
   if (!product) {
     return (
       <section className="brief-layers">
@@ -161,8 +161,18 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
           <span className={`brief-pill brief-pill-state brief-pill-${product.analytic_state}`}>
             {product.analytic_state_label}
           </span>
-          <span className="brief-pill">AnCR: {product.confidence}</span>
+          <span className="brief-pill">Analytical confidence: {product.confidence}</span>
         </div>
+        <section className="brief-callout" aria-label="Bottom line up front">
+          <h3>BLUF</h3>
+          <p>{product.bluf || product.assessment?.[0]}</p>
+          <p><strong>Analytical confidence: {product.confidence}.</strong> {product.confidence_rationale}</p>
+        </section>
+        <section className="brief-callout" aria-label="Source assessment">
+          <h3>Source assessment</h3>
+          <p>{product.source_assessment || "Public-source material; source reliability and corroboration require review."}</p>
+          <p>Source details and provenance are available in the evidence section below.</p>
+        </section>
         {(product.keys || []).length ? (
           <details className="geographic-context"><summary>Geographic context · {product.keys.length} locations</summary>
           {product.geographic_frame && <p>{product.geographic_frame}</p>}

@@ -20,6 +20,10 @@ scenarios/*/freeze.json
 scenarios/*/collect_progress.json
 scenarios/*/interpretation/*/machine_draft.json
 scenarios/*/interpretation/*/machine_draft.md
+scenarios/*/interpretation/*/evidence_bundles/
+scenarios/*/interpretation/*/draft_runs/
+scenarios/*/interpretation/*/research/
+scenarios/.osint_search_index/
 
 # Dashboard frontend
 dashboard/web/node_modules/

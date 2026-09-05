@@ -12,6 +12,7 @@ from wsf.connectors.http import HttpTransport, UrllibTransport, post_with_retry
 from wsf.env import load_project_env
 from wsf.packet import _theatre_frame
 from wsf.scenario import load_scenario
+from wsf.search_index import SearchIndex, SearchIndexBusy
 
 TAVILY_SEARCH_URL = "https://api.tavily.com/search"
 MAX_QUERIES = 6
@@ -171,6 +172,7 @@ def search_open_source(
     transport: HttpTransport | None = None,
     forbidden: list[str] | None = None,
     max_results: int = MAX_RESULTS,
+    search_index: SearchIndex | None = None,
 ) -> dict[str, Any]:
     """Search Tavily and keep only hits published on or before cutoff."""
     forbidden = forbidden or []
@@ -191,34 +193,45 @@ def search_open_source(
         "start_date": start.isoformat(),
         "end_date": cutoff.isoformat(),
     }
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-        "Content-Type": "application/json",
-    }
+    headers = {"Content-Type": "application/json"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     client = transport or UrllibTransport()
-    response = post_with_retry(
-        client,
-        TAVILY_SEARCH_URL,
-        headers=headers,
-        data=json.dumps(payload).encode(),
-        timeout=45,
-        attempts=2,
-        sleep=0.4,
-    )
-    if response.status >= 400:
-        return {
-            "query": query,
-            "kept": [],
-            "dropped": [],
-            "error": f"tavily HTTP {response.status}",
-        }
+    cache_hit = False
+
+    def fetch() -> list[dict]:
+        if not api_key:
+            raise ValueError("TAVILY_API_KEY is not set and no indexed result exists")
+        response = post_with_retry(
+            client,
+            TAVILY_SEARCH_URL,
+            headers=headers,
+            data=json.dumps(payload).encode(),
+            timeout=45,
+            # A search is potentially chargeable; never repeat an uncertain request silently.
+            attempts=1,
+        )
+        if response.status >= 400:
+            raise ValueError(f"tavily HTTP {response.status}")
+        try:
+            body = json.loads(response.body.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ValueError("tavily invalid JSON") from exc
+        rows = body.get("results")
+        if not isinstance(rows, list):
+            raise ValueError("tavily results are not a list")
+        return rows
+
     try:
-        body = json.loads(response.body.decode("utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return {"query": query, "kept": [], "dropped": [], "error": "tavily invalid JSON"}
+        if search_index:
+            results, cache_hit = search_index.fetch(payload, fetch)
+        else:
+            results = fetch()
+    except (OSError, ValueError, SearchIndexBusy) as exc:
+        return {"query": query, "kept": [], "dropped": [], "error": str(exc)}
     kept: list[dict[str, Any]] = []
     dropped: list[dict[str, Any]] = []
-    for row in body.get("results") or []:
+    for row in results:
         title = str(row.get("title") or "")
         url = str(row.get("url") or "")
         snippet = str(row.get("content") or "")
@@ -235,9 +248,7 @@ def search_open_source(
             )
             continue
         unverified = False
-        if published is None and _is_official(url):
-            unverified = True
-        elif published is None:
+        if published is None:
             dropped.append({"url": url, "reason": "undated"})
             continue
         if published is not None and published > cutoff:
@@ -250,7 +261,7 @@ def search_open_source(
                 {"url": url, "reason": "before_window", "published": published.isoformat()}
             )
             continue
-        if _contains_forbidden(blob, forbidden):
+        if not historical and _contains_forbidden(blob, forbidden):
             dropped.append(
                 {
                     "url": url,
@@ -265,12 +276,19 @@ def search_open_source(
                 "url": url,
                 "published": published.isoformat() if published else None,
                 "date_unverified": unverified,
+                "evidence_status": "lead_requires_content_version",
                 "snippet": snippet[:800],
                 "score": row.get("score"),
                 "votes": False,
             }
         )
-    return {"query": query, "kept": kept, "dropped": dropped, "error": None}
+    return {
+        "query": query,
+        "kept": kept,
+        "dropped": dropped,
+        "error": None,
+        "cache_hit": cache_hit,
+    }
 
 
 def harvest_searches(
@@ -285,14 +303,7 @@ def harvest_searches(
     key = tavily_api_key(project_root)
     forbidden = forbidden_terms(project_root, notice.trigger.scenario_id)
     queries = search_queries(notice, project_root)
-    if not key:
-        return {
-            "status": "blocked",
-            "reason": "TAVILY_API_KEY is not set",
-            "queries": queries,
-            "hits": [],
-            "dropped_n": 0,
-        }
+    search_index = SearchIndex(project_root)
     hits: list[dict[str, Any]] = []
     dropped_n = 0
     errors: list[str] = []
@@ -306,6 +317,7 @@ def harvest_searches(
             api_key=key,
             transport=transport,
             forbidden=forbidden,
+            search_index=search_index,
         )
         runs.append(
             {
@@ -314,6 +326,7 @@ def harvest_searches(
                 "n_kept": len(result["kept"]),
                 "n_dropped": len(result["dropped"]),
                 "error": result["error"],
+                "cache_hit": result.get("cache_hit", False),
             }
         )
         if result["error"]:

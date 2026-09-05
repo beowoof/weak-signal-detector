@@ -20,7 +20,7 @@ export function routeSearch(route) {
 }
 export function humanize(value = "") { return String(value).replaceAll("_", " "); }
 export function workflowLabel(state = "new") {
-  return ({ new: "New", acked: "Read", in_packet: "Brief ready", watching: "Watching",
+  return ({ new: "New", acked: "Read", in_packet: "Evidence ready", watching: "Watching",
     context_requested: "Context requested", dismissed: "Dismissed", rejected: "Rejected",
     closed: "Closed" })[state] || humanize(state);
 }
