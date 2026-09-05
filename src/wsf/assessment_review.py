@@ -2,7 +2,148 @@
 
 from __future__ import annotations
 
+import re
+
 from wsf.evidence_bundle import canonical
+
+SERIES_PATTERNS = {
+    "attn.wiki_pageviews": [
+        r"\bwiki\b",
+        r"\bwikipedia\b",
+        r"\bpageviews?\b",
+        r"\battn\.wiki_pageviews\b",
+    ],
+    "market.cbr_funding_spread": [
+        r"\bcbr\b",
+        r"\bfunding\s+spread\b",
+        r"\bmarket\.cbr_funding_spread\b",
+    ],
+    "net.ripe_prefixes": [r"\bripe\b", r"\bprefix(?:es)?\b", r"\bnet\.ripe_prefixes\b"],
+    "talk.gdelt_cameo": [r"\bgdelt\b", r"\btalk\.gdelt_cameo\b"],
+    "talk.icews_cameo": [r"\bicews\b", r"\btalk\.icews_cameo\b"],
+    "tempo.firms_thermal": [r"\bfirms\b", r"\bthermal\b", r"\btempo\.firms_thermal\b"],
+    "tempo.s1_backscatter": [
+        r"\bsar\b",
+        r"\bbackscatter\b",
+        r"\bs1_backscatter\b",
+        r"\btempo\.s1_backscatter\b",
+    ],
+    "tempo.viirs_aoi": [r"\bviirs\b", r"\bntl\b", r"\btempo\.viirs_aoi\b"],
+    "dyad.moex_usdrub": [
+        r"\busd/rub\b",
+        r"\bmoex\b",
+        r"\bexchange\s+fixing\b",
+        r"\bdyad\.moex_usdrub\b",
+    ],
+    "nav.spatial_warnings": [
+        r"\bspatial\s+warnings?\b",
+        r"\bnavarea\b",
+        r"\bnotam\b",
+        r"\bnav\.spatial_warnings\b",
+    ],
+}
+
+
+def _evidence_dates(row: dict) -> set[str]:
+    dates = set()
+    data = row.get("data", {})
+    if isinstance(data, dict):
+        for field in ("evidence_time", "day", "date", "sensing_date"):
+            val = data.get(field)
+            if val is not None:
+                m = re.search(r"(\d{4}-\d{2}-\d{2})", str(val))
+                if m:
+                    dates.add(m.group(1))
+        item_id = data.get("item_id")
+        if item_id is not None:
+            m = re.search(r"(\d{4}-\d{2}-\d{2})", str(item_id))
+            if m:
+                dates.add(m.group(1))
+        if dates:
+            return dates
+        for field in ("at", "sensing_at", "published_at"):
+            val = data.get(field)
+            if val is not None:
+                m = re.search(r"(\d{4}-\d{2}-\d{2})", str(val))
+                if m:
+                    dates.add(m.group(1))
+        if dates:
+            return dates
+    for field in ("source_ref", "available_at"):
+        val = row.get(field)
+        if val is not None:
+            m = re.search(r"(\d{4}-\d{2}-\d{2})", str(val))
+            if m:
+                dates.add(m.group(1))
+    return dates
+
+
+def _number_in_evidence(val: float, data: dict, quote: str | None) -> bool:
+    for field in ("value", "raw"):
+        v = data.get(field)
+        if isinstance(v, (int, float)) and abs(float(v) - val) <= 0.05:
+            return True
+    all_text = f"{quote or ''} {data.get('text', '')}"
+    nums = [float(x) for x in re.findall(r"-?\d+(?:\.\d+)?", all_text)]
+    return any(abs(n - val) <= 0.05 for n in nums)
+
+
+def _check_claim_evidence_invariants(statement: str, row: dict, quote: str | None) -> list[str]:
+    errors = []
+    data = row.get("data", {})
+    if not isinstance(data, dict):
+        data = {}
+
+    claim_dates = set(re.findall(r"\b\d{4}-\d{2}-\d{2}\b", statement))
+    if claim_dates:
+        ev_dates = _evidence_dates(row)
+        if ev_dates and not (claim_dates & ev_dates):
+            errors.append("claim_evidence_date_mismatch")
+
+    series_id = data.get("series_id")
+    if isinstance(series_id, str) and series_id in SERIES_PATTERNS:
+        mentioned_series = {
+            sid
+            for sid, patterns in SERIES_PATTERNS.items()
+            if any(re.search(pat, statement, re.IGNORECASE) for pat in patterns)
+        }
+        if mentioned_series and series_id not in mentioned_series:
+            errors.append("claim_evidence_series_mismatch")
+
+    z_claim_match = re.search(
+        r"\b(?:z[- ]?score|z)\s*(?:was|reached|of|is|=)?\s*(-?\d+(?:\.\d+)?)\b",
+        statement,
+        re.IGNORECASE,
+    )
+    if z_claim_match:
+        z_claim = float(z_claim_match.group(1))
+        ev_text = data.get("text") or canonical(data)
+        z_ev_match = re.search(r"\bz\s*=\s*(-?\d+(?:\.\d+)?)", ev_text)
+        if not z_ev_match and isinstance(quote, str):
+            z_ev_match = re.search(r"\bz\s*=\s*(-?\d+(?:\.\d+)?)", quote)
+
+        if z_ev_match:
+            z_ev = float(z_ev_match.group(1))
+            if abs(z_claim - z_ev) > 0.05:
+                errors.append("claim_evidence_value_mismatch")
+        elif "z" in data and isinstance(data["z"], (int, float)):
+            if abs(z_claim - float(data["z"])) > 0.05:
+                errors.append("claim_evidence_value_mismatch")
+        else:
+            if not _number_in_evidence(z_claim, data, quote):
+                errors.append("claim_evidence_value_mismatch")
+
+    val_claim_match = re.search(
+        r"\bvalue\s*(?:was|showed a value of|is|of|:)?\s*(-?\d+(?:\.\d+)?)\b",
+        statement,
+        re.IGNORECASE,
+    )
+    if val_claim_match and not z_claim_match:
+        val_claim = float(val_claim_match.group(1))
+        if not _number_in_evidence(val_claim, data, quote):
+            errors.append("claim_evidence_value_mismatch")
+
+    return errors
 
 
 def review_assessment(parsed: dict, bundle: dict) -> dict:
@@ -13,7 +154,8 @@ def review_assessment(parsed: dict, bundle: dict) -> dict:
         refs = claim.get("evidence_ids", [])
         quotes = claim.get("quotes", {})
         errors = []
-        if not isinstance(claim.get("statement"), str) or not claim["statement"].strip():
+        statement = claim.get("statement")
+        if not isinstance(statement, str) or not statement.strip():
             errors.append("missing_claim_statement")
         if not isinstance(refs, list) or not refs or not all(isinstance(r, str) for r in refs):
             errors.append("missing_or_invalid_evidence_ids")
@@ -30,6 +172,9 @@ def review_assessment(parsed: dict, bundle: dict) -> dict:
             quote = quotes.get(ref)
             if not isinstance(quote, str) or not quote.strip() or quote not in text:
                 errors.append(f"quote_not_in_evidence:{ref}")
+            if isinstance(statement, str) and statement.strip():
+                for inv_err in _check_claim_evidence_invariants(statement, row, quote):
+                    errors.append(f"{inv_err}:{ref}")
         findings.append(
             {
                 **claim,
