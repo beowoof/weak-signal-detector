@@ -27,6 +27,7 @@ from wsf.notice import apply_action_at_path, emit_notices_for_measurement, load_
 from wsf.packet import build_and_save, packet_directory
 from wsf.progress import load_collect_progress
 from wsf.report import load_report, save_report
+from wsf.research import ResearchLimits
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
@@ -279,12 +280,19 @@ class PacketBuildBody(BaseModel):
     replay: bool = False
 
 
+class ResearchLimitsBody(BaseModel):
+    queries: int = Field(default=6, ge=1, le=12)
+    documents: int = Field(default=6, ge=1, le=48)
+    seconds: int = Field(default=180, ge=1, le=600)
+
+
 class PacketDraftBody(BaseModel):
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
     replay: bool = False
     search: bool = True
     apply: bool = False
+    research_limits: ResearchLimitsBody = Field(default_factory=ResearchLimitsBody)
 
 
 class ReportBody(BaseModel):
@@ -475,6 +483,7 @@ def create_app(
                 replay=body.replay,
                 search=body.search,
                 apply=body.apply,
+                research_limits=ResearchLimits(**body.research_limits.model_dump()),
             )
         except KeyError as exc:
             raise HTTPException(status_code=404, detail="Unknown notice") from exc
@@ -507,6 +516,7 @@ def create_app(
                 search=body.search,
                 apply=body.apply,
                 progress=progress,
+                research_limits=ResearchLimits(**body.research_limits.model_dump()),
             )
 
         return StreamingResponse(

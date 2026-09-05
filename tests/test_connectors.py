@@ -27,6 +27,7 @@ from wsf.connectors.viirs import (
     lonlat_to_tile,
     viirs_extra_available,
     zonal_mean,
+    zonal_summary,
 )
 from wsf.connectors.wikipedia import WikipediaConnector
 from wsf.corpus import collect_corpus, harvest_span
@@ -314,6 +315,23 @@ def test_viirs_requires_two_valid_aois() -> None:
         tile_id="h21v03",
     )
     assert zonal_mean(arrays, bbox) == pytest.approx(10.0)
+    cloudy = TileArrays(
+        ntl=[[10.0]],
+        quality=[[0]],
+        cloud=[[192]],
+        lat=[[55.75]],
+        lon=[[37.61]],
+        tile_id="h21v03",
+    )
+    mean, detail = zonal_summary(cloudy, bbox)
+    assert mean is None
+    assert detail["reasons"] == ["cloud_mask_rejected_pixels"]
+    assert detail["cloud_rejected"] == 1
+    cloudy.cloud = [[0]]
+    cloudy.quality = [[255]]
+    mean, detail = zonal_summary(cloudy, bbox)
+    assert mean is None
+    assert detail["reasons"] == ["quality_flags_rejected_pixels"]
     assert lonlat_to_tile(37.61, 55.75) == (21, 3)
 
     class Backend:
@@ -346,11 +364,7 @@ def test_viirs_requires_two_valid_aois() -> None:
 
 def test_granule_nbytes_reads_size_in_bytes() -> None:
     item = {
-        "umm": {
-            "DataGranule": {
-                "ArchiveAndDistributionInformation": [{"SizeInBytes": 22000000}]
-            }
-        }
+        "umm": {"DataGranule": {"ArchiveAndDistributionInformation": [{"SizeInBytes": 22000000}]}}
     }
     assert granule_nbytes(item) == 22_000_000
 
@@ -437,9 +451,7 @@ def test_live_collect_writes_observation_files(
     from wsf.connectors import default_connectors
 
     connectors = default_connectors(tmp_path, transport=FakeTransport(handler))
-    directory, manifest = collect_corpus(
-        tmp_path, "ukraine2022", mock=False, connectors=connectors
-    )
+    directory, manifest = collect_corpus(tmp_path, "ukraine2022", mock=False, connectors=connectors)
     assert manifest["mode"] == "live_harvest"
     wiki_items = [item for item in manifest["items"] if item["source"] == "wikipedia"]
     assert wiki_items

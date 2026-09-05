@@ -90,6 +90,7 @@ class ViirsConnector:
             aoi_means: dict[str, float | None] = {}
             contributing: list[str] = []
             production: list[str] = []
+            coverage_details = []
             day_failed = False
             for aoi in request.aois:
                 bbox = [float(value) for value in aoi["bbox"]]
@@ -124,6 +125,14 @@ class ViirsConnector:
                         arrays = backend.read_tile(day, tile_id, bbox, self.cache_dir)
                     except Exception as error:  # noqa: BLE001
                         day_failed = True
+                        coverage_details.append(
+                            {
+                                "aoi": aoi["id"],
+                                "tile": tile_id,
+                                "reason": "retrieval_failed",
+                                "error": str(error),
+                            }
+                        )
                         requests.append(
                             {
                                 "day": day.isoformat(),
@@ -146,8 +155,12 @@ class ViirsConnector:
                         }
                     )
                     if arrays is None:
+                        coverage_details.append(
+                            {"aoi": aoi["id"], "tile": tile_id, "reason": "no_granule_found"}
+                        )
                         continue
-                    mean = zonal_mean(arrays, bbox)
+                    mean, diagnostics = zonal_summary(arrays, bbox)
+                    coverage_details.append({"aoi": aoi["id"], "tile": tile_id, **diagnostics})
                     if mean is not None:
                         values.append(mean)
                     if arrays.production_timestamp:
@@ -163,6 +176,7 @@ class ViirsConnector:
                 "availability_regime": "reconstructed_assumed_latency",
                 "assumed_latency_days": 3,
                 "grid": "geographic_15arcsec",
+                "coverage_details": coverage_details,
             }
             if day_failed:
                 quality = "source_down"
@@ -174,9 +188,7 @@ class ViirsConnector:
                 n_missing += 1
             else:
                 quality = "ok"
-                value = sum(aoi_means[aoi_id] or 0.0 for aoi_id in contributing) / len(
-                    contributing
-                )
+                value = sum(aoi_means[aoi_id] or 0.0 for aoi_id in contributing) / len(contributing)
                 n_ok += 1
             progress.line(
                 f"viirs {request.window_id} {day.isoformat()} [{index}/{n_days}] "
@@ -280,9 +292,7 @@ class EarthaccessViirsBackend:
             return None
         total = granule_nbytes(granule)
         if self.progress is not None:
-            self.progress.update(
-                step="download", bytes=0, total_bytes=total, stalled=False
-            )
+            self.progress.update(step="download", bytes=0, total_bytes=total, stalled=False)
         files = _download_granule(earthaccess, granule, cache_dir)
         if not files:
             return None
@@ -380,9 +390,7 @@ def _download_granule(earthaccess: Any, granule: Any, cache_dir: Path) -> list[A
         try:
             files = future.result(timeout=DOWNLOAD_TIMEOUT_S)
         except FuturesTimeoutError as error:
-            raise TimeoutError(
-                f"VIIRS download timed out after {DOWNLOAD_TIMEOUT_S}s"
-            ) from error
+            raise TimeoutError(f"VIIRS download timed out after {DOWNLOAD_TIMEOUT_S}s") from error
     return list(files or [])
 
 
@@ -390,9 +398,7 @@ def _watch_partials(progress: Any, cache_dir: Path, stop: threading.Event) -> No
     last_size = -1
     last_change = time.monotonic()
     while not stop.wait(2):
-        partials = [
-            path for path in cache_dir.glob("partial_*") if path.is_file()
-        ]
+        partials = [path for path in cache_dir.glob("partial_*") if path.is_file()]
         if not partials:
             continue
         newest = max(partials, key=lambda path: path.stat().st_mtime)
@@ -405,26 +411,46 @@ def _watch_partials(progress: Any, cache_dir: Path, stop: threading.Event) -> No
 
 
 def zonal_mean(arrays: TileArrays, bbox: list[float]) -> float | None:
+    return zonal_summary(arrays, bbox)[0]
+
+
+def zonal_summary(arrays: TileArrays, bbox: list[float]) -> tuple[float | None, dict]:
     west, south, east, north = bbox
     total = 0.0
     count = 0
+    counts = {"pixels_in_aoi": 0, "fill_pixels": 0, "cloud_rejected": 0, "quality_rejected": 0}
     for row, ntl_row in enumerate(arrays.ntl):
         for col, raw in enumerate(ntl_row):
             lat = arrays.lat[row][col]
             lon = arrays.lon[row][col]
             if not (south <= lat <= north and west <= lon <= east):
                 continue
+            counts["pixels_in_aoi"] += 1
             if raw is None or float(raw) <= NTL_FILL + 0.1:
+                counts["fill_pixels"] += 1
                 continue
             quality = int(arrays.quality[row][col])
             cloud_bits = (int(arrays.cloud[row][col]) >> CLOUD_DETECTION_SHIFT) & 0b11
+            if cloud_bits not in CLOUD_CLEAR:
+                counts["cloud_rejected"] += 1
+            if quality not in QUALITY_VALID:
+                counts["quality_rejected"] += 1
             if quality not in QUALITY_VALID or cloud_bits not in CLOUD_CLEAR:
                 continue
             total += float(raw)
             count += 1
+    counts["usable_pixels"] = count
+    reasons = []
     if count == 0:
-        return None
-    return total / count
+        if not counts["pixels_in_aoi"]:
+            reasons.append("no_pixels_in_aoi")
+        if counts["fill_pixels"]:
+            reasons.append("fill_values")
+        if counts["cloud_rejected"]:
+            reasons.append("cloud_mask_rejected_pixels")
+        if counts["quality_rejected"]:
+            reasons.append("quality_flags_rejected_pixels")
+    return (total / count if count else None), {**counts, "reasons": reasons}
 
 
 def tile_ids_for_bbox(bbox: list[float]) -> set[tuple[int, int]]:
@@ -450,12 +476,8 @@ def tile_latlon(
     north = 90.0 - v * TILE_DEGREES
     res_x = TILE_DEGREES / cols
     res_y = TILE_DEGREES / rows
-    lat = [
-        [north - (row + 0.5) * res_y for _col in range(cols)] for row in range(rows)
-    ]
-    lon = [
-        [west + (col + 0.5) * res_x for col in range(cols)] for _row in range(rows)
-    ]
+    lat = [[north - (row + 0.5) * res_y for _col in range(cols)] for row in range(rows)]
+    lon = [[west + (col + 0.5) * res_x for col in range(cols)] for _row in range(rows)]
     return lat, lon
 
 

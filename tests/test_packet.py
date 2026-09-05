@@ -8,6 +8,18 @@ from wsf.packet import _theatre_frame, build_and_save, build_packet, resolve_clo
 from wsf.scenario import create_scenario
 
 
+def test_packet_confidence_is_about_explanation_not_missing_sensor(tmp_path, monkeypatch):
+    monkeypatch.chdir(tmp_path)
+    _write_notice(tmp_path)
+    packet = build_packet(tmp_path, "desk-case", "notice-abc", replay=True)
+    note = packet.product.analyst_note
+    assert "Confidence in the explanation is low" in note
+    assert "independent physical reporting" not in note
+    assert "official-posture collection is missing" not in note
+    assert "substrate" not in note
+    assert "same story" in " ".join(packet.product.caveats)
+
+
 def _trigger(**overrides) -> NoticeTrigger:
     payload = dict(
         scenario_id="desk-case",
@@ -278,16 +290,17 @@ def test_ukraine_preparatory_product_is_watch() -> None:
     observations = " ".join(row["observation"] for row in packet.product.watchlist)
     assert "3.72" in observations
     assert "RIPE prefixes" in observations
-    assert (
-        "FIRMS recorded one thermal detection within the monitored staging AOIs"
-        in observations
-    )
+    assert "FIRMS recorded one thermal detection within the monitored staging AOIs" in observations
     assert "Yelnya" not in observations
     assert "declined from 14 to 7" in observations
-    assert any("Physical posture" in row["title"] for row in packet.product.collection)
-    official = next(row for row in packet.product.collection if row["title"] == "Official posture")
-    assert "travel advice" in official["why"]
-    assert "costly government action" in official["why"]
+    assert any(
+        "Public evidence of preparation" in row["title"] for row in packet.product.collection
+    )
+    official = next(
+        row for row in packet.product.collection if row["title"] == "Published government actions"
+    )
+    assert "FCDO travel-advice change histories" in official["why"]
+    assert "public embassy notices" in official["why"]
     joined = " ".join(packet.product.assessment)
     assert "We assess it is almost certain" in joined
     assert "Russia" in joined

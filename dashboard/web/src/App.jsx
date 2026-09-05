@@ -6,6 +6,7 @@ import OperationsView from "./views/OperationsView.jsx";
 import ScenariosView from "./views/ScenariosView.jsx";
 import ReportView from "./views/ReportView.jsx";
 import useWorkspaceRoute from "./lib/useWorkspaceRoute.js";
+import { readDraftStream } from "./lib/draftStream.js";
 
 const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["scenarios", "Scenarios"], ["operations", "Operations"]];
 const POLL_MS = 8000;
@@ -13,6 +14,7 @@ const NOTICE_KEY = "wsd-alert-id";
 const RESULT_KEY = "wsd-dashboard-result";
 
 export default function App() {
+  const [machineProgress, setMachineProgress] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [notices, setNotices] = useState([]);
   const [route, navigate] = useWorkspaceRoute();
@@ -317,19 +319,30 @@ export default function App() {
     navigate({ surface: "notices", tab: "notes" });
   }
 
-  async function runMachineDraft(notice) {
+  async function runMachineDraft(notice, researchLimits) {
     setActionError("");
     setCollectBusy(true);
+    setMachineProgress({ noticeId: notice.notice_id, stage: "Starting research", elapsed_s: 0, history: [] });
     const scenario = notice.scenario_id || notice.trigger?.scenario_id;
     const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
     try {
-      const payload = await postJson("/api/packet/draft", {
+      const body = {
         scenario,
         notice_id: notice.notice_id,
         replay,
         search: true,
         apply: false,
+        research_limits: researchLimits,
+      };
+      const response = await fetch("/api/packet/draft/stream", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
       });
+      const payload = await readDraftStream(response, event => setMachineProgress(previous => ({
+        ...event, noticeId: notice.notice_id,
+        history: previous?.stage === event.stage ? previous.history :
+          [...(previous?.history || []), event.stage],
+      })));
+      setMachineProgress(previous => ({ ...previous, stage: "Complete — review the collection result below" }));
       if (selectedRef.current === notice.notice_id && payload.leakage && payload.leakage.length) {
         setActionError(`Machine draft flagged leakage: ${payload.leakage.join(", ")}. Edit before saving.`);
       }
@@ -345,6 +358,7 @@ export default function App() {
       if (selectedRef.current === notice.notice_id) openNotes();
     } catch (err) {
       setActionError(err.message);
+      setMachineProgress(previous => ({ ...previous, stage: `Stopped: ${err.message}` }));
     } finally {
       setCollectBusy(false);
     }
@@ -477,7 +491,8 @@ export default function App() {
         onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
         packet={currentPacket} collection={ownResources ? collection : null}
         collectBusy={collectBusy || opsBusy} onCollect={runCollect}
-        onAddNotes={openNotes} onMachineDraft={() => selectedNotice && runMachineDraft(selectedNotice)}
+        onAddNotes={openNotes} onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
+        machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
         activeTab={route.tab} onTabChange={(tab) => navigate({ tab })}
         loading={loading && !notices.length} drafts={drafts}

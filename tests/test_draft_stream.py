@@ -60,6 +60,24 @@ def test_existing_json_endpoint_is_unchanged(tmp_path, monkeypatch):
     assert response.json() == {"notes": "existing UI contract"}
 
 
+def test_user_research_limits_reach_worker_and_invalid_limits_fail(tmp_path, monkeypatch):
+    def run(*args, **kwargs):
+        assert kwargs["research_limits"].documents == 24
+        assert kwargs["research_limits"].seconds == 300
+        return {"notes": "done"}
+
+    monkeypatch.setattr(server, "run_desk_draft", run)
+    client = TestClient(server.create_app(api_only=True, project_root=tmp_path))
+    body = {
+        "scenario": "case",
+        "notice_id": "notice",
+        "research_limits": {"queries": 6, "documents": 24, "seconds": 300},
+    }
+    assert client.post("/api/packet/draft", json=body).status_code == 200
+    body["research_limits"]["seconds"] = 3600
+    assert client.post("/api/packet/draft", json=body).status_code == 422
+
+
 def test_non_terminal_progress_is_readable_and_throttled():
     output = io.StringIO()
     progress = DraftProgress(stream=output)

@@ -49,4 +49,4 @@ def test_bluf_and_confidence_contract():
         validate_and_render(parsed, {"A1": {}})
     rendered = validate_and_render(completion(), {"A1": {}})
     assert rendered.index("## BLUF") < rendered.index("## Analytical confidence")
-    assert rendered.index("## Source assessment") < rendered.index("## Key judgements")
+    assert rendered.index("## Key judgements") < rendered.index("## Source assessment")

@@ -10,6 +10,7 @@ from dashboard import server
 from wsf.api_client import post_api
 from wsf.cli import app
 from wsf.connectors.http import HttpResponse
+from wsf.research import ResearchLimits
 
 
 @pytest.fixture(autouse=True)
@@ -159,7 +160,8 @@ def test_cli_routes_through_api(tmp_path, monkeypatch, leakage, flags):
             {
                 "replay": bool(flags),
                 "search": not bool(flags),
-                "apply": bool(flags),
+                    "apply": bool(flags),
+                    "research_limits": ResearchLimits(),
             },
         )
     ]

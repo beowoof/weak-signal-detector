@@ -346,9 +346,10 @@ const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection",
 export default function NoticesView({
   notices, selectedId, onSelect, onOpenAnomaly, onBuildPacket, packet, collection,
   collectBusy, onCollect, onAddNotes, onMachineDraft, onAction, actionError, activeTab, onTabChange,
-  evidence, notes, loading, drafts,
+  evidence, notes, loading, drafts, machineProgress,
 }) {
   const [query, setQuery] = useState("");
+  const [researchLimits, setResearchLimits] = useState({ queries: 6, documents: 6, seconds: 180 });
   const [filter, setFilter] = useState("all");
   const [listOpen, setListOpen] = useState(!new URLSearchParams(window.location.search).has("notice"));
   const scrollBody = useRef(null);
@@ -390,7 +391,7 @@ export default function NoticesView({
         <div className="notice-actions">
           <button className="primary-action" type="button" onClick={onOpenAnomaly}>Review evidence</button>
           <button type="button" onClick={onAddNotes}>Your assessment{drafts[selectedId] ? " · Draft" : ""}</button>
-          <button type="button" disabled={collectBusy} onClick={onMachineDraft}>
+          <button type="button" disabled={collectBusy} onClick={() => onMachineDraft(researchLimits)}>
             {collectBusy ? "Drafting…" : "Machine draft"}
           </button>
           <details className="action-menu" key={selectedId}
@@ -412,6 +413,18 @@ export default function NoticesView({
               }}>{action.label}</button>)}
           </div></details>
         </div>
+        <p>Research limits: {researchLimits.queries} queries · {researchLimits.documents} document attempts · {researchLimits.seconds}s. Failed retrievals count; Ollama drafting time is additional.</p>
+        <details><summary>Change research limits</summary>
+          <p>Application limits, unrelated to your Tavily credit balance. Each network request waits at most 30 seconds. Previously attempted URLs are skipped; another run can try remaining candidates.</p>
+          {[ ["queries", "Search queries", [3, 6, 9, 12]], ["documents", "Document attempts per run", [6, 12, 24, 48]], ["seconds", "Research time (seconds)", [60, 180, 300, 600]] ].map(([key, label, choices]) =>
+            <label key={key}>{label} <select disabled={collectBusy} value={researchLimits[key]} onChange={e => setResearchLimits(old => ({ ...old, [key]: Number(e.target.value) }))}>
+              {choices.map(value => <option key={value} value={value}>{value}</option>)}
+            </select> </label>)}
+        </details>
+        {machineProgress?.noticeId === selected.notice_id && <section aria-label="Machine draft progress">
+          <p role="status">{machineProgress.elapsed_s}s elapsed · {machineProgress.stage}</p>
+          <details><summary>Run activity and cutoffs</summary><ol>{machineProgress.history?.map((stage, i) => <li key={i}>{stage}</li>)}</ol></details>
+        </section>}
         <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
           {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
             aria-selected={activeTab === id} aria-controls={`panel-${id}`} tabIndex={activeTab === id ? 0 : -1}

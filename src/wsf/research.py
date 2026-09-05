@@ -35,7 +35,7 @@ class ResearchLimits:
     def __post_init__(self):
         if not (
             1 <= self.queries <= 12
-            and 1 <= self.documents <= 12
+            and 1 <= self.documents <= 48
             and 1 <= self.seconds <= 600
             and 100 <= self.document_chars <= 20000
         ):
@@ -145,6 +145,94 @@ def _save(path: Path, value: dict) -> None:
     tmp.replace(path)
 
 
+def collection_outcomes(state: dict, packet: Packet) -> list[dict]:
+    """Account for every question; acquisition is not an analytical answer."""
+    outcomes = []
+    for i, entry in enumerate(state["plan"]):
+        requirement = entry["requirement_id"]
+        query = state["requests"].get(f"query-{i}", {})
+        leads = [r for r in state["leads"] if r.get("requirement_id") == requirement]
+        lead_urls = {r["url"] for r in leads}
+        documents = [
+            d
+            for d in state["documents"]
+            if d.get("requirement_id") == requirement or d.get("url") in lead_urls
+        ]
+        usable = [
+            d
+            for d in documents
+            if not document_rejection(d, packet.clocks.knowledge_cutoff, packet.clocks.mode)
+        ]
+        attempts = []
+        for url in dict.fromkeys(r["url"] for r in leads):
+            request = state["requests"].get("document-" + digest(url)[:16], {})
+            reason = request.get("reason")
+            for document in documents:
+                if document.get("url") == url:
+                    reason = (
+                        document_rejection(
+                            document, packet.clocks.knowledge_cutoff, packet.clocks.mode
+                        )
+                        or reason
+                    )
+            if not request:
+                reason = state.get("blocked") or (
+                    f"Research {state['limit_reached']} budget exhausted"
+                    if state.get("limit_reached")
+                    else "Document not attempted"
+                )
+            attempts.append(
+                {"url": url, "status": request.get("status", "not_attempted"), "reason": reason}
+            )
+        if usable:
+            status, reason = (
+                "documents_obtained",
+                "Assess whether the retrieved material answers the question",
+            )
+        elif query.get("status") == "complete" and not leads:
+            status, reason = "no_usable_leads", "Search returned no usable public document links"
+        elif attempts:
+            status, reason = "no_admitted_documents", "See source-specific retrieval outcomes"
+        else:
+            status = query.get("status", "not_attempted")
+            reason = (
+                query.get("reason")
+                or state.get("blocked")
+                or state.get("network_status")
+                or (
+                    f"Research {state['limit_reached']} budget exhausted"
+                    if state.get("limit_reached")
+                    else "Search not attempted"
+                )
+            )
+        outcomes.append(
+            {
+                "requirement_id": requirement,
+                "question": entry["purpose"],
+                "query": entry["query"],
+                "status": status,
+                "reason": reason,
+                "documents": [d["url"] for d in usable],
+                "attempts": attempts,
+            }
+        )
+    planned = {entry["requirement_id"] for entry in state["plan"]}
+    for i, requirement in enumerate(packet.product.collection if packet.product else []):
+        ident = f"requirement-{i + 1}"
+        if ident not in planned:
+            outcomes.append(
+                {
+                    "requirement_id": ident,
+                    "question": requirement["title"],
+                    "status": "not_attempted",
+                    "reason": "Research query budget exhausted",
+                    "documents": [],
+                    "attempts": [],
+                }
+            )
+    return outcomes
+
+
 def _document(
     url: str, packet: Packet, transport: HttpTransport, headers: dict, timeout, max_chars: int
 ) -> dict:
@@ -249,15 +337,35 @@ def run_research(
             "cutoff": str(packet.clocks.knowledge_cutoff),
             "mode": packet.clocks.mode,
             "plan": plan,
-            "limits": asdict(limits),
+            "document_chars": limits.document_chars,
         }
     )[:20]
     folder = directory / "research"
     path = folder / f"research-{key}.json"
+    legacy_state = None
+    if not path.exists():
+        # Reuse old checkpoints when only attempt/time allowances changed.
+        for old_path in folder.glob("research-*.json"):
+            candidate = json.loads(old_path.read_text())
+            old_key = digest(
+                {
+                    "schema": "research_v1",
+                    "cutoff": str(packet.clocks.knowledge_cutoff),
+                    "mode": packet.clocks.mode,
+                    "plan": plan,
+                    "limits": candidate.get("limits"),
+                }
+            )[:20]
+            if old_path.stem == f"research-{old_key}" and candidate.get("plan") == plan:
+                if legacy_state is None or len(candidate["requests"]) > len(
+                    legacy_state["requests"]
+                ):
+                    legacy_state = candidate
     state = (
         json.loads(path.read_text())
         if path.exists()
-        else {
+        else legacy_state
+        or {
             "schema_id": "research_v1",
             "plan": plan,
             "limits": asdict(limits),
@@ -267,12 +375,17 @@ def run_research(
             "elapsed_s": 0,
         }
     )
+    state["limits"] = asdict(limits)
     state["run_usage"] = {
         "search_requests": 0,
         "search_cache_hits": 0,
         "document_attempts": 0,
     }
     if not allow_network:
+        state["network_status"] = (
+            "Network research disabled for this run; only saved documents are available"
+        )
+        state["collection_outcomes"] = collection_outcomes(state, packet)
         return state
     api_key = tavily_api_key(root)
     folder.mkdir(parents=True, exist_ok=True)
@@ -291,6 +404,14 @@ def run_research(
     if api_key:
         headers["Authorization"] = f"Bearer {api_key}"
     started = time.monotonic()
+    state.pop("limit_reached", None)
+    state.pop("blocked", None)
+    if progress:
+        progress(
+            f"Research limits: {limits.queries} queries, {limits.documents} document attempts, "
+            f"{limits.seconds}s; each request waits at most 30s. Failures count as attempts.",
+            1,
+        )
 
     def timeout():
         left = limits.seconds - (time.monotonic() - started)
@@ -320,7 +441,10 @@ def run_research(
             state["requests"][ident] = {"status": "deferred", "reason": str(exc)}
             return None
         except (OSError, ValueError, KeyError, TypeError) as exc:
-            state["requests"][ident] = {"status": "failed", "reason": str(exc)[:200]}
+            reason = str(exc)[:200] or type(exc).__name__
+            state["requests"][ident] = {"status": "failed", "reason": reason}
+            if progress:
+                progress(f"Research request failed: {reason}", 1)
             return None
         finally:
             _save(path, state)
@@ -395,7 +519,7 @@ def run_research(
             if packet.clocks.mode == "live" and not api_key:
                 state["blocked"] = "TAVILY_API_KEY is not set; live document extraction cannot run"
                 break
-            attempted = sum(k.startswith("document-") for k in state["requests"])
+            attempted = state["run_usage"]["document_attempts"]
             ident = "document-" + digest(lead["url"])[:16]
             if ident in state["requests"]:
                 continue
@@ -434,6 +558,27 @@ def run_research(
             "cost": "not_measured",
             "independent_sources": "not_verified",
         }
+        state["collection_outcomes"] = collection_outcomes(state, packet)
+        state["stop_reason"] = (
+            f"Stopped at the {limits.documents}-document attempt limit for this run; "
+            "failed retrievals count toward this limit."
+            if state.get("limit_reached") == "documents"
+            else f"Stopped at the {limits.seconds}-second research time limit."
+            if state.get("limit_reached") == "time"
+            else state.get("blocked")
+            or "Finished the planned searches and available document candidates."
+        )
+        failures = sum(
+            k.startswith("document-") and v.get("status") == "failed"
+            for k, v in state["requests"].items()
+        )
+        state["usage"]["failed_documents"] = failures
+        if progress:
+            progress(
+                f"{state['stop_reason']} {state['admitted_documents']} usable documents retained; "
+                f"{failures} failed retrievals recorded. Tavily credit balance was not checked.",
+                1,
+            )
         _save(path, state)
         lock.unlink()
     return state

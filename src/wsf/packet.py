@@ -1252,12 +1252,12 @@ def _assessment_paragraphs(state: str, notice: Notice, frame: dict[str, Any]) ->
                 "or reversible preparation. It is unlikely to be routine variation."
             ),
             (
-                "The decision this supports is urgent collection against independent "
-                "physical and official-posture sources on those AOIs."
+                "The decision this supports is urgent collection of dated public "
+                "reports of logistics, exercises and government actions on those AOIs."
                 if geo
                 else (
-                    "The decision this supports is urgent collection against independent "
-                    "physical and official-posture sources."
+                    "The decision this supports is urgent collection of dated public "
+                    "reports of logistics, exercises and government actions."
                 )
             ),
         ]
@@ -1269,17 +1269,20 @@ def _assessment_paragraphs(state: str, notice: Notice, frame: dict[str, Any]) ->
                 "for overt action remains a realistic possibility."
             ),
             (
-                "The decision this supports is collection against independent physical "
-                "and official-posture sources, which would have the greatest effect "
+                "The decision this supports is collection of dated public "
+                "reports of logistics, exercises and government actions, which would bear "
                 "on these likelihoods."
             ),
         ]
     else:
         collect = (
-            "The decision this supports is collection against independent physical "
-            "posture on those AOIs."
+            "The decision this supports is collection of dated public "
+            "reports of logistics, exercises and government actions on those AOIs."
             if geo
-            else ("The decision this supports is collection against independent physical posture.")
+            else (
+                "The decision this supports is collection of dated public reports of "
+                "logistics, exercises and government actions."
+            )
         )
         paras += [
             (
@@ -1292,22 +1295,14 @@ def _assessment_paragraphs(state: str, notice: Notice, frame: dict[str, Any]) ->
     return paras
 
 
-def _ancr(
-    *, physical_knowable: bool, physical_weak: bool, official_missing: bool
-) -> tuple[str, str]:
-    gaps = []
-    if not physical_knowable:
-        gaps.append("independent physical reporting is not yet available")
-    elif physical_weak:
-        gaps.append("physical reporting is weak")
-    if official_missing:
-        gaps.append("official-posture collection is missing")
-    gaps.append("public-reporting series share a substrate")
-    rating = "Low" if (not physical_knowable or physical_weak) else "Moderate"
-    return rating, (
-        f"Analytical confidence is {rating.lower()}. The information base is incomplete: "
-        + "; ".join(gaps)
-        + "."
+def _ancr() -> tuple[str, str]:
+    # This compiler has measured series, not a reviewed causal assessment. A VIIRS
+    # observation or a large FIRMS z-score cannot confer confidence in an explanation.
+    return "Low", (
+        "Confidence in the explanation is low: the pattern identifies a change worth "
+        "investigating, but the packet has not established which activity accounts for it. "
+        "The assessment should turn on whether the timing, persistence and content of "
+        "publicly available evidence favour preparation over a response to crisis news."
     )
 
 
@@ -1330,9 +1325,6 @@ def _compile_product(
         row.quality == "missing" and _as_dt(row.event_time).date() == end
         for row in _obs_on_days(observations, "tempo.s1_backscatter", start, end)
     )
-    firms_z = [z for _, z in _ok_z_pairs(notice, observations, clocks, "tempo.firms_thermal")]
-    physical_weak = not firms_z or max(abs(z) for z in firms_z) < 2
-    physical_knowable = bool(viirs_knowable)
     state, state_label, change = _analytic_state(
         notice,
         prior_in_window=prior_in_window,
@@ -1345,11 +1337,7 @@ def _compile_product(
         for dim in environment.get("dimensions") or []
         if dim.get("id") == "official_posture"
     )
-    confidence, confidence_rationale = _ancr(
-        physical_knowable=physical_knowable,
-        physical_weak=physical_weak,
-        official_missing=official_missing,
-    )
+    confidence, confidence_rationale = _ancr()
 
     availability = []
     if viirs_all and not viirs_knowable:
@@ -1372,12 +1360,15 @@ def _compile_product(
         collection.append(
             {
                 "rank": "1",
-                "title": "Physical posture — highest priority",
+                "title": "Public evidence of preparation",
                 "why": (
-                    "The anomaly is strongest in financial, infrastructure and information "
-                    "indicators. Independent physical evidence on "
-                    f"{_join_plain(places) or 'the declared AOIs'} "
-                    f"would discriminate. VIIRS NTL not yet available at this cutoff.{sar_note}"
+                    "Look for dated public reports of transport, logistics, exercise schedules "
+                    "and changes in local restrictions around "
+                    f"{_join_plain(places) or 'the declared AOIs'}. Compare their timing with "
+                    "the signal and trace repeated reports to their original source. "
+                    "These can inform an assessment of preparation without direct observation "
+                    "of deployments. "
+                    f"VIIRS NTL is unavailable at this cutoff.{sar_note}"
                 ),
             }
         )
@@ -1385,13 +1376,13 @@ def _compile_product(
         collection.append(
             {
                 "rank": str(len(collection) + 1),
-                "title": "Official posture",
+                "title": "Published government actions",
                 "why": (
-                    "Collect contemporaneous Russian, Ukrainian, UK, US and relevant allied "
-                    "official statements and formal measures, including travel advice, "
-                    "diplomatic drawdowns, defence announcements, NOTAM/NAVAREA restrictions "
-                    "and sanctions measures. Identify changes in declared threat assessment "
-                    "or costly government action."
+                    "Use FCDO travel-advice change histories, public embassy notices, defence "
+                    "ministry releases and published NOTAM/NAVAREA restrictions available by "
+                    "the cutoff. Look for dated changes in advice, staffing, exercises or "
+                    "access that help distinguish precaution, signalling and preparation. "
+                    "Check the collection record before requesting material already gathered."
                 ),
             }
         )
@@ -1419,8 +1410,9 @@ def _compile_product(
             "rank": str(len(collection) + 1),
             "title": "Information-environment composition",
             "why": (
-                "Current data establish increased volume and attention, not tone, "
-                "narrative concentration or source diversity."
+                "Inspect the underlying reports: which events explain the increase, when "
+                "did they occur, and how many distinct originating sources describe them? "
+                "Compare news timing with the other signals to test a common news response."
             ),
         }
     )
@@ -1438,17 +1430,21 @@ def _compile_product(
         watchlist=watchlist,
         supports=[assessment[0]],
         does_not_support=[],
-        caveats=["GDELT, ICEWS and Wikipedia share a public-reporting substrate."],
+        caveats=[
+            "News-event counts and Wikipedia attention can rise in response to the same "
+            "story. Their agreement alone does not supply separate evidence of preparation."
+        ]
+        if any(
+            series in notice.trigger.contributing_series
+            for series in ("talk.gdelt_cameo", "talk.icews_cameo", "attn.wiki_pageviews")
+        )
+        else [],
         keys=list(frame.get("keys") or []),
         geographic_frame=str(frame.get("geographic_frame") or ""),
         hypotheses=_hypothesis_table(state),
         collection=collection,
         availability_warnings=availability,
-        analyst_note=(
-            f"{confidence_rationale} The key uncertainty is whether the cross-domain "
-            "anomaly is a temporary response to the existing crisis environment or the "
-            "early observable consequences of material preparation."
-        ),
+        analyst_note=confidence_rationale,
     )
 
 

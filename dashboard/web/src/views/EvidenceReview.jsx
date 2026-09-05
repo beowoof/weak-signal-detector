@@ -57,7 +57,19 @@ export default function EvidenceReview({ review, decisions = {}, busy = false, o
       <ul>{review.issues.map((issue, i) => <li key={i}>{text(issue)}</li>)}</ul>
     </details>}
     <details><summary>Original cue (unchanged)</summary><pre style={{ whiteSpace: "pre-wrap" }}>{text(review.initial_cue)}</pre></details>
-    {review.research && <details><summary>Research requests, limits and gaps</summary><pre style={{ whiteSpace: "pre-wrap" }}>{text(review.research)}</pre></details>}
+    {review.research && <section aria-label="Research outcome">
+      <h4>Research outcome</h4>
+      <p><strong>{review.research.stop_reason || (review.research.limit_reached ? `Stopped at the application ${review.research.limit_reached} limit.` : review.research.blocked || "Stopping reason was not recorded in this older run.")}</strong></p>
+      <p>{review.research.usage?.search_requests ?? "Unknown"} recorded queries · {review.research.usage?.document_attempts ?? "Unknown"} recorded document attempts · {review.research.admitted_documents ?? "Not recorded"} usable documents · {review.research.usage?.elapsed_s ?? "Unknown"}s accumulated research time.</p>
+      <p>{Object.entries(review.research.requests || {}).filter(([key, value]) => key.startsWith("document-") && value.status === "failed").length} failed document retrievals. Tavily credit balance was not checked.</p>
+      {!!review.research.run_usage && <p>This run: {review.research.run_usage.search_requests} new search requests, {review.research.run_usage.search_cache_hits} cached searches and {review.research.run_usage.document_attempts} new document attempts.</p>}
+      {!!rows(review.research.collection_outcomes).filter(row => row.status === "not_attempted").length && <p><strong>{rows(review.research.collection_outcomes).filter(row => row.status === "not_attempted").length} collection questions were not attempted. See the reasons below.</strong></p>}
+      {review.research.limits && <p>Selected limits: {review.research.limits.queries} queries, {review.research.limits.documents} document attempts per run, {review.research.limits.seconds}s per run.</p>}
+      <details><summary>Source failures and collection gaps</summary><ul>{Object.entries(review.research.requests || {}).filter(([,value]) => value.reason).map(([key,value]) => <li key={key}>{key}: {value.reason}</li>)}</ul>
+        {rows(review.research.collection_outcomes).map((row, i) => <p key={i}>{row.question}: {row.status} — {row.reason}</p>)}
+      </details>
+      <details><summary>Full research record</summary><pre style={{ whiteSpace: "pre-wrap" }}>{text(review.research)}</pre></details>
+    </section>}
     <h4>Findings and source passages</h4>
     {!rows(review.claims).length && <p>No grounded findings supplied. Treat draft prose as unverified.</p>}
     {rows(review.claims).map((claim) => <ProposalCard key={claim.claim_id} label={text(decisions[claim.claim_id]?.text || claim.statement)} decision={decisions[claim.claim_id]}>
