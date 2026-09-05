@@ -12,7 +12,7 @@ from wsf.report import save_report
 
 @pytest.fixture
 def desk(tmp_path, monkeypatch):
-    def fake_synthesis(root, directory, report, review, decisions):
+    def fake_synthesis(root, directory, report, review, decisions, **kwargs):
         return {
             "body": report["notes"],
             "model": "fixture",
@@ -198,7 +198,7 @@ def test_changed_assessment_during_model_call_does_not_publish(desk, monkeypatch
     root, _ = desk
     save_report(root, "desk-case", "notice-abc", notes="Original")
 
-    def changed(*args):
+    def changed(*args, **kwargs):
         save_report(root, "desk-case", "notice-abc", notes="Newer analyst work")
         return {"body": "Old draft"}
 
@@ -206,3 +206,22 @@ def test_changed_assessment_during_model_call_does_not_publish(desk, monkeypatch
     with pytest.raises(ValueError, match="changed during synthesis"):
         action(root, "prepare")
     assert not load_workflow(root, "desk-case", "notice-abc")["briefs"]
+
+
+def test_generation_progress_is_visible_while_model_runs(desk, monkeypatch):
+    root, _ = desk
+    save_report(root, "desk-case", "notice-abc", notes="Assessment")
+
+    def fake(*args, progress):
+        progress("Model drafting", 1)
+        during = load_workflow(root, "desk-case", "notice-abc")
+        assert during["preparing"]
+        assert during["brief_progress"]["completed"] == 1
+        assert during["brief_progress"]["started_at"]
+        progress("Checking references", 2)
+        return {"body": "Brief", "input_references": {}}
+
+    monkeypatch.setattr("wsf.analyst_workflow.synthesize", fake)
+    result = action(root, "prepare")
+    assert not result["preparing"]
+    assert result["brief_progress"]["completed"] == 4

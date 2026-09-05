@@ -51,7 +51,7 @@ Carry decision-relevant limitations from the supplied review notes into alternat
 Do not repeat the entire evidence annex, title, source catalogue or review history."""
 
 
-def synthesize(root, directory, report, review, decisions, *, transport=None):
+def synthesize(root, directory, report, review, decisions, *, transport=None, progress=None):
     paragraphs = [p.strip() for p in report["notes"].split("\n\n") if p.strip()]
     inputs = {
         f"A{i + 1}": {"kind": "analyst_assessment", "text": p} for i, p in enumerate(paragraphs)
@@ -152,7 +152,11 @@ def synthesize(root, directory, report, review, decisions, *, transport=None):
         )
     )
     try:
+        if progress:
+            progress(f"Waiting for {config.model}: loading model and drafting the brief", 1)
         response = complete_chat(config=config, system=SYSTEM, user=user, transport=transport)
+        if progress:
+            progress("Checking BLUF, confidence, sources and input references", 2)
         (attempt / "completion.json").write_text(json.dumps(response, indent=2))
         content = response["message"]["content"].strip()
         if content.startswith("```"):

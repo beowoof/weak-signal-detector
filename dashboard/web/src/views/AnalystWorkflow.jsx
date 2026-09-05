@@ -3,6 +3,21 @@ import { createPortal } from "react-dom";
 import { readDraft, writeDraft, clearDraft } from "../lib/drafts.js";
 import EvidenceReview from "./EvidenceReview.jsx";
 
+function BriefProgress({ progress }) {
+  const [started] = useState(Date.now);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(timer); }, []);
+  const seconds = Math.max(0, Math.floor((now - (progress?.started_at ? Date.parse(progress.started_at) : started)) / 1000));
+  const completed = progress?.completed ?? 0;
+  return <div className="brief-generation-progress" role="status" aria-live="polite">
+    <strong>{progress?.stage || "Sending the assessment to the briefing service…"}</strong>
+    <progress aria-label="Brief preparation progress" max={4} value={completed === 1 || !progress ? undefined : completed} />
+    <p>{Math.floor(seconds / 60)}m {String(seconds % 60).padStart(2, "0")}s elapsed · {completed} of 4 stages complete</p>
+    <p>Prepare inputs → Model drafting → Check output → Save version</p>
+    {completed === 1 && <p>The model does not report a completion percentage. The moving bar shows it is still running.</p>}
+  </div>;
+}
+
 export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset }) {
   const [briefHost, setBriefHost] = useState(null);
   useEffect(() => { setBriefHost(document.getElementById(`brief-destination-${noticeId}`)); }, [noticeId]);
@@ -27,16 +42,19 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
     return () => { cancelled = true; };
   }, [query, evidenceReview, report?.updated_at]);
   useEffect(() => {
-    if (!workflow?.preparing) return;
+    if (!workflow?.preparing && !editorialBusy) return;
+    let cancelled = false;
     const timer = setInterval(() => {
       fetch(`/api/analyst-workflow?${query}`).then(r => { if (!r.ok) throw new Error("Unable to refresh briefing status"); return r.json(); })
-        .then(setWorkflow).catch(e => setError(e.message));
+        .then(data => { if (!cancelled) setWorkflow(current => current?.revision > data.revision ? current : data); })
+        .catch(e => { if (!cancelled) setError(e.message); });
     }, 3000);
-    return () => clearInterval(timer);
-  }, [query, workflow?.preparing]);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [query, workflow?.preparing, editorialBusy]);
   async function act(action, fields = {}) {
     if (!workflow || pending) return;
     setPending(true); setEditorialBusy(action === "prepare"); setError("");
+    if (action === "prepare") setWorkflow(current => ({ ...current, brief_progress: null }));
     try {
       const response = await fetch("/api/analyst-workflow", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -103,7 +121,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
         <label>Brief title<input value={title} placeholder={report?.context?.headline || "Public-source intelligence assessment"} onChange={e => setTitle(e.target.value)} /></label>
         {dirty && <p role="status">Save your assessment before preparing or signing off a brief.</p>}
         <button type="button" disabled={disabled || dirty || report?.empty || !value?.trim()} onClick={() => act("prepare", { title: title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : "Prepare new brief version"}</button>
-        {(editorialBusy || workflow.preparing) && <p role="status">Editorial synthesis is running. This may take several minutes. Your assessment and existing briefs are retained; do not start another generation.</p>}
+        {(editorialBusy || workflow.preparing) && <BriefProgress progress={workflow.brief_progress} />}
         {latest && <>
           <p><strong>Version {latest.version}</strong> · {latest.stale ? "Stale — prepare a new version" : latest.signed_off ? `Signed off by ${latest.signed_off.reviewer}` : "Awaiting sign-off"} · Not distributed</p>
           {latest.editorial && <p>Editorial model: {latest.editorial.model} · Input references checked; factual support and faithfulness require your review.</p>}
