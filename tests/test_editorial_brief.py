@@ -69,3 +69,24 @@ def test_failed_model_output_is_retained(tmp_path, monkeypatch):
         )
     assert list((tmp_path / "brief_runs").glob("*/error.json"))
     assert list((tmp_path / "brief_runs").glob("*/completion.json"))
+
+
+def test_semantic_inflation_deflated():
+    c = completion("A1")
+    c["key_judgements"][0]["text"] = (
+        "The scale of force movement and extraordinary diplomatic precautions "
+        "exceed thresholds for routine fluctuation or standard exercise activity, "
+        "though exercise components remain plausible."
+    )
+    rendered = validate_and_render(c, {"A1": {}})
+    assert (
+        "are difficult to explain as routine fluctuation and weaken standard exercise activity as a complete explanation"
+        in rendered
+    )
+    assert "exceed thresholds" not in rendered
+    assert (
+        c["key_judgements"][0]["text"]
+        == "The scale of force movement and extraordinary diplomatic precautions "
+        "are difficult to explain as routine fluctuation and weaken standard exercise activity as a complete explanation, "
+        "though exercise components remain plausible."
+    )

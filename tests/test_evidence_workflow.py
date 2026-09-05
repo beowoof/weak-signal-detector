@@ -251,6 +251,70 @@ def test_hypothesis_update_and_grounding_checks(packet):
     assert any("quote_not_in_evidence" in i for i in result["issues"])
 
 
+def test_claim_evidence_invariants_flag_mismatches(packet):
+    bundle = build_bundle(packet, {"tasks": []})
+    ref = bundle["items"][0]["id"]
+    # bundle["items"][0] has series_id="market.test", evidence_time=2022-02-10, text="The measured value is 3."
+
+    # 1. Date mismatch: claim specifies 2022-02-12, but evidence is 2022-02-10
+    date_mismatch = {
+        "claims": [
+            {
+                "statement": "The value was 3 on 2022-02-12.",
+                "evidence_ids": [ref],
+                "quotes": {ref: "The measured value is 3."},
+            }
+        ]
+    }
+    res = review_assessment(date_mismatch, bundle)
+    assert res["claims"][0]["reference_check"] == "needs_review"
+    assert f"claim_evidence_date_mismatch:{ref}" in res["claims"][0]["issues"]
+
+    # 2. Value mismatch: claim specifies value 15.0, but evidence has 3.0
+    val_mismatch = {
+        "claims": [
+            {
+                "statement": "The value was 15.0 on 2022-02-10.",
+                "evidence_ids": [ref],
+                "quotes": {ref: "The measured value is 3."},
+            }
+        ]
+    }
+    res = review_assessment(val_mismatch, bundle)
+    assert res["claims"][0]["reference_check"] == "needs_review"
+    assert f"claim_evidence_value_mismatch:{ref}" in res["claims"][0]["issues"]
+
+    # 3. Series mismatch: statement claims Wikipedia pageviews, but evidence is market.test
+    bundle["items"][0]["data"]["series_id"] = "attn.wiki_pageviews"
+    series_mismatch = {
+        "claims": [
+            {
+                "statement": "CBR funding spread z-score was 2.54 on 2022-02-10.",
+                "evidence_ids": [ref],
+                "quotes": {ref: "The measured value is 3."},
+            }
+        ]
+    }
+    res = review_assessment(series_mismatch, bundle)
+    assert res["claims"][0]["reference_check"] == "needs_review"
+    assert f"claim_evidence_series_mismatch:{ref}" in res["claims"][0]["issues"]
+
+    # 4. Correct match: date, series, and value align
+    bundle["items"][0]["data"]["text"] = "z=0.47396039; raw=66480.0; quality=ok"
+    correct = {
+        "claims": [
+            {
+                "statement": "Wikipedia pageviews z-score was 0.47 on 2022-02-10.",
+                "evidence_ids": [ref],
+                "quotes": {ref: "z=0.47396039; raw=66480.0; quality=ok"},
+            }
+        ]
+    }
+    res = review_assessment(correct, bundle)
+    assert res["claims"][0]["issues"] == []
+    assert res["claims"][0]["reference_check"] == "references_match"
+
+
 def test_missing_hypotheses_and_unknown_evidence_stay_unresolved(packet):
     bundle = build_bundle(packet, {"tasks": []})
     result = review_assessment(
