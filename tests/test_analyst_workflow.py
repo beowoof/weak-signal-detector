@@ -5,7 +5,14 @@ from fastapi.testclient import TestClient
 from test_draft import _notice
 
 from dashboard.server import create_app
-from wsf.analyst_workflow import export_brief, load_workflow, update_workflow
+from wsf.analyst_workflow import (
+    _render_gaps_and_cautions,
+    _render_input_references,
+    _render_source_data,
+    export_brief,
+    load_workflow,
+    update_workflow,
+)
 from wsf.packet import packet_directory
 from wsf.report import save_report
 
@@ -225,3 +232,207 @@ def test_generation_progress_is_visible_while_model_runs(desk, monkeypatch):
     result = action(root, "prepare")
     assert not result["preparing"]
     assert result["brief_progress"]["completed"] == 4
+
+
+def test_render_input_references_organization_and_natural_sort():
+    inputs = {
+        "A10": {"kind": "analyst_assessment", "text": "Tenth paragraph"},
+        "A2": {"kind": "analyst_assessment", "text": "Second paragraph"},
+        "A1": {"kind": "analyst_assessment", "text": "First paragraph"},
+        "P1": {
+            "proposal_id": "claim-1",
+            "text": "First claim text",
+            "evidence_ids": ["ev-1"],
+            "analyst_reason": "Good source",
+        },
+        "S1": {
+            "kind": "source_provenance",
+            "evidence_id": "ev-1",
+            "originator": "test_ref",
+            "verification": "verified",
+            "available_at": "2022-02-10T00:00:00Z",
+            "url": "https://example.com",
+        },
+        "R1": {
+            "kind": "review_limitation",
+            "text": {"proposal_id": "claim-99", "status": "rejected", "reason": "No evidence"},
+        },
+        "R2": {"kind": "review_limitation", "text": "Collector provenance caution"},
+    }
+    rendered = _render_input_references(inputs)
+    assert "### Analyst working assessment" in rendered
+    assert "### Reviewed proposals & findings" in rendered
+    assert "### Source provenance" in rendered
+    assert "### Review limitations & cautions" in rendered
+    idx_a1 = rendered.index("**A1**")
+    idx_a2 = rendered.index("**A2**")
+    idx_a10 = rendered.index("**A10**")
+    assert idx_a1 < idx_a2 < idx_a10
+    assert "- **P1** (*claim-1*): First claim text [Sources: ev-1] — Analyst note: Good source" in rendered
+    assert (
+        "- **S1** (*ev-1*): `test_ref` (Verification: verified | Available: 2022-02-10 00:00:00 UTC | URL: https://example.com)"
+        in rendered
+    )
+    assert "- **R1** (*claim-99 rejected*): No evidence" in rendered
+    assert "- **R2**: Collector provenance caution" in rendered
+    assert "{" not in rendered and "}" not in rendered
+
+
+def test_render_input_references_cleans_comments_and_template_placeholders():
+    inputs = {
+        "A1": {"text": "<!-- reviewed-material:start -->\n## Reviewed findings\n- Finding 1\n- Finding 2"},
+        "A2": {"text": "## Review limitations\n- Limitation 1"},
+        "A3": {"text": "## Analyst judgement and implications"},
+        "A4": {"text": "<!-- reviewed-material:end -->"},
+        "A5": {"text": "Substantive judgement paragraph."},
+    }
+    rendered = _render_input_references(inputs)
+    assert "<!-- reviewed-material" not in rendered
+    assert not any(line.startswith("## ") for line in rendered.splitlines())
+    assert "**A1**: Reviewed findings:" in rendered
+    assert "  - Finding 1" in rendered
+    assert "  - Finding 2" in rendered
+    assert "**A2**: Review limitations:" in rendered
+    assert "  - Limitation 1" in rendered
+    assert "**A3**" not in rendered  # Empty template placeholder omitted
+    assert "**A4**" not in rendered  # Comment-only placeholder omitted
+    assert "**A5**: Substantive judgement paragraph." in rendered
+
+
+def test_render_source_data_formats_all_kinds():
+    posture = {
+        "kind": "declared_posture",
+        "date": "2022-02-11",
+        "government": "UK/FCDO",
+        "country": "UKR",
+        "action": "leave_advice",
+        "costly": True,
+        "severity": 4,
+        "text": "Leave Ukraine now.",
+        "category": "travel_risk",
+    }
+    p_text = "\n".join(_render_source_data(posture))
+    assert "2022-02-11 · UK/FCDO (UKR) — Action: leave_advice" in p_text
+    assert "costly: true, severity: 4" in p_text
+    assert '"Leave Ukraine now."' in p_text
+
+    granule = {
+        "kind": "catalogue_granule",
+        "name": "S1A_TEST.SAFE",
+        "collection": "SENTINEL-1",
+        "product_type": "GRDH",
+        "aoi_name": "Yelnya",
+        "aoi_id": "RUS-yelnya",
+        "sensing_at": "2022-02-11T04:00:00Z",
+    }
+    g_text = "\n".join(_render_source_data(granule))
+    assert "`S1A_TEST.SAFE`" in g_text
+    assert "SENTINEL-1 (GRDH) · AOI: Yelnya (RUS-yelnya)" in g_text
+    assert "**Sensing time**: 2022-02-11 04:00:00 UTC" in g_text
+
+    obs = {
+        "kind": "observation",
+        "series_id": "market.cbr_funding_spread",
+        "text": "z=2.54; raw=21.0; quality=ok",
+        "shared_information_substrate": "central_bank",
+    }
+    o_text = "\n".join(_render_source_data(obs))
+    assert "`market.cbr_funding_spread` (central_bank)" in o_text
+    assert "z=2.54; raw=21.0; quality=ok" in o_text
+
+    chronology = {
+        "day": "2022-01-11",
+        "series": [
+            {"series_id": "series.a", "value": 10.5, "quality": "ok", "note": None},
+            {"series_id": "series.b", "value": 20.0, "quality": "missing", "note": "gap"},
+        ],
+    }
+    c_text = "\n".join(_render_source_data(chronology))
+    assert "**Chronology record**: 2022-01-11" in c_text
+    assert "`series.a`: 10.50 [quality: ok]" in c_text
+    assert "`series.b`: 20.00 [quality: missing] (note: gap)" in c_text
+
+    missing_obs = {
+        "label": "SAR",
+        "day": "2022-02-12",
+        "value": None,
+        "quality": "missing",
+        "orbit": "DESCENDING",
+    }
+    m_text = "\n".join(_render_source_data(missing_obs))
+    assert "Value: — [quality: missing]" in m_text
+    assert "None" not in m_text
+
+
+def test_render_gaps_and_cautions_sections():
+    review = {
+        "issues": ["Issue one", "Issue two"],
+        "cautions": ["Caution one"],
+        "excluded": [
+            {"id": "ev-ex-1", "kind": "physical", "reason": "unavailable", "source_ref": "ref/1"}
+        ],
+        "omitted": [
+            {"id": "ev-om-1", "kind": "chronology", "reason": "budget_limit", "source_ref": "ref/2"}
+        ],
+        "research": {
+            "usage": {"search_requests": 3, "document_attempts": 2, "elapsed_s": 12.3},
+            "limit_reached": "requests",
+            "requests": {"q-1": {"status": "complete", "result_count": 5}},
+        },
+        "hypothesis_updates": [
+            {
+                "hypothesis": "routine_variation",
+                "change": "lowered",
+                "confidence": "Low",
+                "rationale": "Elevated indicators exceed baseline",
+                "contradicting_evidence": ["ev-1", "ev-2"],
+                "unknowns": ["Baseline uncertain"],
+                "discriminators": ["Physical imagery"],
+            }
+        ],
+    }
+    lines = _render_gaps_and_cautions(review)
+    text = "\n".join(lines)
+    assert "#### Analytical issues & validation checks" in text
+    assert "- Issue one" in text
+    assert "#### Provenance cautions & context limits" in text
+    assert "- Caution one" in text
+    assert "#### Excluded evidence" in text
+    assert "**`ev-ex-1`** (*physical*): Excluded — unavailable (ref: `ref/1`)" in text
+    assert "#### Omitted evidence (character / budget limits)" in text
+    assert "**`ev-om-1`** (*chronology*): Omitted — budget_limit (ref: `ref/2`)" in text
+    assert "#### Research execution & source retrieval trail" in text
+    assert "3 search requests, 2 document attempts, 12.3s elapsed" in text
+    assert "`q-1`: complete (5 results)" in text
+    assert "#### Competing hypothesis updates" in text
+    assert "**routine_variation**: **lowered** (Confidence: Low)" in text
+    assert "Elevated indicators exceed baseline" in text
+    assert "ev-1, ev-2" in text
+    assert "{" not in text and "}" not in text
+
+
+def test_export_brief_html_formatting_and_no_raw_json(desk):
+    import re
+    root, _ = desk
+    action(root, "review", proposal_id="claim-1", status="accepted")
+    action(root, "review", proposal_id="claim-2", status="rejected", reason="Unsupported")
+    action(root, "review", proposal_id="decision", status="accepted")
+    save_report(root, "desk-case", "notice-abc", notes="Analyst assessment paragraph.")
+    action(root, "prepare", title="Human Assessment")
+    action(root, "sign_off", version=1, reviewer="Reviewer", acknowledged=True)
+    html_out = export_brief(root, "desk-case", "notice-abc", 1, "html")
+    assert "<h1>Human Assessment</h1>" in html_out
+    assert "<h3>Analyst working assessment</h3>" in html_out
+    assert "<h3>claim-1 — accepted</h3>" in html_out
+    assert "<h4>Analytical issues &amp; validation checks</h4>" in html_out
+    assert "<p class='finding'>•" in html_out
+    assert "<strong>" in html_out
+    assert "<p>{</p>" not in html_out
+    assert "<p>}</p>" not in html_out
+    assert '"kind":' not in html_out
+    assert '"proposal_id":' not in html_out
+    assert "Signed off by Reviewer at " in html_out
+    # Assert no raw microsecond ISO timestamps in exported HTML
+    assert re.search(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}\.\d+", html_out) is None
+    # Assert clean UTC datetimes
+    assert re.search(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2} UTC", html_out) is not None

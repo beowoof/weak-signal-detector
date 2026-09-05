@@ -52,7 +52,22 @@ Do not repeat the entire evidence annex, title, source catalogue or review histo
 
 
 def synthesize(root, directory, report, review, decisions, *, transport=None, progress=None):
-    paragraphs = [p.strip() for p in report["notes"].split("\n\n") if p.strip()]
+    raw_paragraphs = [p.strip() for p in report["notes"].split("\n\n") if p.strip()]
+    template_headers = {
+        "## analyst judgement and implications",
+        "## alternative explanations and uncertainty",
+        "## next questions and collection priorities",
+        "## reviewed findings",
+        "## review limitations",
+    }
+    paragraphs = []
+    for p in raw_paragraphs:
+        cleaned = re.sub(r"<!--.*?-->", "", p, flags=re.DOTALL).strip()
+        if not cleaned:
+            continue
+        if cleaned.lower() in template_headers:
+            continue
+        paragraphs.append(cleaned)
     inputs = {
         f"A{i + 1}": {"kind": "analyst_assessment", "text": p} for i, p in enumerate(paragraphs)
     }
