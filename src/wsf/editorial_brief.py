@@ -324,7 +324,9 @@ def validate_and_render(parsed, inputs):
             ):
                 raise ValueError("Brief contains missing or unknown input references")
             words += len(text.split())
-            lines += [f"- {annotate_yardstick(text.strip(), seen)} [{', '.join(refs)}]", ""]
+            # Refs stay on the structured item for audit; the leadership brief
+            # is standalone prose, in the style of a PDB, without [A1] codes.
+            lines += [f"- {annotate_yardstick(text.strip(), seen)}", ""]
     if words > 800:
         raise ValueError("Brief exceeds the 800-word editorial limit")
     return "\n".join(lines)

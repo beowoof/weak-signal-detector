@@ -496,7 +496,7 @@ export default function App() {
         onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
         machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
-        activeTab={route.tab} onTabChange={(tab) => navigate({ tab })}
+        activeTab={route.tab} onTabChange={(tab, step) => navigate({ tab, ...(step ? { step } : {}) })}
         loading={loading && !notices.length} drafts={drafts}
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
@@ -504,6 +504,8 @@ export default function App() {
           report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
           machineSeed={machineSeed}
           evidenceReview={ownResources ? evidenceReview : null}
+          step={route.step}
+          onStepChange={(step) => navigate({ tab: "notes", step })}
           onReset={(payload) => { reportRevision.current += 1; setReport(payload); setMachineSeed(null); }}
           onSave={(notes) => saveReport(selectedNotice, notes)} />}
       />}

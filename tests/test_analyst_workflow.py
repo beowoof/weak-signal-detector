@@ -9,6 +9,8 @@ from wsf.analyst_workflow import (
     _render_gaps_and_cautions,
     _render_input_references,
     _render_source_data,
+    _strip_input_refs,
+    export_assessment,
     export_brief,
     load_workflow,
     update_workflow,
@@ -16,15 +18,47 @@ from wsf.analyst_workflow import (
 from wsf.packet import packet_directory
 from wsf.report import save_report
 
+# Distinct from the saved working assessment so export/preview tests can tell them apart.
+EDITORIAL_FIXTURE = """## BLUF
+
+- Condensed leadership takeaway from the saved assessment. [A1]
+
+## Analytical confidence
+
+- Moderate. Fixture rating from the supplied assessment. [A1]
+
+## Source assessment
+
+- Public sources as supplied in the assessment. [A1]
+
+## Key judgements
+
+- Condensed judgement for senior readers. [A1]
+
+## Why it matters
+
+- Leadership implication without new collection. [A1]
+
+## Alternatives and uncertainty
+
+- Alternative explanation remains open. [A1]
+
+## Outlook and indicators to watch
+
+- Watch for the specified discriminator. [A1]
+"""
+
 
 @pytest.fixture
 def desk(tmp_path, monkeypatch):
     def fake_synthesis(root, directory, report, review, decisions, **kwargs):
         return {
-            "body": report["notes"],
+            "body": EDITORIAL_FIXTURE,
             "model": "fixture",
             "attempt_id": "fixture",
-            "input_references": {"A1": {"text": report["notes"]}},
+            "input_references": {
+                "A1": {"kind": "analyst_assessment", "text": report["notes"]}
+            },
             "structured": {},
         }
 
@@ -129,11 +163,19 @@ def test_brief_lifecycle_and_safe_export(desk):
         action(root, "sign_off", version=1, reviewer="Analyst", acknowledged=True)
     action(root, "prepare")
     action(root, "sign_off", version=2, reviewer="Analyst", acknowledged=True)
-    assert "Signed off by Analyst" in export_brief(root, "desk-case", "notice-abc", 2, "md")
+    product = export_brief(root, "desk-case", "notice-abc", 2, "md")
+    assert "Signed off by Analyst" in product
+    assert "Condensed leadership takeaway" in product
+    assert "[A1]" not in product
+    assert "Analyst working assessment" not in product
+    assert "Key judgement\nExplanation unresolved" not in product
     rendered = export_brief(root, "desk-case", "notice-abc", 2, "html")
     assert "<script>" not in rendered
-    assert "&lt;script&gt;" in rendered
-    assert "<h2>Key judgement</h2>" in rendered
+    assert "<h2>Key judgements</h2>" in rendered
+    assert "<h2>BLUF</h2>" in rendered
+    annex_html = export_brief(root, "desk-case", "notice-abc", 2, "html", annex=True)
+    assert "&lt;script&gt;" in annex_html
+    assert "<h3>Analyst working assessment</h3>" in annex_html
     save_report(root, "desk-case", "notice-abc", notes="Revised analyst judgement")
     state = load_workflow(root, "desk-case", "notice-abc")
     assert state["briefs"][0]["markdown"] == before
@@ -194,6 +236,9 @@ def test_edit_and_remove_brief_preserve_prior_content_and_annex(desk):
     assert changed["briefs"][0]["markdown"] == original
     assert "Revised judgement" in changed["briefs"][1]["markdown"]
     assert "Source passage" in changed["briefs"][1]["markdown"]
+    assert "Revised judgement" in export_brief(root, "desk-case", "notice-abc", 2, "md")
+    assert "Source passage" not in export_brief(root, "desk-case", "notice-abc", 2, "md")
+    assert "Source passage" in export_brief(root, "desk-case", "notice-abc", 2, "md", annex=True)
     assert changed["briefs"][1]["signed_off"] is None
     removed = action(root, "remove_brief", version=2)
     assert len(removed["briefs"]) == 1
@@ -422,16 +467,23 @@ def test_export_brief_html_formatting_and_no_raw_json(desk):
     action(root, "sign_off", version=1, reviewer="Reviewer", acknowledged=True)
     html_out = export_brief(root, "desk-case", "notice-abc", 1, "html")
     assert "<h1>Human Assessment</h1>" in html_out
-    assert "<h3>Analyst working assessment</h3>" in html_out
-    assert "<h3>claim-1 — accepted</h3>" in html_out
-    assert "<h4>Analytical issues &amp; validation checks</h4>" in html_out
+    assert "<h2>BLUF</h2>" in html_out
+    assert "<h2>Key judgements</h2>" in html_out
+    assert "Condensed leadership takeaway" in html_out
+    assert "[A1]" not in html_out
+    assert "Analyst working assessment" not in html_out
+    assert "claim-1" not in html_out
+    assert "Analyst assessment paragraph" not in html_out
     assert "<p class='finding'>•" in html_out
-    assert "<strong>" in html_out
     assert "<p>{</p>" not in html_out
     assert "<p>}</p>" not in html_out
     assert '"kind":' not in html_out
     assert '"proposal_id":' not in html_out
     assert "Signed off by Reviewer at " in html_out
+    annex_html = export_brief(root, "desk-case", "notice-abc", 1, "html", annex=True)
+    assert "<h3>Analyst working assessment</h3>" in annex_html
+    assert "<h3>claim-1 — accepted</h3>" in annex_html
+    assert "<h4>Analytical issues &amp; validation checks</h4>" in annex_html
     # Assert no raw microsecond ISO timestamps in exported HTML
     assert re.search(r"\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}\.\d+", html_out) is None
     # Assert clean UTC datetimes
@@ -458,11 +510,52 @@ def test_export_brief_pdf_generation_and_api(desk):
     extracted = "\n".join(p.extract_text() or "" for p in reader.pages)
     assert "Human Assessment" in extracted
     assert "Signed off by Reviewer" in extracted
+    assert "Condensed leadership takeaway" in extracted
+    assert "INTELLIGENCE BRIEF" in extracted
+    assert "[A1]" not in extracted
+    assert "Analyst assessment paragraph" not in extracted
 
     client = TestClient(create_app(project_root=root))
     query = {"scenario": "desk-case", "notice_id": "notice-abc", "version": 1, "format": "pdf"}
     res = client.get("/api/analyst-workflow/export", params=query)
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/pdf"
-    assert res.headers["content-disposition"] == 'attachment; filename="assessment-v1.pdf"'
+    assert res.headers["content-disposition"] == 'attachment; filename="brief-v1.pdf"'
     assert res.content.startswith(b"%PDF")
+    annex = client.get("/api/analyst-workflow/export", params={**query, "annex": True})
+    assert annex.status_code == 200
+    assert annex.headers["content-disposition"] == 'attachment; filename="brief-annex-v1.pdf"'
+
+
+def test_strip_input_refs_leaves_prose_and_other_brackets():
+    assert _strip_input_refs("- Takeaway [A3, A20]") == "- Takeaway"
+    assert _strip_input_refs("Detail [A5, P1, R3].") == "Detail."
+    assert _strip_input_refs("[quality: ok]") == "[quality: ok]"
+    assert _strip_input_refs("No codes") == "No codes"
+
+
+def test_export_assessment_is_working_notes_not_the_brief(desk):
+    root, _ = desk
+    with pytest.raises(ValueError, match="Save your working"):
+        export_assessment(root, "desk-case", "notice-abc", "md")
+    action(root, "review", proposal_id="claim-1", status="accepted")
+    save_report(
+        root, "desk-case", "notice-abc", notes="## Key judgement\nColleague-facing assessment."
+    )
+    action(root, "prepare", title="Leadership brief")
+    md = export_assessment(root, "desk-case", "notice-abc", "md")
+    assert "Colleague-facing assessment." in md
+    assert "Working assessment" in md
+    assert "Condensed leadership takeaway" not in md
+    assert "Source passage" in md
+    html_out = export_assessment(root, "desk-case", "notice-abc", "html")
+    assert "Colleague-facing assessment." in html_out
+    pdf_bytes = export_assessment(root, "desk-case", "notice-abc", "pdf")
+    assert pdf_bytes.startswith(b"%PDF")
+    client = TestClient(create_app(project_root=root))
+    res = client.get(
+        "/api/analyst-workflow/export-assessment",
+        params={"scenario": "desk-case", "notice_id": "notice-abc", "format": "pdf"},
+    )
+    assert res.status_code == 200
+    assert res.headers["content-disposition"] == 'attachment; filename="working-assessment.pdf"'

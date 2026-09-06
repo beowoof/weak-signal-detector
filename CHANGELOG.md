@@ -21,10 +21,14 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ## Unreleased
 
+### Fixed
+
+- **Two export products:** the Intelligence brief (PDF/Markdown/HTML) is the condensed senior-leadership product. The working assessment is a separate PDF/Markdown/HTML download for intelligence colleagues, with the evidence/review annex. Editorial `[A1]` input codes are stripped from the leadership brief; they remain in structured audit data and the annex. Existing signed-off versions keep their stored editorial body.
+
 ### Changed
 
 - **Repository contents:** git now tracks scenario contracts (`scenario.json`) and application code only. Notices, packets, briefs, collection jobs and harvest products remain local bind-mounted files.
-- **Assessment workflow UI:** one notice-tab row, a separate Notice actions menu, and four assessment stages that show only the selected step. Brief preparation keeps visible running, failure and completion states when switching steps.
+- **Assessment workflow UI:** one notice-tab row, a separate Notice actions menu, and four assessment stages that show only the selected step. Brief preparation keeps visible running, failure and completion states when switching steps. The finished intelligence brief (PDF/Markdown/HTML) is the Intelligence brief step, reached after saving the assessment; Overview keeps the watch packet and a link to that product.
 - **Replay research:** preferred queries now use AOI/place names and contemporaneous source language instead of the first four generic keys plus the full requirement text. Official/imagery domains are fetched first. YouTube, social video, PDFs, images and post-cutoff URL dates are skipped without consuming the document-attempt budget. If a preferred search returns no fetchable leads, a broader fallback search runs while query budget remains. Collection outcomes and the draft prompt distinguish preferred sources from fallback public reporting. Admitted documents stay in the review bundle in full. Drafting indexes them as exact character slices, embeds with `OLLAMA_EMBED_MODEL` (default `mxbai-embed-large`), and sends retrieved passages with parent evidence IDs instead of dropping pages to fit a character cap. Lexical overlap is used if embeddings are unavailable. Search snippets are never indexed.
 - **Archive admission:** gzip-compressed Wayback bodies are decompressed before the HTML/text check; binary or non-UTF-8 captures are rejected rather than admitted as replacement-character garbage. Wayback captures whose URL differs only by scheme, `www`, trailing slash or percent-encoding are treated as the same document.
 - Brief preparation now reports input preparation, model drafting, validation and saving stages. The UI polls during generation and shows elapsed time with an indeterminate bar while the model runs, rather than inventing a completion percentage.

@@ -29,6 +29,6 @@ test("plots preserve nulls and zeroes and separate series/window contexts", () =
   assert.deepEqual(series[0].rows.map((row) => row.raw), [0, null]);
 });
 test("scenario workspace links round trip", () => {
-  const route = { surface: "scenarios", tab: "overview", notice: "", result: "", scenario: "ukraine2022" };
+  const route = { surface: "scenarios", tab: "overview", step: "", notice: "", result: "", scenario: "ukraine2022" };
   assert.deepEqual(readRoute(routeSearch(route)), route);
 });
