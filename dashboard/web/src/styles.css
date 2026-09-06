@@ -931,6 +931,12 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
   margin: .15rem .25rem;
 }
 .workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; max-height: 38rem; overflow-y: auto; padding: 1rem; border: 1px solid #87949c; }
+.intelligence-brief { max-height: 38rem; overflow-y: auto; padding: 1.2rem 1.35rem; border: 1px solid #87949c; line-height: 1.65; }
+.intelligence-brief h3 { margin: 0 0 .6rem; font-size: 1.15rem; }
+.intelligence-brief h4 { margin: 1.1rem 0 .35rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #006d59; }
+.intelligence-brief h4:first-child { margin-top: 0; }
+.intelligence-brief p { margin: 0 0 .85rem; overflow-wrap: anywhere; }
+.intelligence-brief .brief-judgement { padding-left: .15rem; }
 .review-controls { border-top: 1px solid #87949c; margin-top: 1rem; }
 .brief-signoff { margin: 1rem 0; padding: 1rem; border: 1px solid #87949c; }
 
@@ -955,6 +961,8 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .workflow-steps button[aria-current="step"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 650; }
 .workflow-steps button[aria-current="step"] span { background: var(--accent); border-color: var(--accent); color: var(--surface); }
 .brief-success { padding: .8rem 1rem; border-left: 3px solid var(--accent); background: var(--surface-2); }
+.workflow-next-action { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; padding: .75rem 0 1rem; }
+.brief-export-actions { margin: .8rem 0 1rem; }
 .workflow-maintenance { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border); color: var(--muted); }
 .assessment-panel [hidden] { display: none !important; }
 @media (max-width: 700px) {

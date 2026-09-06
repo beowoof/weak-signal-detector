@@ -17,7 +17,12 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from wsf.analysis.coupling import evaluate_window_coupling
-from wsf.analyst_workflow import export_brief, load_workflow, update_workflow
+from wsf.analyst_workflow import (
+    export_assessment,
+    export_brief,
+    load_workflow,
+    update_workflow,
+)
 from wsf.brief_pdf import render_existing_packet
 from wsf.briefing_standards import packet_presentation
 from wsf.collect import HARVEST_KINDS, load_collection, run_collection
@@ -583,9 +588,37 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/analyst-workflow/export")
-    def api_workflow_export(scenario: str, notice_id: str, version: int, format: str = "md"):
+    def api_workflow_export(
+        scenario: str, notice_id: str, version: int, format: str = "md", annex: bool = False
+    ):
         try:
-            content = export_brief(app.state.project_root, scenario, notice_id, version, format)
+            content = export_brief(
+                app.state.project_root, scenario, notice_id, version, format, annex=annex
+            )
+            media_type = (
+                "application/pdf"
+                if format == "pdf"
+                else ("text/html" if format == "html" else "text/markdown")
+            )
+            kind = "brief-annex" if annex else "brief"
+            return Response(
+                content,
+                media_type=media_type,
+                headers={
+                    "Content-Disposition": f'attachment; filename="{kind}-v{version}.{format}"'
+                },
+            )
+        except (KeyError, ValueError, OSError) as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    @app.get("/api/analyst-workflow/export-assessment")
+    def api_workflow_export_assessment(
+        scenario: str, notice_id: str, format: str = "md"
+    ):
+        try:
+            content = export_assessment(
+                app.state.project_root, scenario, notice_id, format
+            )
             media_type = (
                 "application/pdf"
                 if format == "pdf"
@@ -595,7 +628,9 @@ def create_app(
                 content,
                 media_type=media_type,
                 headers={
-                    "Content-Disposition": f'attachment; filename="assessment-v{version}.{format}"'
+                    "Content-Disposition": (
+                        f'attachment; filename="working-assessment.{format}"'
+                    )
                 },
             )
         except (KeyError, ValueError, OSError) as exc:

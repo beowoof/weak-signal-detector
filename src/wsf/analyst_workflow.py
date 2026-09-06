@@ -135,7 +135,7 @@ def load_workflow(root, scenario, notice_id):
         active = _active(state, review)
         fingerprint = digest({"notes": report["notes"], "review": review, "decisions": active})
         briefs = [
-            {**b, "stale": b["fingerprint"] != fingerprint}
+            {**b, "stale": b["fingerprint"] != fingerprint, "body": _brief_body(b)}
             for b in state["briefs"]
             if not b.get("removed")
         ]
@@ -811,7 +811,54 @@ def _update_workflow(root, scenario, notice_id, *, revision, action, review_vers
         return load_workflow(root, scenario, notice_id)
 
 
-def export_brief(root, scenario, notice_id, version, format):
+def _stamp_utc(text):
+    return re.sub(
+        r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?(?!\s*UTC)",
+        r"\1 \2 UTC",
+        text,
+    )
+
+
+_INPUT_REF_RE = re.compile(r"\s*\[(?:[APRS]\d+(?:\s*,\s*[APRS]\d+)*)\]")
+
+
+def _strip_input_refs(text):
+    """Remove editorial input codes such as [A3, A20] from leadership-facing prose."""
+    return _INPUT_REF_RE.sub("", text or "")
+
+
+def _brief_body(brief):
+    """Editorial senior-leadership product only — never the working assessment annex."""
+    body = ""
+    for candidate in (brief.get("body"), (brief.get("editorial") or {}).get("body")):
+        if isinstance(candidate, str) and candidate.strip():
+            body = candidate.strip()
+            break
+    if not body:
+        stored = brief.get("markdown") or ""
+        for marker in ("## Editorial input references", "## Evidence and review annex"):
+            if marker in stored:
+                body = stored.split(marker, 1)[0].strip()
+                break
+        else:
+            body = stored.strip()
+    return _strip_input_refs(body).strip()
+
+
+def _product_markdown(brief, status):
+    body = _brief_body(brief)
+    title = brief.get("title") or "Intelligence brief"
+    if body.startswith("# "):
+        text = f"Status: {status}\nNot distributed.\n\n{body}"
+    else:
+        text = (
+            f"# {title}\n\nVersion {brief['version']} · {status}\n"
+            f"Not distributed.\n\n{body}"
+        )
+    return text
+
+
+def export_brief(root, scenario, notice_id, version, format, annex=False):
     view = load_workflow(root, scenario, notice_id)
     brief = next(
         (b for b in view["briefs"] if b["version"] == version and not b.get("removed")), None
@@ -828,13 +875,56 @@ def export_brief(root, scenario, notice_id, version, format):
             else "DRAFT — awaiting sign-off"
         )
     )
-    markdown = brief["markdown"]
-    markdown = re.sub(
-        r"(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}:\d{2})(?:\.\d+)?(?:Z|[+-]\d{2}:?\d{2})?(?!\s*UTC)",
-        r"\1 \2 UTC",
-        markdown,
+    text = _product_markdown(brief, status)
+    if annex:
+        extra = (brief.get("annex") or "").strip()
+        if extra:
+            text = text.rstrip() + "\n\n## Evidence annex\n\n" + extra
+    return _format_export(
+        _stamp_utc(text),
+        format,
+        title=brief.get("title") or "Intelligence brief",
+        kicker="INTELLIGENCE BRIEF",
+        footer_label=f"{notice_id} · Version {version}",
     )
-    text = f"Status: {status}\nNot distributed.\n\n{markdown}"
+
+
+def export_assessment(root, scenario, notice_id, format):
+    view = load_workflow(root, scenario, notice_id)
+    report = view["report"]
+    notes = clean_notes(report.get("notes") or "")
+    if report.get("empty") or not notes:
+        raise ValueError("Save your working assessment before exporting it")
+    context = report.get("context") or {}
+    title = (context.get("headline") or "").strip() or "Working assessment"
+    saved = _format_dt(str(report.get("updated_at") or "")) or "date not recorded"
+    cutoff = _format_dt(context.get("cutoff") or "Not recorded")
+    banner = (
+        f"Working assessment · Saved {saved}\n"
+        f"Scenario: {scenario} | Notice: {notice_id}\n"
+        f"Information cutoff: {cutoff}\n"
+        "Not distributed. Desk assessment for intelligence colleagues; "
+        "not the senior-leadership brief.\n\n"
+    )
+    if notes.startswith("# "):
+        first, _, rest = notes.partition("\n")
+        text = f"{first.strip()}\n\n{banner}{rest.lstrip()}"
+    else:
+        text = f"# {title}\n\n{banner}{notes}"
+    if view.get("review"):
+        extra = _annex(view["review"], view.get("active_decisions") or {})
+        if extra.strip():
+            text = text.rstrip() + "\n\n" + extra
+    return _format_export(
+        _stamp_utc(text),
+        format,
+        title=title,
+        kicker="WORKING ASSESSMENT",
+        footer_label=f"{notice_id} · working assessment",
+    )
+
+
+def _format_export(text, format, *, title, kicker, footer_label):
     if format == "html":
         def _format_inline(safe: str) -> str:
             safe = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", safe)
@@ -867,29 +957,33 @@ def export_brief(root, scenario, notice_id, version, format):
                 rendered.append(f"<p>{content}</p>")
         return (
             "<!doctype html><html lang='en'><meta charset='utf-8'>"
-            "<title>Intelligence assessment</title>"
+            f"<title>{html.escape(title)}</title>"
             "<style>body{max-width:85ch;margin:3rem auto;padding:0 1.5rem;"
             "font:16px/1.6 system-ui;color:#182b39}p{overflow-wrap:anywhere}"
             "h1,h2,h3,h4{line-height:1.25;break-after:avoid}"
             ".finding{padding-left:1rem;margin:0.25rem 0}"
             ".finding-sub{padding-left:2.5rem;margin:0.2rem 0}"
-            "code{font-family:monospace;font-size:0.9em;background:#f0f2f5;padding:0.1em 0.3em;border-radius:3px}"
+            "code{font-family:monospace;font-size:0.9em;background:#f0f2f5;"
+            "padding:0.1em 0.3em;border-radius:3px}"
             "@media print{body{margin:0;max-width:none}h2{margin-top:2rem}}</style><body>"
             + "\n".join(rendered)
             + "</body></html>"
         )
     if format == "pdf":
         return _render_brief_pdf(
-            text,
-            title=brief.get("title") or "Intelligence assessment",
-            footer_label=f"{notice_id} · Version {version}",
+            text, title=title, footer_label=footer_label, kicker=kicker
         )
     if format != "md":
         raise ValueError("Unsupported export format")
     return text
 
 
-def _render_brief_pdf(text: str, title: str = "Intelligence assessment", footer_label: str = "") -> bytes:
+def _render_brief_pdf(
+    text: str,
+    title: str = "Intelligence brief",
+    footer_label: str = "",
+    kicker: str = "INTELLIGENCE BRIEF",
+) -> bytes:
     import io
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
@@ -939,7 +1033,7 @@ def _render_brief_pdf(text: str, title: str = "Intelligence assessment", footer_
         canvas.line(18 * mm, height - 12 * mm, width - 18 * mm, height - 12 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(accent)
-        canvas.drawString(18 * mm, height - 10 * mm, "INTELLIGENCE ASSESSMENT")
+        canvas.drawString(18 * mm, height - 10 * mm, kicker)
         canvas.setFillColor(muted)
         canvas.drawRightString(width - 18 * mm, height - 10 * mm, "OSINT  |  UNCLASSIFIED")
         canvas.setStrokeColor(rule)

@@ -11,10 +11,15 @@ function Prose({ text }) {
     /^#{1,6}\s/.test(part) ? <h4 key={index}>{part.replace(/^#{1,6}\s/, "")}</h4> : <p key={index}>{part}</p>)}</div>;
 }
 
-export default function ReportView({ scenario, noticeId, report, busy, onSave, onDraftChange, machineSeed, evidenceReview, onReset }) {
+export default function ReportView({ scenario, noticeId, report, busy, onSave, onDraftChange, machineSeed, evidenceReview, onReset, step: routeStep, onStepChange }) {
   const panel = useRef(null);
   const [workflowStep, setWorkflowStep] = useState(() => readDraft(noticeId, localStorage) !== null ? "assessment" : "review");
-  useEffect(() => { panel.current?.closest(".notice-body")?.scrollTo(0, 0); }, [workflowStep]);
+  const step = routeStep || workflowStep;
+  function onStep(id) {
+    setWorkflowStep(id);
+    onStepChange?.(id);
+  }
+  useEffect(() => { panel.current?.closest(".notice-body")?.scrollTo(0, 0); }, [step]);
   const [draft, setDraft] = useState(() => readDraft(noticeId, localStorage));
   const [editing, setEditing] = useState(draft !== null);
   const [storageError, setStorageError] = useState("");
@@ -47,7 +52,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
   async function save() {
     setSaveError("");
     const savedReport = await onSave(value);
-    if (savedReport) { clearDraft(); setEditing(false); setWorkflowStep("brief"); }
+    if (savedReport) { clearDraft(); setEditing(false); onStep("brief"); }
     else setSaveError("Notes were not saved. Your draft is retained; please retry.");
   }
   return <section ref={panel} className="assessment-panel">
@@ -56,7 +61,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
     </div>
     <p className="notice-timing">Your interpretation, separate from the generated brief. Unsaved drafts are retained in this browser for each notice.</p>
     <AnalystWorkflow scenario={scenario} noticeId={noticeId} report={report} evidenceReview={evidenceReview}
-      step={workflowStep} onStepChange={setWorkflowStep} dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
+      step={step} onStepChange={onStep} dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
         const start = "<!-- reviewed-material:start -->";
         const end = "<!-- reviewed-material:end -->";
         const block = `${start}\n${material}\n${end}`;
@@ -66,7 +71,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
           change(value.slice(0, from) + block + value.slice(to + end.length));
         } else change([value.trim(), block].filter(Boolean).join("\n\n"));
         setEditing(true);
-        setWorkflowStep("assessment");
+        onStep("assessment");
       }}>
     {pendingSeed && <section className="brief-callout" aria-label="Machine draft ready">
       <h3>Machine draft ready for review</h3>
@@ -82,7 +87,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
       </div>
     </section>}
     <h3 id="working-assessment">3. Add your judgement and save the assessment</h3>
-    <p>Develop the key judgement, implications and alternatives below. Saving takes you to step 4 to name and prepare the brief.</p>
+    <p>Develop the key judgement, implications and alternatives below. Saving enables the assessment PDF for intelligence colleagues and takes you to step 4 to prepare the senior-leadership brief.</p>
     {!report && <p role="status">Assessment unavailable or loading. You can still write a local draft.</p>}
     {editing ? <>
       <label className="sr-only" htmlFor="assessment-text">Your notes and assessment</label>
@@ -96,6 +101,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
     </> : <>
       <button type="button" className="primary-action" onClick={() => setEditing(true)}>{value ? "Edit assessment" : "Write assessment"}</button>
       {value ? <Prose text={value} /> : <p className="empty">No assessment yet. Record your interpretation, alternative explanations, and next questions here.</p>}
+      {value && !dirty && <p className="notice-actions"><button type="button" className="primary-action" onClick={() => onStep("brief")}>Continue to intelligence brief →</button></p>}
     </>}
     </AnalystWorkflow>
     {storageError && <p role="alert" className="error">{storageError}</p>}

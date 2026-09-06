@@ -53,7 +53,8 @@ const { chromium } = require('playwright');
     while (requests < 2) await page.waitForTimeout(20);
     complete();
     await page.getByText('Brief version 99 is ready for review.', { exact: false }).waitFor();
-    assert.ok(await page.getByText('Browser test brief and annex', { exact: true }).isVisible());
+    assert.ok(await page.getByText('Test body', { exact: true }).isVisible());
+    assert.equal(await page.getByText('Browser test brief and annex', { exact: true }).count(), 0);
     assert.equal(requests, 2, 'Only explicit clicks start preparation');
     for (const width of [1440, 1024, 390, 360]) {
       await page.setViewportSize({ width, height: 1000 });

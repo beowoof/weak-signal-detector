@@ -56,6 +56,8 @@ def test_editorial_input_uses_retained_wording_and_preserves_audit(tmp_path, mon
     assert "Original broader claim" not in inputs
     assert result["model"] == "fixture"
     assert "## Key judgements" in result["body"]
+    assert "[A1]" not in result["body"]
+    assert result["structured"]["bluf"][0]["refs"] == ["A1"]
     assert list((tmp_path / "brief_runs").glob("*/completion.json"))
 
 

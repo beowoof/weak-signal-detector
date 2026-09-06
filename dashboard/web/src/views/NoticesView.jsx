@@ -426,6 +426,7 @@ export default function NoticesView({
             <p>{packet?.product?.change || humanize(trigger.recommended_posture_reason) || "A multi-domain measurement cue requires contextual review."}</p>
             <p className="notice-timing">{(trigger.contributing_domains || []).map(humanize).join(" · ")}</p>
           </div>
+          <p className="workflow-next-action">The watch packet below is not the finished brief. <button type="button" onClick={() => onTabChange("notes", "brief")}>Open the intelligence brief and PDF</button></p>
           <BriefView packet={packet} notice={selected} mode="overview" />
           <details className="notice-metadata"><summary>Notice metadata</summary><dl>
             <div><dt>Notice ID</dt><dd>{selected.notice_id}</dd></div>
@@ -444,7 +445,7 @@ export default function NoticesView({
               const result = await onBuildPacket(selected);
               setPacketStatus(result ? "Evidence packet updated below." : "Evidence packet was not rebuilt. See the error above.");
             }}>{collectBusy ? "Working…" : packet ? "Rebuild evidence packet" : "Build evidence packet"}</button>
-            {packet?.packet_id && <a href={`/api/packet/pdf?scenario=${encodeURIComponent(selected.scenario_id || trigger.scenario_id)}&packet_id=${encodeURIComponent(packet.packet_id)}`} target="_blank" rel="noreferrer">Evidence packet PDF</a>}</div>
+            {packet?.packet_id && <a href={`/api/packet/pdf?scenario=${encodeURIComponent(selected.scenario_id || trigger.scenario_id)}&packet_id=${encodeURIComponent(packet.packet_id)}`} target="_blank" rel="noreferrer">Watch-summary PDF</a>}</div>
             {packetStatus && <p role="status">{packetStatus}</p>}
           </section>
           {evidence}<BriefView packet={packet} notice={selected} mode="evidence" />

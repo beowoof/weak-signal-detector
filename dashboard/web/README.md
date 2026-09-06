@@ -4,7 +4,7 @@
 
 ## Secondary collection
 
-A notice has one tab row (Overview, Evidence, Collection, Notes & assessment) and a separate **Notice actions** menu. Notes & assessment is four stages; only the selected stage is shown: review findings, retained findings, your assessment, intelligence brief. **Prepare new brief version** reports running, failure and completion, including while you are on another stage.
+A notice has one tab row (Overview, Evidence, Collection, Notes & assessment) and a separate **Notice actions** menu. Notes & assessment is four stages; only the selected stage is shown: review findings, retained findings, your assessment, intelligence brief. After a saved assessment, **Download assessment PDF** (also Markdown/HTML) is the desk product for intelligence colleagues. **Prepare the intelligence brief (PDF)** runs editorial synthesis and shows the condensed senior-leadership brief (BLUF, judgements, outlook) without editorial `[A1]` input codes. The Overview watch packet is not that brief. **Prepare new brief version** reports running, failure and completion, including while you are on another stage.
 
 On a notice, click **Secondary collection**. The Collection tab has one sequence:
 
