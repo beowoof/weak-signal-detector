@@ -940,19 +940,20 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .review-controls { border-top: 1px solid var(--border); margin-top: 1rem; }
 .brief-signoff { margin: 0 0 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); }
 .brief-toolbar-head {
-  position: sticky;
-  top: 0;
-  z-index: 4;
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: .75rem 1rem;
-  margin: 0 0 .85rem;
-  padding: .35rem 0 .55rem;
-  background: var(--bg);
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 80ch;
+  margin: 0 auto 1.25rem;
+  padding: .25rem 0 1rem;
+  border-bottom: 1px solid var(--border);
+  background: transparent;
 }
-.brief-toolbar-head h4 { margin: .15rem 0 0; }
+.brief-toolbar-head .eyebrow { margin: 0 0 .4rem; color: var(--muted); font-size: .8rem; font-weight: 500; letter-spacing: normal; text-transform: none; }
+.brief-toolbar-head h4 { margin: 0; font-size: 1.25rem; line-height: 1.35; color: var(--ink); overflow-wrap: anywhere; }
+#prepare-brief { background: var(--surface); }
+#prepare-brief > .intelligence-brief { border: 0; padding: 0; }
 .brief-toolbar {
   display: flex;
   flex-wrap: wrap;
