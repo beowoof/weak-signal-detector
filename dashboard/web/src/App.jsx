@@ -479,7 +479,7 @@ export default function App() {
 
   return <div className="desk-shell">
     <nav className="desk-nav" aria-label="Workspace">
-      <span className="desk-brand">WSD <span>INTELLIGENCE DESK</span></span>
+      <span className="desk-brand" aria-label="WSD Intelligence Desk" title="WSD Intelligence Desk">WSD <span>INTELLIGENCE DESK</span></span>
       <div className="surface-links">{SURFACES.map(([id, label]) =>
         <button key={id} type="button" aria-current={surface === id ? "page" : undefined}
           onClick={() => navigate({ surface: id, ...(id === "scenarios" ? { scenario: surface === "notices" ? selectedNotice?.scenario_id || selectedNotice?.trigger?.scenario_id : surface === "anomaly" || surface === "operations" ? route.result?.split("/")[0] || route.scenario : route.scenario } : {}) })}>{label}</button>)}</div>

@@ -44,14 +44,14 @@ export default function BacktestRunner({ onOpen, initialScenario, children }) {
       <label>Concurrent sources<input type="number" min="1" max="8" value={workers} onChange={e => setWorkers(e.target.value)} /></label>
       <label><input type="checkbox" checked={mock} onChange={e => setMock(e.target.checked)} />Synthetic rehearsal (stops before measurement)</label>
       <label><input type="checkbox" checked={exploratory} onChange={e => setExploratory(e.target.checked)} />Allow exploratory measurement without a real freeze</label>
-    </details><button type="button" disabled={!scenario} onClick={() => action(async () => setPlan({ ...await request('/api/operator/plan', body), requestId: crypto.randomUUID() }))}>Preview run plan</button></fieldset>
+    </details><button className="primary-action" type="button" disabled={!scenario} onClick={() => action(async () => setPlan({ ...await request('/api/operator/plan', body), requestId: crypto.randomUUID() }))}>Preview run plan</button></fieldset>
     {error && <p role="alert" className="error">{error}</p>}
     {plan && <section aria-label="Run plan"><h3>{plan.mode}</h3><p>{plan.stages.map(s => LABELS[s]).join(' → ')}</p><p>{plan.measurement}</p>
       <p>Sources: {plan.sources.map(sourceLabel).join(', ')}</p>
       <ul>{plan.windows.map(w => <li key={w.id}>{w.id}: {w.start}–{w.end}, lookback {w.lookback_days} days</li>)}</ul>
       <p>Historical evidence uses the scenario windows; notice packet replay uses episode-end cutoff. This action ends at {LABELS[through]}; it does not generate an assessment or finished brief.</p>
       <details><summary>Input identities and options</summary><pre>{JSON.stringify(plan, null, 2)}</pre></details>
-      <button type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision, request_id: plan.requestId }); setJobId(d.id); })}>Run this backtest plan</button>
+      <button className="primary-action" type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision, request_id: plan.requestId }); setJobId(d.id); })}>Run this backtest plan</button>
     </section>}
     {job && <section aria-label="Backtest output"><h3>{humanize(job.state)}</h3><p role="status">{job.progress?.message || 'Starting'} · {job.progress?.elapsed_s ?? 0}s</p>
       {job.error && <p role="alert">{job.error}</p>}

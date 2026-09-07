@@ -130,6 +130,7 @@ export default function OperationsView({
         <p className="notice-actions">
           <button
             type="button"
+            className="primary-action"
             disabled={busy || !selected}
             onClick={() => onEmit(selected.scenario_id, selected.measure_id)}
           >
@@ -162,6 +163,7 @@ export default function OperationsView({
         <p className="notice-actions">
           <button
             type="button"
+            className="primary-action"
             disabled={busy || !selectedNotice}
             onClick={() =>
               onBuildPacket(

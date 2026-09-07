@@ -889,7 +889,7 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 }
 @media (max-width: 700px) {
   .desk-nav { flex-wrap: wrap; }
-  .desk-brand { display: none; }
+  .desk-brand { display: inline; }
   .surface-links { min-width: 0; }
   .desk-nav button { padding: .5rem .45rem; }
   .scenario-fields { grid-template-columns: 1fr; }
@@ -900,7 +900,7 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 /* Analyst review and briefing workspace. */
 .workflow-panel { margin: 1.5rem 0; }
 .workflow-panel label { display: block; margin: .75rem 0; }
-.workflow-panel input:not([type=checkbox]), .workflow-panel textarea { display: block; width: 100%; box-sizing: border-box; padding: .6rem; margin-top: .35rem; font: inherit; color: inherit; background: var(--bg, #fff); border: 1px solid #87949c; border-radius: 4px; }
+.workflow-panel input:not([type=checkbox]), .workflow-panel textarea { display: block; width: 100%; box-sizing: border-box; padding: .6rem; margin-top: .35rem; font: inherit; color: inherit; background: var(--bg, #fff); border: 1px solid var(--border); border-radius: 4px; }
 .workflow-panel button {
   background: var(--surface);
   color: var(--ink);
@@ -930,14 +930,14 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
   font-size: .8rem;
   margin: .15rem .25rem;
 }
-.workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; padding: 1rem; border: 1px solid #87949c; }
-.intelligence-brief { padding: 1.2rem 1.35rem; border: 1px solid #87949c; line-height: 1.65; }
+.workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; padding: 1rem; border: 1px solid var(--border); }
+.intelligence-brief { padding: 1.2rem 1.35rem; border: 1px solid var(--border); line-height: 1.65; }
 .intelligence-brief h3 { margin: 0 0 .6rem; font-size: 1.15rem; }
-.intelligence-brief h4 { margin: 1.1rem 0 .35rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #006d59; }
+.intelligence-brief h4 { margin: 1.1rem 0 .35rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: var(--accent); }
 .intelligence-brief h4:first-child { margin-top: 0; }
 .intelligence-brief p { margin: 0 0 .85rem; overflow-wrap: anywhere; }
 .intelligence-brief .brief-judgement { padding-left: .15rem; }
-.review-controls { border-top: 1px solid #87949c; margin-top: 1rem; }
+.review-controls { border-top: 1px solid var(--border); margin-top: 1rem; }
 .brief-signoff { margin: 0 0 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); }
 .brief-toolbar-head {
   position: sticky;
@@ -1003,8 +1003,8 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .proposal-card:not([open]) { padding:.7rem 1rem; }
 #working-assessment, #prepare-brief, #assemble-assessment, #review-proposals { scroll-margin-top: 2rem; }
 
-.brief-generation-progress { padding: 1rem; margin: 1rem 0; border: 1px solid #87949c; border-radius: 6px; }
-.brief-generation-progress progress { display: block; width: 100%; height: 1rem; margin: .8rem 0; accent-color: #006d59; }
+.brief-generation-progress { padding: 1rem; margin: 1rem 0; border: 1px solid var(--border); border-radius: 6px; }
+.brief-generation-progress progress { display: block; width: 100%; height: 1rem; margin: .8rem 0; accent-color: var(--accent); }
 .brief-generation-progress p { margin: .4rem 0; }
 
 /* Navigation stays in the header; commands live with the work they affect. */
@@ -1081,3 +1081,19 @@ main.standalone-main { padding: var(--space-page); }
   .reading-focus.show-list .alert-inbox { display: flex; }
 }
 .reading-focus .brief-toolbar-head { position: static; }
+
+/* N04: shared product controls and identity, across both colour schemes. */
+:root { --control-radius: .4rem; --control-height: 2.35rem; --type-small: .8rem; --type-body: .95rem; --on-accent: light-dark(#fff, #10251d); }
+:where(main) button:not(.alert-row):not([role=tab]):not(.mobile-inbox-toggle) { border-radius: var(--control-radius); min-height: var(--control-height); }
+.operator-panel button, .followup-panel button, .investigation-journey button, .reading-toggle, .workflow-panel button, .notice-actions button, .section-heading button, .scenarios-page button { font-size: var(--type-small); line-height: 1.35; padding: .5rem .75rem; }
+main button.primary-action { background: var(--accent); color: var(--on-accent); border: 1px solid var(--accent); font-weight: 650; }
+main button:hover:not(:disabled):not(.alert-row) { border-color: var(--accent); }
+.workflow-prose, .intelligence-brief, .document-preview { color: var(--ink); }
+.desk-brand { color: var(--ink); letter-spacing: -.03em; }
+@media (max-width: 700px) {
+  .desk-nav { display: grid; grid-template-columns: 1fr auto; gap: .2rem .5rem; padding: .4rem .75rem; }
+  .desk-brand span { display: inline; font-size: .55rem; margin-left: .4rem; }
+  .surface-links { grid-column: 1 / -1; grid-row: 2; justify-content: space-between; }
+  .refresh-status { grid-column: 2; grid-row: 1; }
+  .desk-nav .refresh-status button { min-height: 1.75rem; padding: 0 .35rem; }
+}

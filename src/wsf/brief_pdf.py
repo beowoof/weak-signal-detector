@@ -146,7 +146,7 @@ def _header_footer(packet: Packet):
         canvas.line(18 * mm, height - 12 * mm, width - 18 * mm, height - 12 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(ACCENT)
-        canvas.drawString(18 * mm, height - 10 * mm, "COLLECTION CUEING DESK")
+        canvas.drawString(18 * mm, height - 10 * mm, "WSD INTELLIGENCE DESK")
         canvas.setFillColor(MUTED)
         canvas.drawRightString(width - 18 * mm, height - 10 * mm, "OSINT  |  UNCLASSIFIED")
         canvas.setStrokeColor(RULE)
@@ -274,7 +274,7 @@ def write_brief_pdf(packet: Packet, path: Path) -> Path:
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title=(packet.product.headline if packet.product else packet.notice_id),
-        author="WSD collection cueing desk",
+        author="WSD Intelligence Desk",
         subject=f"{packet.notice_id} {packet.clocks.mode}",
     )
     draw = _header_footer(packet)
