@@ -42,8 +42,9 @@ function BriefProgress({ progress }) {
   </div>;
 }
 
-export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset, step, onStepChange, children }) {
+export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset, step, onStepChange, onWorkflowChange, children }) {
   const [workflow, setWorkflow] = useState(null);
+  useEffect(() => { onWorkflowChange?.(noticeId, workflow); }, [noticeId, workflow, onWorkflowChange]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");

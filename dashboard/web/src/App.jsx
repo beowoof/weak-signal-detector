@@ -54,6 +54,8 @@ export default function App() {
   const [machineSeed, setMachineSeed] = useState(null);
   const [evidenceReview, setEvidenceReview] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [journey, setJourney] = useState(null);
+  const onWorkflowChange = useCallback((noticeId, workflow) => setJourney({ noticeId, workflow }), []);
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
   const [opsLog, setOpsLog] = useState("");
@@ -496,12 +498,13 @@ export default function App() {
         onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
         machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
-        activeTab={route.tab} onTabChange={(tab, step) => navigate({ tab, ...(step ? { step } : {}) })}
+        activeTab={route.tab} activeStep={route.step} journey={journey?.noticeId === selectedNoticeId ? journey.workflow : null}
+        onTabChange={(tab, step) => navigate({ tab, ...(step ? { step } : {}) })}
         loading={loading && !notices.length} drafts={drafts}
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
           scenario={selectedNotice.scenario_id || selectedNotice.trigger?.scenario_id}
-          report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
+          onWorkflowChange={onWorkflowChange} report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
           machineSeed={machineSeed}
           evidenceReview={ownResources ? evidenceReview : null}
           step={route.step}

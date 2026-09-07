@@ -1,3 +1,4 @@
+import { investigationNext } from "../lib/workspace.js";
 import { useEffect, useRef, useState } from "react";
 import { humanize, noticeTitle, workflowLabel } from "../lib/workspace.js";
 import { number } from "../lib/format.js";
@@ -342,12 +343,12 @@ function CollectionPanel({ collection, busy, onRun }) {
   );
 }
 
-const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection", "Collection"], ["notes", "Notes & assessment"]];
+const TABS = [["overview", "Overview"], ["evidence", "Evidence"], ["collection", "Collection"], ["notes", "Notes & assessment"], ["brief", "Intelligence brief"]];
 
 export default function NoticesView({
   notices, selectedId, onSelect, onOpenAnomaly, onBuildPacket, packet, collection,
   collectBusy, onCollect, onMachineDraft, onAction, actionError, activeTab, onTabChange,
-  evidence, notes, loading, drafts, machineProgress,
+  evidence, notes, loading, drafts, machineProgress, activeStep, journey,
 }) {
   const [packetStatus, setPacketStatus] = useState("");
   useEffect(() => setPacketStatus(""), [selectedId]);
@@ -366,6 +367,9 @@ export default function NoticesView({
       (filter === "active" ? !TERMINAL.has(item.workflow?.state) : filter === "draft" ? drafts[item.notice_id] : item.workflow?.state === filter));
   });
   if (!notices.length) return <p className="empty">{loading ? "Loading notices…" : "No notices yet. Use Operations to emit notices from a measurement result."}</p>;
+  const shownTab = activeTab === "notes" && activeStep === "brief" ? "brief" : activeTab;
+  const openTab = (id) => onTabChange(id === "brief" ? "notes" : id, id === "brief" ? "brief" : id === "notes" ? "review" : undefined);
+  const next = investigationNext({ packet, workflow: journey, dirty: drafts[selectedId] });
   const trigger = selected.trigger || {};
   const workflow = selected.workflow || {};
   return <div className={`alert-layout ${listOpen ? "show-list" : "show-detail"}`}>
@@ -411,11 +415,11 @@ export default function NoticesView({
         <p className="notice-timing">{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
         <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
           {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
-            aria-selected={activeTab === id} aria-controls={`panel-${id}`} tabIndex={activeTab === id ? 0 : -1}
-            onClick={() => onTabChange(id)} onKeyDown={(event) => {
+            aria-selected={shownTab === id} aria-controls={`panel-${id === "brief" ? "notes" : id}`} tabIndex={shownTab === id ? 0 : -1}
+            onClick={() => openTab(id)} onKeyDown={(event) => {
               const offset = event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
               const target = event.key === "Home" ? 0 : event.key === "End" ? TABS.length - 1 : offset ? (index + offset + TABS.length) % TABS.length : null;
-              if (target !== null) { event.preventDefault(); onTabChange(TABS[target][0]); document.getElementById(`tab-${TABS[target][0]}`)?.focus(); }
+              if (target !== null) { event.preventDefault(); openTab(TABS[target][0]); document.getElementById(`tab-${TABS[target][0]}`)?.focus(); }
             }}>{label}{id === "notes" && drafts[selectedId] ? " •" : ""}</button>)}
         </nav>
       </header>
@@ -426,7 +430,11 @@ export default function NoticesView({
             <p>{packet?.product?.change || humanize(trigger.recommended_posture_reason) || "A multi-domain measurement cue requires contextual review."}</p>
             <p className="notice-timing">{(trigger.contributing_domains || []).map(humanize).join(" · ")}</p>
           </div>
-          <p className="workflow-next-action">The watch packet below is not the finished brief. <button type="button" onClick={() => onTabChange("notes", "brief")}>Open the intelligence brief and PDF</button></p>
+          <section className="investigation-journey" aria-label="Investigation journey">
+            <h3>Investigation → review → assessment → intelligence brief</h3>
+            <p>{next.detail}</p>
+            <button className="primary-action" type="button" onClick={() => onTabChange(next.tab, next.step)}>{next.label}</button>
+          </section>
           <BriefView packet={packet} notice={selected} mode="overview" />
           <details className="notice-metadata"><summary>Notice metadata</summary><dl>
             <div><dt>Notice ID</dt><dd>{selected.notice_id}</dd></div>
@@ -475,7 +483,7 @@ export default function NoticesView({
             <button type="button" disabled={collectBusy} onClick={() => onCollect(selected, ["validate"])}>Validate existing cue</button>
           </details>
         </section>
-        <section id="panel-notes" role="tabpanel" aria-labelledby="tab-notes" hidden={activeTab !== "notes"}>{notes}</section>
+        <section id="panel-notes" role="tabpanel" aria-labelledby={shownTab === "brief" ? "tab-brief" : "tab-notes"} hidden={activeTab !== "notes"}>{notes}</section>
       </div>
     </article>
   </div>;

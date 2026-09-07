@@ -55,3 +55,16 @@ test("brief preview strips editorial input codes that are not in the document", 
     body: "## BLUF\n\n- Takeaway [A3, A20]\n\n## Key judgements\n\n- Detail [A5, P1, R3].",
   }), "## BLUF\n\n- Takeaway\n\n## Key judgements\n\n- Detail.");
 });
+
+test("investigation journey names the actual next step and does not assume readiness", async () => {
+  const { investigationNext: next } = await import("./workspace.js");
+  assert.equal(next({}).tab, "evidence");
+  assert.match(next({ packet: {} }).detail, /unavailable or loading/);
+  assert.equal(next({ packet: {}, workflow: { briefs: [] } }).tab, "collection");
+  assert.equal(next({ packet: {}, workflow: { review: {}, briefs: [] } }).step, "review");
+  const workflow = { report: { empty: false }, briefs: [{ version: 1, signed_off: {} }] };
+  assert.equal(next({ packet: {}, workflow }).label, "Open intelligence brief");
+  assert.equal(next({ packet: {}, workflow, dirty: true }).step, "assessment");
+  workflow.briefs[0].stale = true;
+  assert.equal(next({ packet: {}, workflow }).label, "Prepare intelligence brief");
+});

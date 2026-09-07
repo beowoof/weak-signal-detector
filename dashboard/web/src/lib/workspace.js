@@ -44,3 +44,16 @@ export function briefProduct(brief) {
   }
   return text.replace(/\s*\[(?:[APRS]\d+(?:\s*,\s*[APRS]\d+)*)\]/g, "").trim();
 }
+
+// A saved packet is only the start of the investigation journey.
+export function investigationNext({ packet, workflow, dirty = false }) {
+  if (!packet) return { label: "Build watch packet", detail: "No watch packet yet. Build it in Evidence to start the investigation.", tab: "evidence" };
+  if (!workflow) return { label: "Open assessment status", detail: "Assessment status is unavailable or loading; no readiness is assumed.", tab: "notes", step: "review" };
+  if (dirty) return { label: "Continue unsaved assessment", detail: "Save your assessment changes before preparing a brief.", tab: "notes", step: "assessment" };
+  const brief = workflow.briefs?.at(-1);
+  if (workflow.preparing) return { label: "View brief progress", detail: "Brief preparation is running.", tab: "notes", step: "brief" };
+  if (brief && !brief.stale) return { label: "Open intelligence brief", detail: brief.signed_off ? "Brief signed off. Preview the approved version." : "Draft brief available. Review it before sign-off.", tab: "notes", step: "brief" };
+  if (workflow.report && !workflow.report.empty) return { label: "Prepare intelligence brief", detail: brief?.stale ? "The previous brief is stale. Prepare a version from the current assessment." : "Assessment saved. Prepare the decision-facing brief.", tab: "notes", step: "brief" };
+  if (workflow.review) return { label: "Review findings", detail: "Findings are available. Review, retain and merge them into your assessment.", tab: "notes", step: "review" };
+  return { label: "Collect context and findings", detail: "Watch packet available; no research proposals or saved assessment yet. Collect context or write your assessment.", tab: "collection" };
+}

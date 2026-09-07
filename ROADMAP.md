@@ -520,11 +520,21 @@ Readiness requires source-supported material judgements, visible unresolved gaps
 
 ## UX review and delivery backlog — 2026-09-07
 
-**Review status:** completed a read-only walkthrough of the running React desk at `localhost:5173` (notice overview, assessment/brief entry, Operations and Scenarios), including desktop visual inspection at 1280 × 720, and inspected the command, artefact, collection, review, export and styling implementations. Findings below distinguish observed behaviour from source-inspected gaps and further validation. No collection, model generation, sign-off or destructive action was executed. This is a heuristic UX review, not a completed accessibility audit or an observed analyst usability study. All backlog items remain open.
+**Review status:** completed a read-only walkthrough of the running React desk at `localhost:5173` (notice overview, assessment/brief entry, Operations and Scenarios), including desktop visual inspection at 1280 × 720, and inspected the command, artefact, collection, review, export and styling implementations. Findings below distinguish observed behaviour from source-inspected gaps and further validation. No collection, model generation, sign-off or destructive action was executed. This is a heuristic UX review, not a completed accessibility audit or an observed analyst usability study. Item status and verification are recorded in the checkpoint table below.
 
 **Overall finding:** substantial functionality exists, but the user still has to understand the implementation to connect configuration, execution, evidence, assessment and a finished brief. Prioritise clear action outcomes and continuity before adding more screens. Existing assessment previews, latest-brief rendering, artefact tables/plots, local draft retention, review persistence and generation-stage feedback are foundations to extend, not missing features to rebuild.
 
 Priority: **P1** prevents a coherent or trustworthy task flow; **P2** materially improves clarity, efficiency or presentation. These priorities concern product usability, not detector severity.
+
+### Implementation checkpoints
+
+Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separately. “Done” records engineering acceptance; owner usability qualification remains separate. The backlog descriptions below retain the original findings for traceability.
+
+| Item | Status | Verification / remaining limits |
+|---|---|---|
+| UX-N01 | Done | Direct Intelligence brief destination, state-aware overview journey and prerequisite guidance. 17 frontend tests and production build passed; browser verified empty assessment guidance and direct brief navigation. First-time owner walkthrough remains to qualify ease of use. |
+| UX-N05 | Next | Terminology and distinct readiness states. |
+| UX-F01–F08 | Open | Work through P1 items in numeric order, then P2 F08. Realtime orchestration remains phase 7. |
 
 ### 1. Functional gaps
 
