@@ -344,12 +344,14 @@ def create_app(
     app.state.scenarios_root = root
     from dashboard.backtest_operator import operator_router
     from dashboard.draft_stream import draft_events
+    from dashboard.followup_collection import followup_router
     from dashboard.job_history import JobHistory
     from dashboard.scenario_workspace import scenario_router
 
     app.include_router(scenario_router(root))
     history = JobHistory(proj)
     app.include_router(operator_router(proj, history))
+    app.include_router(followup_router(proj, history))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

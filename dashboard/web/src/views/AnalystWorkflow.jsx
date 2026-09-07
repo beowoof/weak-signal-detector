@@ -1,3 +1,4 @@
+import FollowupCollection from "./FollowupCollection.jsx";
 import { MarkdownPreview, PDFPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useState } from "react";
 import { readDraft, writeDraft, clearDraft } from "../lib/drafts.js";
@@ -273,7 +274,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
           if (window.confirm("Reset this assessment, review decisions and briefs? Unsaved edits in this browser will be discarded. Saved work is archived; research and source proposals are retained.")) act("reset", { acknowledged: true });
         }}>Reset assessment</button>
       </details>
-      <details><summary>Review history ({workflow.events.length})</summary><pre className="workflow-prose">{JSON.stringify(workflow.events, null, 2)}</pre></details>
+      <FollowupCollection scenario={scenario} noticeId={noticeId} reviewVersion={workflow.review_version} onComplete={async () => { const r = await fetch(`/api/analyst-workflow?${query}`); if (r.ok) { setWorkflow(await r.json()); onStepChange("review"); } else setError("Could not reload findings. Reopen this notice to retry."); }} />
+    <details><summary>Review history ({workflow.events.length})</summary><pre className="workflow-prose">{JSON.stringify(workflow.events, null, 2)}</pre></details>
     </>}
   </section>;
 }

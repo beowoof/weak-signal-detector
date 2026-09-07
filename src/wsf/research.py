@@ -237,9 +237,23 @@ def _archive_text(body: bytes, content_type: str) -> str:
     return text
 
 
-def research_plan(packet: Packet, limits: ResearchLimits) -> list[dict]:
+def research_plan(
+    packet: Packet, limits: ResearchLimits, followup: dict | None = None
+) -> list[dict]:
     product = packet.product
     actors, places, period = _actor_place_period(packet)
+    if followup:
+        return [
+            {
+                "requirement_id": "followup-" + digest(followup)[:16],
+                "purpose": followup["question"],
+                "query": (
+                    f"{period} {actors} {places} {followup['question']} "
+                    f"{followup.get('source_preference', '')}"
+                )[:400],
+                "fallback_query": f"{period} {actors} {followup['question']} counterevidence"[:400],
+            }
+        ]
     requirements = product.collection if product else []
     plan = []
     for index, requirement in enumerate(requirements):
@@ -485,9 +499,10 @@ def run_research(
     limits: ResearchLimits | None = None,
     progress=None,
     allow_network: bool = True,
+    followup: dict | None = None,
 ) -> dict:
     limits = limits or ResearchLimits()
-    plan = research_plan(packet, limits)
+    plan = research_plan(packet, limits, followup)
     key = digest(
         {
             "schema": "research_v1",
@@ -532,6 +547,8 @@ def run_research(
             "elapsed_s": 0,
         }
     )
+    if followup:
+        state["followup"] = followup
     state["limits"] = asdict(limits)
     state["run_usage"] = {
         "search_requests": 0,
