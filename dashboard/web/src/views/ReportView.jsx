@@ -59,7 +59,7 @@ export default function ReportView({ scenario, noticeId, report, busy, onSave, o
     <div className="section-heading"><div><p className="eyebrow">Human assessment</p><h3>Your notes & assessment</h3></div>
       <span className={dirty ? "draft-badge" : "notice-timing"}>{dirty ? "Unsaved draft" : report?.updated_at && !report.empty ? `Saved ${String(report.updated_at).replace("T", " ").slice(0, 19)} UTC` : "No saved assessment"}</span>
     </div>
-    <p className="notice-timing">Your interpretation, separate from the generated brief. Unsaved drafts are retained in this browser for each notice.</p>
+    <p className="notice-timing">Your saved judgement, separate from the initial watch packet and the finished intelligence brief. Unsaved drafts are retained in this browser for each notice.</p>
     <AnalystWorkflow scenario={scenario} noticeId={noticeId} report={report} evidenceReview={evidenceReview}
       onWorkflowChange={onWorkflowChange} step={step} onStepChange={onStep} dirty={dirty} busy={busy} value={value} onReset={(resetReport) => { clearDraft(); setEditing(false); onReset(resetReport); }} onAssemble={(material) => {
         const start = "<!-- reviewed-material:start -->";

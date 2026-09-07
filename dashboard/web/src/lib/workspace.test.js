@@ -21,7 +21,7 @@ test("explicit links take precedence over remembered choices", () => {
   assert.equal(readRoute("?notice=linked", storage).step, "");
 });
 test("triage labels expose readable workflow without changing its value", () => {
-  assert.equal(workflowLabel("in_packet"), "Evidence ready");
+  assert.equal(workflowLabel("in_packet"), "Watch packet available");
   assert.equal(workflowLabel("context_requested"), "Context requested");
   assert.equal(noticeTitle({ scenario_id: "ukraine2022" }), "ukraine · 2022");
 });
@@ -67,4 +67,11 @@ test("investigation journey names the actual next step and does not assume readi
   assert.equal(next({ packet: {}, workflow, dirty: true }).step, "assessment");
   workflow.briefs[0].stale = true;
   assert.equal(next({ packet: {}, workflow }).label, "Prepare intelligence brief");
+});
+
+test("packet availability never implies reviewed evidence or a signed brief", async () => {
+  const { readinessSummary } = await import("./workspace.js");
+  assert.match(readinessSummary(null), /unavailable/);
+  assert.equal(readinessSummary({ briefs: [], report: { empty: true } }), "No research proposals · No saved assessment · No intelligence brief");
+  assert.match(readinessSummary({ review: { claims: [{}] }, active_decisions: { a: {} }, report: { empty: false }, briefs: [{ stale: true, signed_off: {} }] }), /1\/2 proposals reviewed · Assessment saved · Brief stale/);
 });

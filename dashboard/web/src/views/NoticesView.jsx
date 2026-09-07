@@ -1,4 +1,4 @@
-import { investigationNext } from "../lib/workspace.js";
+import { investigationNext, readinessSummary } from "../lib/workspace.js";
 import { useEffect, useRef, useState } from "react";
 import { humanize, noticeTitle, workflowLabel } from "../lib/workspace.js";
 import { number } from "../lib/format.js";
@@ -412,7 +412,7 @@ export default function NoticesView({
           </div></details>
         </div></div>
         <h2 ref={heading} tabIndex={-1}>{packet?.product?.headline || "Multi-domain activity cue"}</h2>
-        <p className="notice-timing">{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
+        <p className="notice-timing">{packet?.clocks?.knowledge_cutoff ? `Evidence cutoff: ${packet.clocks.knowledge_cutoff} · ` : "Evidence cutoff not loaded · "}{trigger.start} → {trigger.end} · {isLate(trigger) ? "Near window end" : `${trigger.days_before_window_end ?? "—"} days before window end`}</p>
         <nav className="notice-tabs" role="tablist" aria-label="Notice sections">
           {TABS.map(([id, label], index) => <button key={id} id={`tab-${id}`} role="tab" type="button"
             aria-selected={shownTab === id} aria-controls={`panel-${id === "brief" ? "notes" : id}`} tabIndex={shownTab === id ? 0 : -1}
@@ -432,7 +432,7 @@ export default function NoticesView({
           </div>
           <section className="investigation-journey" aria-label="Investigation journey">
             <h3>Investigation → review → assessment → intelligence brief</h3>
-            <p>{next.detail}</p>
+            <p>{next.detail}</p><p role="status">{readinessSummary(journey)}</p>
             <button className="primary-action" type="button" onClick={() => onTabChange(next.tab, next.step)}>{next.label}</button>
           </section>
           <BriefView packet={packet} notice={selected} mode="overview" />

@@ -1,3 +1,4 @@
+import { sourceLabel } from "../lib/workspace.js";
 import { useEffect, useState } from "react";
 import ArtifactsView from "./ArtifactsView.jsx";
 
@@ -82,7 +83,7 @@ function ScenarioEditor({ scenario, snapshot, onSaved }) {
       {mode === "json" || !formReady ? <label><span>Scenario JSON</span><textarea aria-label="Scenario JSON" className="scenario-json" spellCheck={false} value={text} onChange={(e) => update(e.target.value)} /></label> : <>
         <div className="scenario-fields">
           <label className="wide"><span>Research question</span><textarea aria-label="Research question" rows={2} value={doc.research_question || ""} onChange={(e) => edit(["research_question"], e.target.value)} /></label>
-          <label><span>Purpose</span><select aria-label="Purpose" value={doc.purpose || "development_showcase"} onChange={(e) => edit(["purpose"], e.target.value)}>{['development_showcase', 'held_out', 'rehearsal'].map((item) => <option key={item}>{item}</option>)}</select></label>
+          <label><span>Purpose</span><select aria-label="Purpose" value={doc.purpose || "development_showcase"} onChange={(e) => edit(["purpose"], e.target.value)}>{['development_showcase', 'held_out', 'rehearsal'].map((item) => <option key={item} value={item}>{({ development_showcase: "Development case", held_out: "Held-out evaluation case", rehearsal: "Engineering rehearsal" })[item]}</option>)}</select></label>
           {field("Focal actor", ["actors", "focal"], doc.actors?.focal)}
           <label><span>Counterpart actors (comma separated)</span><input key={JSON.stringify(doc.actors.counterparts)} aria-label="Counterpart actors" defaultValue={doc.actors.counterparts.join(", ")} onBlur={(e) => edit(["actors", "counterparts"], e.target.value.split(",").map((v) => v.trim()).filter(Boolean))} /></label>
         </div>
@@ -97,7 +98,7 @@ function ScenarioEditor({ scenario, snapshot, onSaved }) {
             {field(`${value.id} selection reason`, [...path, "selection_reason"], value.selection_reason)}
           </div>
         </div>)}
-        <h3>Enabled sources</h3><div className="source-toggles">{Object.entries(doc.sources || {}).map(([name, source]) => <label key={name}><input type="checkbox" checked={Boolean(source?.enabled)} onChange={(e) => edit(["sources", name, "enabled"], e.target.checked)} />{name}</label>)}</div>
+        <h3>Enabled sources</h3><div className="source-toggles">{Object.entries(doc.sources || {}).map(([name, source]) => <label key={name}><input type="checkbox" checked={Boolean(source?.enabled)} onChange={(e) => edit(["sources", name, "enabled"], e.target.checked)} />{sourceLabel(name)}<small title="Source identifier">{name}</small></label>)}</div>
         <p className="notice-timing">Queries, corpus gates, model settings and additional fields are editable in Advanced JSON. Enabling a source does not fetch it.</p>
       </>}
     </fieldset>

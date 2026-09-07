@@ -533,7 +533,7 @@ Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separat
 | Item | Status | Verification / remaining limits |
 |---|---|---|
 | UX-N01 | Done | Direct Intelligence brief destination, state-aware overview journey and prerequisite guidance. 17 frontend tests and production build passed; browser verified empty assessment guidance and direct brief navigation. First-time owner walkthrough remains to qualify ease of use. |
-| UX-N05 | Next | Terminology and distinct readiness states. |
+| UX-N05 | Done | Watch packet availability no longer implies review readiness; overview separately shows proposal review, assessment and brief states, including stale precedence. Cue interpretation and source/purpose labels clarified. 18 frontend tests and build passed; browser verified packet-only notice has no proposals/assessment/brief. |
 | UX-F01–F08 | Open | Work through P1 items in numeric order, then P2 F08. Realtime orchestration remains phase 7. |
 
 ### 1. Functional gaps

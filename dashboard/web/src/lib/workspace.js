@@ -23,7 +23,7 @@ export function routeSearch(route) {
 }
 export function humanize(value = "") { return String(value).replaceAll("_", " "); }
 export function workflowLabel(state = "new") {
-  return ({ new: "New", acked: "Read", in_packet: "Evidence ready", watching: "Watching",
+  return ({ new: "New", acked: "Read", in_packet: "Watch packet available", watching: "Watching",
     context_requested: "Context requested", dismissed: "Dismissed", rejected: "Rejected",
     closed: "Closed" })[state] || humanize(state);
 }
@@ -56,4 +56,18 @@ export function investigationNext({ packet, workflow, dirty = false }) {
   if (workflow.report && !workflow.report.empty) return { label: "Prepare intelligence brief", detail: brief?.stale ? "The previous brief is stale. Prepare a version from the current assessment." : "Assessment saved. Prepare the decision-facing brief.", tab: "notes", step: "brief" };
   if (workflow.review) return { label: "Review findings", detail: "Findings are available. Review, retain and merge them into your assessment.", tab: "notes", step: "review" };
   return { label: "Collect context and findings", detail: "Watch packet available; no research proposals or saved assessment yet. Collect context or write your assessment.", tab: "collection" };
+}
+
+export function readinessSummary(workflow) {
+  if (!workflow) return "Assessment and brief status unavailable or loading";
+  const review = workflow.review;
+  const total = review ? (review.claims?.length || 0) + (review.hypothesis_updates?.length || 0) + 1 : 0;
+  const reviewed = Object.keys(workflow.active_decisions || {}).length;
+  const brief = workflow.briefs?.at(-1);
+  return [total ? `${reviewed}/${total} proposals reviewed` : "No research proposals",
+    workflow.report && !workflow.report.empty ? "Assessment saved" : "No saved assessment",
+    !brief ? "No intelligence brief" : brief.stale ? "Brief stale" : brief.signed_off ? "Brief signed off" : "Draft brief available"].join(" · ");
+}
+export function sourceLabel(id) {
+  return ({ alfred: "Economic data vintages (ALFRED)", brent: "Brent oil prices", cbr: "Russian central bank", ct: "Certificate transparency", firms: "Thermal detections (FIRMS)", gdelt: "Public reporting (GDELT)", icews: "Coded public events (ICEWS)", moex: "Moscow exchange", navarea: "Maritime warnings", notam: "Aviation notices", official: "Official statements", osm: "OpenStreetMap", ripe: "Network activity (RIPE)", sar: "Radar imagery", viirs: "Night lights (VIIRS)", wiki_edits: "Wikipedia edits", wikipedia: "Wikipedia pageviews", gazette_cadence: "Official publication cadence" })[id] || humanize(id);
 }
