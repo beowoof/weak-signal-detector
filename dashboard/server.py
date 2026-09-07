@@ -18,6 +18,7 @@ from pydantic import BaseModel, Field
 
 from wsf.analysis.coupling import evaluate_window_coupling
 from wsf.analyst_workflow import (
+    brief_export_kind,
     export_assessment,
     export_brief,
     load_workflow,
@@ -592,6 +593,17 @@ def create_app(
         scenario: str, notice_id: str, version: int, format: str = "md", annex: bool = False
     ):
         try:
+            view = load_workflow(app.state.project_root, scenario, notice_id)
+            brief = next(
+                (
+                    item
+                    for item in view["briefs"]
+                    if item["version"] == version and not item.get("removed")
+                ),
+                None,
+            )
+            if not brief:
+                raise ValueError("Unknown brief version")
             content = export_brief(
                 app.state.project_root, scenario, notice_id, version, format, annex=annex
             )
@@ -600,7 +612,7 @@ def create_app(
                 if format == "pdf"
                 else ("text/html" if format == "html" else "text/markdown")
             )
-            kind = "brief-annex" if annex else "brief"
+            kind = brief_export_kind(brief, annex=annex)
             return Response(
                 content,
                 media_type=media_type,

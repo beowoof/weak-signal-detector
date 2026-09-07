@@ -880,13 +880,27 @@ def export_brief(root, scenario, notice_id, version, format, annex=False):
         extra = (brief.get("annex") or "").strip()
         if extra:
             text = text.rstrip() + "\n\n## Evidence annex\n\n" + extra
+    if brief.get("stale"):
+        kicker = "INTELLIGENCE BRIEF — STALE"
+    elif approval:
+        kicker = "INTELLIGENCE BRIEF"
+    else:
+        kicker = "INTELLIGENCE BRIEF — DRAFT"
     return _format_export(
         _stamp_utc(text),
         format,
         title=brief.get("title") or "Intelligence brief",
-        kicker="INTELLIGENCE BRIEF",
+        kicker=kicker,
         footer_label=f"{notice_id} · Version {version}",
     )
+
+
+def brief_export_kind(brief, annex=False):
+    if annex:
+        return "brief-annex"
+    if brief.get("signed_off"):
+        return "brief"
+    return "draft-brief"
 
 
 def export_assessment(root, scenario, notice_id, format):

@@ -15,6 +15,18 @@ function BriefDocument({ text }) {
   </article>;
 }
 
+function FormatDownload({ label, disabled, onPick, primary }) {
+  return <div className="format-download">
+    <button type="button" className={primary ? "primary-action" : undefined} disabled={disabled} onClick={() => onPick("pdf")}>{label}</button>
+    <button type="button" className="format-download-toggle" disabled={disabled} aria-label={`${label} formats`} aria-haspopup="menu">▾</button>
+    <div className="format-download-menu" role="menu">
+      <button type="button" role="menuitem" disabled={disabled} onClick={() => onPick("pdf")}>PDF</button>
+      <button type="button" role="menuitem" disabled={disabled} onClick={() => onPick("md")}>Markdown</button>
+      <button type="button" role="menuitem" disabled={disabled} onClick={() => onPick("html")}>HTML</button>
+    </div>
+  </div>;
+}
+
 function BriefProgress({ progress }) {
   const [started] = useState(Date.now);
   const [now, setNow] = useState(Date.now);
@@ -42,6 +54,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const [briefText, setBriefText] = useState(null);
   const [editorialBusy, setEditorialBusy] = useState(false);
   const [preview, setPreview] = useState(false);
+  const [signOffOpen, setSignOffOpen] = useState(false);
   const query = new URLSearchParams({ scenario, notice_id: noticeId }).toString();
   useEffect(() => {
     let cancelled = false;
@@ -75,7 +88,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
       const data = await response.json().catch(() => null);
       if (!response.ok || !data) throw new Error(data?.detail || `Briefing service could not save this action (${response.status}). Existing versions are retained.`);
       setWorkflow(data); setAcknowledged(false);
-      if (action === "prepare") setSuccess(`Brief version ${data.briefs.at(-1).version} is ready for review. Check its wording and sources before sign-off.`);
+      if (action === "prepare") setSuccess(`Brief version ${data.briefs.at(-1).version} is ready for review.`);
+      if (action === "sign_off") setSignOffOpen(false);
       if (action === "reset") {
         for (const b of workflow.briefs) clearDraft(`brief:${scenario}:${noticeId}:${b.version}`, localStorage);
         setBriefText(null); setTitle(""); setReviewer(""); setPreview(false); onReset(data.report);
@@ -89,7 +103,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const total = review ? (review.claims?.length || 0) + (review.hypothesis_updates?.length || 0) + 1 : 0;
   const reviewed = Object.keys(decisions).length;
   const latest = workflow?.briefs.at(-1);
-  useEffect(() => { setAcknowledged(false); }, [latest?.version, latest?.stale, report?.updated_at, workflow?.review_version]);
+  const signedPrior = workflow?.briefs.slice().reverse().find(item => item.signed_off && item.version !== latest?.version);
+  useEffect(() => { setAcknowledged(false); setSignOffOpen(false); }, [latest?.version, latest?.stale, report?.updated_at, workflow?.review_version]);
   const briefDraftKey = `brief:${scenario}:${noticeId}:${latest?.version}`;
   useEffect(() => { setBriefText(latest ? readDraft(briefDraftKey, localStorage) : null); }, [briefDraftKey]);
   useEffect(() => {
@@ -101,10 +116,12 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const disabled = pending || busy || workflow?.preparing || !workflow;
   const assessmentReady = Boolean(value?.trim()) && !dirty && !report?.empty;
   function downloadBrief(version, format, annex = false) {
+    const brief = workflow?.briefs.find(item => item.version === version);
+    const kind = annex ? "brief-annex" : brief?.signed_off ? "brief" : "draft-brief";
     const link = document.createElement("a");
     const extra = annex ? "&annex=true" : "";
     link.href = `/api/analyst-workflow/export?${query}&version=${version}&format=${format}${extra}`;
-    link.download = `${annex ? "brief-annex" : "intelligence-brief"}-v${version}.${format === "md" ? "md" : format}`;
+    link.download = `${kind}-v${version}.${format === "md" ? "md" : format}`;
     document.body.appendChild(link);
     link.click();
     link.remove();
@@ -117,14 +134,10 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
     link.click();
     link.remove();
   }
-  const assessmentExports = assessmentReady ? <div className="notice-actions brief-export-actions">
-    <button type="button" disabled={disabled} onClick={() => downloadAssessment("pdf")}>Download assessment PDF</button>
-    <button type="button" disabled={disabled} onClick={() => downloadAssessment("md")}>Assessment Markdown</button>
-    <button type="button" disabled={disabled} onClick={() => downloadAssessment("html")}>Assessment HTML</button>
-  </div> : null;
+  const canSign = Boolean(latest && !latest.signed_off && !latest.stale);
   return <section className="workflow-panel" aria-label="Assessment to intelligence brief">
     <div className="section-heading"><div><p className="eyebrow">Review → assessment → brief</p>
-      <h3>{editorialBusy || workflow?.preparing ? "Preparing intelligence brief" : latest && !latest.stale ? (latest.signed_off ? "Brief signed off" : "Brief ready for review") : "Develop your assessment"}</h3></div>
+      <h3>{editorialBusy || workflow?.preparing ? "Preparing intelligence brief" : latest && !latest.stale ? (latest.signed_off ? "Brief signed off" : "Draft brief ready for sign-off") : "Develop your assessment"}</h3></div>
       <span role="status">{reviewed} / {total} proposals reviewed</span></div>
     <nav className="workflow-steps" aria-label="Assessment workflow steps">
       {[["review", `Review findings (${reviewed}/${total})`], ["findings", "Retained findings"], ["assessment", "Your assessment"], ["brief", "Intelligence brief"]].map(([id, label], index) =>
@@ -132,8 +145,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
     </nav>
     {assessmentReady && step !== "brief" && <p className="workflow-next-action" role="status">
       {latest && !latest.stale
-        ? <>The senior-leadership brief is ready. <button type="button" onClick={() => onStepChange("brief")}>Open brief and PDF</button></>
-        : <>Assessment saved. Next: <button type="button" className="primary-action" onClick={() => onStepChange("brief")}>Prepare the intelligence brief (PDF)</button></>}
+        ? <>The senior-leadership brief is ready. <button type="button" onClick={() => onStepChange("brief")}>Open brief</button></>
+        : <>Assessment saved. Next: <button type="button" className="primary-action" onClick={() => onStepChange("brief")}>Prepare the intelligence brief</button></>}
     </p>}
     {success && <p role="status" className="brief-success">{success}{step !== "brief" && <button type="button" onClick={() => onStepChange("brief")}>View prepared brief</button>}</p>}
     {(error || loadError) && <p role="alert" className="error">{error || loadError}</p>}
@@ -150,10 +163,9 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
     </div>
     <section hidden={step !== "assessment"}>
       {children}
-      {assessmentReady && <>
-        <p>This working assessment is the desk product for intelligence colleagues. The Intelligence brief is the condensed senior-leadership product.</p>
-        {assessmentExports}
-      </>}
+      {assessmentReady && <div className="brief-toolbar">
+        <FormatDownload label="Download assessment" disabled={disabled} onPick={downloadAssessment} />
+      </div>}
     </section>
     {workflow && <>
       <section hidden={step !== "findings"} className="brief-callout" id="assemble-assessment">
@@ -166,57 +178,73 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
           <p>This updates only the marked review section, preserving your writing outside it. Save in Your assessment when ready.</p></>}
       </section>
       <section hidden={step !== "brief"} className="brief-callout" id="prepare-brief" aria-label="Finished intelligence brief">
-        <h4>Finished intelligence brief</h4>
-        <p>This is the condensed senior-leadership brief produced by editorial synthesis from your saved assessment. It is not the working assessment, and Overview’s watch packet is a different product. Preparation makes a model call and no new searches. Export does not distribute it.</p>
-        {latest ? <>
-          <p><strong>{latest.title || "Untitled brief"}</strong> · Version {latest.version} · {latest.stale ? "Stale — prepare a new version" : latest.signed_off ? `Signed off by ${latest.signed_off.reviewer}` : "Awaiting sign-off"} · Not distributed</p>
-          <div className="notice-actions brief-export-actions">
-            <button className="primary-action" type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "pdf")}>Download brief PDF</button>
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "md")}>Brief Markdown</button>
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "html")}>Brief HTML</button>
+        {!latest && <>
+          {(dirty || report?.empty || !value?.trim())
+            ? <p role="status">{dirty ? "Save your assessment first." : "Write and save an assessment first."} <button type="button" onClick={() => onStepChange("assessment")}>Go to assessment</button></p>
+            : <>
+              <label>Title<input value={title} placeholder={report?.context?.headline || "Public-source intelligence assessment"} onChange={e => setTitle(e.target.value)} /></label>
+              <button className="primary-action" type="button" disabled={disabled} onClick={() => act("prepare", { title: title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : "Prepare intelligence brief"}</button>
+            </>}
+        </>}
+        {latest && <>
+          <div className="brief-toolbar-head">
+            <div>
+              <p className="eyebrow">Version {latest.version} · {latest.stale ? "Stale" : latest.signed_off ? `Signed off by ${latest.signed_off.reviewer}` : "Draft"}</p>
+              <h4>{latest.title || "Intelligence brief"}</h4>
+            </div>
+            <div className="brief-toolbar">
+              {canSign && <button className="primary-action" type="button" disabled={disabled} aria-expanded={signOffOpen} onClick={() => setSignOffOpen(open => !open)}>Sign off</button>}
+              <FormatDownload
+                label={latest.signed_off ? "Download" : "Download draft"}
+                primary={Boolean(latest.signed_off)}
+                disabled={disabled}
+                onPick={(format) => downloadBrief(latest.version, format)}
+              />
+              {signedPrior && <FormatDownload
+                label={`Signed v${signedPrior.version}`}
+                disabled={disabled}
+                onPick={(format) => downloadBrief(signedPrior.version, format)}
+              />}
+              {briefProduct(latest) && <button type="button" disabled={disabled || latest.stale} onClick={() => { const text = briefProduct(latest); setBriefText(text); writeDraft(briefDraftKey, text, localStorage); }}>Edit brief wording</button>}
+            </div>
           </div>
-          {latest.editorial && <p>Editorial model: {latest.editorial.model}. This wording is the model’s condensed brief. Input references are checked; factual support and faithfulness require your review.</p>}
-          {briefProduct(latest) ? <BriefDocument text={briefProduct(latest)} /> : <p role="status">This version has no editorial brief. Prepare a new version from the saved assessment.</p>}
-          {assessmentReady && <>
-            <p>Working assessment (for intelligence colleagues), separate from this brief:</p>
-            {assessmentExports}
-          </>}
-          {latest.annex && <details><summary>Evidence and review annex</summary>
-            <p>Source catalogue and review trail used as editorial input. The working assessment download above is the colleague product; this annex is supporting material.</p>
-            <pre className="workflow-prose">{latest.annex}</pre>
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "pdf", true)}>Download annex PDF</button>
-          </details>}
-          {briefProduct(latest) && <>
-            <button type="button" disabled={disabled || latest.stale} onClick={() => { const text = briefProduct(latest); setBriefText(text); writeDraft(briefDraftKey, text, localStorage); }}>Edit brief wording</button>
-            {briefText !== null && <div>
-              <label>Brief wording<textarea aria-label="Brief wording" rows={18} value={briefText} onChange={e => { setBriefText(e.target.value); writeDraft(briefDraftKey, e.target.value, localStorage); }} /></label>
-              <p>Edits are retained in this browser. Saving creates a new unsigned version and preserves the evidence annex.</p>
+          {canSign && signOffOpen && <div className="brief-signoff" role="region" aria-label="Sign off this draft">
+            {reviewed < total && <p>Review each remaining proposal before signing off.</p>}
+            {dirty && <p>Save the assessment first.</p>}
+            {briefText !== null && <p>Save or discard wording edits first.</p>}
+            <label>Reviewer name<input value={reviewer} onChange={e => setReviewer(e.target.value)} /></label>
+            <label><input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} /> I have checked the assessment, source support, alternatives and unresolved caveats.</label>
+            <button type="button" disabled={disabled || dirty || briefText !== null || !acknowledged || !reviewer.trim() || reviewed < total} onClick={() => act("sign_off", { version: latest.version, reviewer, acknowledged })}>Sign off this version</button>
+          </div>}
+          {briefText !== null ? <div>
+            <label>Brief wording<textarea aria-label="Brief wording" rows={18} value={briefText} onChange={e => { setBriefText(e.target.value); writeDraft(briefDraftKey, e.target.value, localStorage); }} /></label>
+            <div className="brief-toolbar">
               <button type="button" disabled={disabled || dirty || latest.stale || !briefText.trim()} onClick={async () => {
                 if (await act("revise_brief", { version: latest.version, text: briefText, title: title || latest.title })) { clearDraft(briefDraftKey, localStorage); setBriefText(null); }
               }}>Save revised brief</button>
               <button type="button" disabled={disabled} onClick={() => { clearDraft(briefDraftKey, localStorage); setBriefText(null); }}>Discard brief edits</button>
-            </div>}
-          </>}
-          {!latest.signed_off && !latest.stale && <div className="brief-signoff">
-            <label>Reviewer name<input value={reviewer} onChange={e => setReviewer(e.target.value)} /></label>
-            <label><input type="checkbox" checked={acknowledged} onChange={e => setAcknowledged(e.target.checked)} /> I have checked the assessment, source support, alternatives and unresolved caveats.</label>
-            {reviewed < total && <p>Review each proposal, including any you leave explicitly unresolved, before signing off.</p>}
-            <button type="button" disabled={disabled || dirty || briefText !== null || !acknowledged || !reviewer.trim() || reviewed < total} onClick={() => act("sign_off", { version: latest.version, reviewer, acknowledged })}>Sign off this version</button>
-          </div>}
-        </> : <p>No brief version yet. Prepare one to run editorial synthesis on the saved assessment and produce the condensed brief.</p>}
-        <label>Brief title<input value={title} placeholder={report?.context?.headline || "Public-source intelligence assessment"} onChange={e => setTitle(e.target.value)} /></label>
-        {(dirty || report?.empty || !value?.trim()) && <p role="status">{dirty ? "Save your assessment before preparing or signing off a brief." : "Write and save an assessment before preparing a brief."} <button type="button" onClick={() => onStepChange("assessment")}>Go to assessment</button></p>}
-        <button className="primary-action" type="button" disabled={disabled || dirty || report?.empty || !value?.trim()} onClick={() => act("prepare", { title: title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : latest ? "Prepare new brief version" : "Prepare intelligence brief"}</button>
-        {workflow.briefs.length > 1 && <details><summary>Earlier versions ({workflow.briefs.length})</summary>
-          {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">Version {brief.version} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC · {" "}
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(brief.version, "pdf")}>PDF</button>
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(brief.version, "md")}>Markdown</button>
-            <button type="button" disabled={disabled} onClick={() => downloadBrief(brief.version, "html")}>HTML</button>{" · "}
-            <button type="button" disabled={disabled} onClick={async () => {
-              if (!window.confirm(`Remove brief version ${brief.version} from this assessment? Its audit record will be kept.`)) return;
-              if (await act("remove_brief", { version: brief.version })) clearDraft(`brief:${scenario}:${noticeId}:${brief.version}`, localStorage);
-            }}>Remove version {brief.version}</button></p>)}
-        </details>}
+            </div>
+          </div> : briefProduct(latest) ? <BriefDocument text={briefProduct(latest)} /> : <p role="status">This version has no editorial brief.</p>}
+          {latest.annex && <details><summary>Evidence annex</summary>
+            <pre className="workflow-prose">{latest.annex}</pre>
+            <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "pdf", true)}>Download annex PDF</button>
+          </details>}
+          {workflow.briefs.length > 1 && <details><summary>All versions ({workflow.briefs.length})</summary>
+            {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">
+              Version {brief.version}{brief.version === latest.version ? " · open" : ""} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC
+              {" "}<FormatDownload label="Download" disabled={disabled} onPick={(format) => downloadBrief(brief.version, format)} />
+              {" "}<button type="button" disabled={disabled} onClick={async () => {
+                if (!window.confirm(`Remove brief version ${brief.version} from this assessment? Its audit record will be kept.`)) return;
+                if (await act("remove_brief", { version: brief.version })) clearDraft(`brief:${scenario}:${noticeId}:${brief.version}`, localStorage);
+              }}>Remove version {brief.version}</button>
+            </p>)}
+          </details>}
+          <details>
+            <summary>Prepare another draft</summary>
+            <label>Title<input value={title} placeholder={latest.title || report?.context?.headline || "Public-source intelligence assessment"} onChange={e => setTitle(e.target.value)} /></label>
+            <button type="button" disabled={disabled || dirty || report?.empty || !value?.trim()} onClick={() => act("prepare", { title: title || latest.title || report?.context?.headline })}>{(editorialBusy || workflow.preparing) ? "Model is drafting the brief…" : "Prepare new brief version"}</button>
+          </details>
+        </>}
       </section>
       <details className="workflow-maintenance"><summary>Assessment maintenance</summary>
         <p>Clear this notice’s saved assessment, review decisions and active briefs, plus drafts in this browser. Previous saved work is archived. Evidence, research and machine proposals stay available.</p>
