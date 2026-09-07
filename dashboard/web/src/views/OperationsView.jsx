@@ -81,34 +81,13 @@ export default function OperationsView({
 
   return (
     <div className="ops-grid">
-      <section className="notice-card">
-        <p className="eyebrow">Desk</p>
-        <h2>Operations</h2>
-        <p className="notice-timing">
-          Use the backtest runner for corpus collection, quality review and measurement. These controls act on existing results; maintenance and qualification commands remain in the CLI.
-        </p>
-        <dl>
-          <div>
-            <dt>API</dt>
-            <dd>{health?.ok ? "healthy" : health ? "degraded" : "unknown"}</dd>
-          </div>
-          <div>
-            <dt>Database</dt>
-            <dd>{health?.db?.ok ? "up" : health?.db?.configured ? "down" : "not configured"}</dd>
-          </div>
-          <div>
-            <dt>Agent</dt>
-            <dd>
-              {health?.agent
-                ? `${health.agent.status}${health.agent.stale ? " (stale)" : ""}`
-                : "not seen"}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <HarvestCard harvest={harvest} />
-
+      <div className="ops-status" aria-label="Service status">
+        <span>API: {health?.ok ? "healthy" : health ? "degraded" : "unknown"}</span>
+        <span>Database: {health?.db?.ok ? "up" : health?.db?.configured ? "down" : "not configured"}</span>
+        <span>Agent heartbeat: {health?.agent ? `${health.agent.status}${health.agent.stale ? " (stale)" : ""}` : "not seen"}</span>
+        {!harvest && <span>No collection job running</span>}
+      </div>
+      {harvest && <HarvestCard harvest={harvest} />}
       <section className="notice-card">
         <h2>Emit notices</h2>
         <p className="notice-timing">

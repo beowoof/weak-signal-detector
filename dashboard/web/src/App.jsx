@@ -541,12 +541,13 @@ export default function App() {
       </>}
       {surface === "operations" && <>
         <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
-        <BacktestRunner onOpen={navigate} initialScenario={route.scenario || route.result?.split("/")[0]} />
+        <BacktestRunner onOpen={navigate} initialScenario={route.scenario || route.result?.split("/")[0]}>
         <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
           resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
           harvest={harvest}
           onEmit={emitNotices} onBuildPacket={buildPacket}
           onSelectResult={(key) => navigate({ result: key })} onSelectNotice={(notice) => navigate({ notice })} />
+        </BacktestRunner>
       </>}
       {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} route={route} onNavigate={navigate} />}
     </main>

@@ -528,10 +528,11 @@ Priority: **P1** prevents a coherent or trustworthy task flow; **P2** materially
 
 ### Implementation checkpoints
 
-Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separately. “Done” records engineering acceptance; owner usability qualification remains separate. The backlog descriptions below retain the original findings for traceability.
+Original delivery merged to main and owner checked successfully. Follow-up N02–N04 branch: `codex/ux-layout-branding`. Each item is implemented, tested and committed separately. “Done” records engineering acceptance; owner usability qualification remains separate. The backlog descriptions below retain the original findings for traceability.
 
 | Item | Status | Verification / remaining limits |
 |---|---|---|
+| UX-N02 | Done | Compact service strip; backtest and existing-result actions share a responsive workspace, with history after controls. Consistent panel/page gutters and reduced header spacing. 19 frontend tests and build passed; browser inspected Operations at 1280 × 720 and narrow layout. |
 | UX-N01 | Done | Direct Intelligence brief destination, state-aware overview journey and prerequisite guidance. 17 frontend tests and production build passed; browser verified empty assessment guidance and direct brief navigation. First-time owner walkthrough remains to qualify ease of use. |
 | UX-N05 | Done | Watch packet availability no longer implies review readiness; overview separately shows proposal review, assessment and brief states, including stale precedence. Cue interpretation and source/purpose labels clarified. 18 frontend tests and build passed; browser verified packet-only notice has no proposals/assessment/brief. |
 | UX-F01 | Done | Backtest run-plan UI, individual stage ranges, source/options selection, scenario creation, stale-plan rejection and linked command results. 10 operator/workflow fixture tests passed (synthetic collection only); production build and browser plan preview passed. Durable history/reconnect is F02/F07; realtime remains phase 7. Concurrent external CLI changes during execution remain unsupported: do not run CLI and UI mutations together. |

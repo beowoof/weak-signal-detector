@@ -1042,3 +1042,27 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .operator-panel summary, .followup-panel summary { cursor: pointer; padding: .5rem 0; }
 .followup-panel, .investigation-journey { margin: 1rem 0; }
 .document-preview { overflow-wrap: anywhere; line-height: 1.65; }
+
+/* N02: align task controls and keep idle service status compact. */
+:root { --space-panel: clamp(.85rem, 1.5vw, 1.25rem); --space-page: clamp(1rem, 2vw, 1.75rem); }
+main.standalone-main { padding: var(--space-page); }
+.page-heading { margin-bottom: 1rem; }
+.ops-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-bottom: 1rem; align-items: start; }
+.ops-status { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .4rem 1.25rem; padding: .65rem 0; color: var(--muted); font-size: .8rem; border-bottom: 1px solid var(--border); }
+.ops-grid .notice-card, .operator-panel { padding: var(--space-panel); }
+.ops-grid .notice-card:has(.ops-log), .ops-grid .harvest-stalled { grid-column: 1 / -1; }
+.operator-panel > p { max-width: 85ch; margin-bottom: .65rem; }
+.operator-panel fieldset { margin: .65rem 0 0; }
+.notice-header { padding-top: .85rem; }
+.notice-tabs { margin-top: .5rem; }
+.notice-body { padding-top: 1rem; }
+@media (max-width: 700px) { .ops-grid { grid-template-columns: minmax(0, 1fr); } }
+
+.operations-workspace { display: grid; gap: 1rem; align-items: start; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.operations-workspace > .operator-panel:last-child { grid-column: 1 / -1; }
+.operations-workspace .ops-grid { grid-template-columns: minmax(0, 1fr); }
+.operations-workspace .ops-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 1000px) { .operations-workspace { grid-template-columns: minmax(0, 1fr); } }
+.operations-workspace .ops-grid .notice-card { padding: .9rem 1rem; }
+.operations-workspace .notice-actions { margin: .5rem 0 0; }
+.operations-workspace .ops-fields { gap: .65rem; }
