@@ -342,10 +342,12 @@ def create_app(
     app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
     app.state.project_root = proj
     app.state.scenarios_root = root
+    from dashboard.backtest_operator import operator_router
     from dashboard.draft_stream import draft_events
     from dashboard.scenario_workspace import scenario_router
 
     app.include_router(scenario_router(root))
+    app.include_router(operator_router(proj))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],

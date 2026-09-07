@@ -1,3 +1,4 @@
+import BacktestRunner from "./views/BacktestRunner.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Tooltip from "./components/Tooltip.jsx";
 import EvidenceCharts from "./components/EvidenceCharts.jsx";
@@ -526,6 +527,7 @@ export default function App() {
       </>}
       {surface === "operations" && <>
         <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
+        <BacktestRunner onOpen={navigate} />
         <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
           resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
           harvest={harvest}

@@ -534,7 +534,8 @@ Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separat
 |---|---|---|
 | UX-N01 | Done | Direct Intelligence brief destination, state-aware overview journey and prerequisite guidance. 17 frontend tests and production build passed; browser verified empty assessment guidance and direct brief navigation. First-time owner walkthrough remains to qualify ease of use. |
 | UX-N05 | Done | Watch packet availability no longer implies review readiness; overview separately shows proposal review, assessment and brief states, including stale precedence. Cue interpretation and source/purpose labels clarified. 18 frontend tests and build passed; browser verified packet-only notice has no proposals/assessment/brief. |
-| UX-F01–F08 | Open | Work through P1 items in numeric order, then P2 F08. Realtime orchestration remains phase 7. |
+| UX-F01 | Done | Backtest run-plan UI, individual stage ranges, source/options selection, scenario creation, stale-plan rejection and linked command results. 10 operator/workflow fixture tests passed (synthetic collection only); production build and browser plan preview passed. Durable history/reconnect is F02/F07; realtime remains phase 7. Concurrent external CLI changes during execution remain unsupported: do not run CLI and UI mutations together. |
+| UX-F02–F08 | Open | Next: durable command history (F02), then remaining P1 items in numeric order, then P2 F08. |
 
 ### 1. Functional gaps
 
