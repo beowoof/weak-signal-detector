@@ -537,7 +537,8 @@ Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separat
 | UX-F01 | Done | Backtest run-plan UI, individual stage ranges, source/options selection, scenario creation, stale-plan rejection and linked command results. 10 operator/workflow fixture tests passed (synthetic collection only); production build and browser plan preview passed. Durable history/reconnect is F02/F07; realtime remains phase 7. Concurrent external CLI changes during execution remain unsupported: do not run CLI and UI mutations together. |
 | UX-F02 | Done | Atomic command receipts for backtests, notice emission and packet builds; scenario-filtered history, exact result links, reconnect by saved job ID and raw details. Four operator tests include restart, failure isolation and non-regression of terminal state; frontend build passed. Older unrecorded commands remain artefacts, not invented history. Interrupted prior sessions show unknown, never auto-retry. |
 | UX-F03 | Done | Operations now names packet construction correctly; overview routes by actual readiness (N01), and evidence tools link to the direct brief destination. Build and 18 frontend tests passed; browser verified packet-building label. |
-| UX-F04–F08 | Open | Next: previews (F04), context (F05), follow-up (F06), recovery (F07), evidence presentation (F08). |
+| UX-F04 | Done | Selected-version reading, comparison with latest, annex reading, saved-assessment PDF preview and exact selected-version PDF preview without download. Markdown artefacts/retained findings render an inert readable subset with originals retained. 18 tests/build passed; browser opened retained v7, compared with v8 and loaded v7 PDF preview. PDF rendering requires browser PDF support (separate-tab fallback provided). |
+| UX-F05–F08 | Open | Next: context (F05), follow-up (F06), recovery (F07), evidence presentation (F08). |
 
 ### 1. Functional gaps
 

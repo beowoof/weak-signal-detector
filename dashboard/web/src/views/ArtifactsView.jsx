@@ -1,3 +1,4 @@
+import { MarkdownPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useMemo, useState } from "react";
 import LineChart from "../components/LineChart.jsx";
 import { gapRows, manifestRows, recordSeries } from "../lib/artifacts.js";
@@ -153,7 +154,8 @@ export default function ArtifactsView({ scenario }) {
         {!gaps && !coverage && payload.data && <>{Array.isArray(payload.data) ? <RecordsTable rows={payload.data.slice(0, 100)} /> :
           <dl className="artifact-properties">{Object.entries(payload.data).map(([key, value]) => <div key={key}><dt>{humanize(key)}</dt><dd>{typeof value === "object" && value !== null ? <details><summary>Inspect {Array.isArray(value) ? `${value.length} entries` : "fields"}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details> : printable(value)}</dd></div>)}</dl>}
           {Array.isArray(payload.data) && payload.data.length > 100 && <p>Table shows the first 100 entries; the raw preview below contains the full array.</p>}</>}
-        <details className="artifact-raw" open={payload.format === "md" || Boolean(payload.parse_error) || (!payload.data && !payload.records)}><summary>Raw {payload.format.toUpperCase()}{payload.records ? " · current page" : ""}</summary><pre>{payload.text}</pre></details>
+        {payload.format === "md" && <MarkdownPreview text={payload.text} />}
+        <details className="artifact-raw" open={Boolean(payload.parse_error) || (!payload.data && !payload.records)}><summary>Raw {payload.format.toUpperCase()}{payload.records ? " · current page" : ""}</summary><pre>{payload.text}</pre></details>
       </>}
     </section>
   </div>;
