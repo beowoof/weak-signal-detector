@@ -144,7 +144,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
   if (!product) {
     return (
       <section className="brief-layers">
-        <p className="notice-timing">Rebuild the brief to get the intelligence product view.</p>
+        <p className="notice-timing">Rebuild the watch packet to view the initial cue and supporting context.</p>
       </section>
     );
   }
@@ -153,7 +153,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
     <section className="brief-layers">
       {mode === "overview" && <>
       <header className="product-hero">
-        <p className="eyebrow">Generated brief · {product.analytic_state_label}</p>
+        <p className="eyebrow">Watch packet · {product.analytic_state_label}</p>
         <p className="product-meta">
           {product.period} · available by {product.available_by}
         </p>
@@ -193,7 +193,7 @@ export default function BriefView({ packet, notice, onCollect, collectBusy, mode
       ))}
 
       <div className="brief-card">
-        <h3>Generated assessment</h3>
+        <h3>Initial cue interpretation</h3>
         {(product.assessment || []).map((para) => (
           <p key={para}>{para}</p>
         ))}

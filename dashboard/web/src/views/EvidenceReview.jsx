@@ -1,8 +1,8 @@
+import SourceReader from "../components/SourceReader.jsx";
 import { useEffect, useState } from "react";
 
 const text = (value) => typeof value === "string" ? value : JSON.stringify(value, null, 2);
 const rows = (value) => Array.isArray(value) ? value : [];
-const link = (url) => typeof url === "string" && /^https?:\/\//i.test(url) ? url : null;
 
 function ProposalCard({ label, decision, children }) {
   const [open, setOpen] = useState(!decision);
@@ -38,14 +38,7 @@ export default function EvidenceReview({ review, decisions = {}, busy = false, o
   function source(id) {
     const item = evidence.get(id);
     if (!item) return <p key={text(id)}>Unresolved reference: {text(id)}</p>;
-    const url = link(item.data?.archive_url || item.data?.url);
-    return <details key={id}>
-      <summary>{id} · {item.kind} · {item.verification}</summary>
-      <p>{item.source_ref}</p>
-      <p>Available: {item.available_at} · Retrieved: {item.retrieved_at || "Not recorded"}</p>
-      {url && <a href={url} target="_blank" rel="noreferrer">Open source version</a>}
-      <pre style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{text(item.data)}</pre>
-    </details>;
+    return <SourceReader key={id} item={item} />;
   }
   return <section className="brief-callout" aria-label="Evidence and assessment review">
     <h3>1. Review findings and proposed changes</h3>
@@ -93,7 +86,7 @@ export default function EvidenceReview({ review, decisions = {}, busy = false, o
     <ProposalCard label={`Next action: ${text(review.proposed_decision)}`} decision={decisions.decision}>
     <ReviewControls id="decision" proposal={{ statement: review.proposed_decision }} decision={decisions.decision} busy={busy} onReview={onReview} />
     </ProposalCard>
-    <p>A collection decision records your recommendation. Run the public-source jobs from the Collection tab to gather more evidence, then regenerate and review the assessment.</p>
+    <p>A collection decision records your recommendation. Use Plan follow-up collection below to run a bounded question-specific investigation and return new findings to this review.</p>
     <details><summary>Evidence catalogue</summary>{rows(review.evidence).map((item) => source(item.id))}</details>
     <details><summary>Excluded and omitted inputs</summary><pre style={{ whiteSpace: "pre-wrap" }}>{text([...rows(review.excluded), ...rows(review.omitted)])}</pre></details>
     <details><summary>Provenance cautions</summary><ul>{rows(review.cautions).map((item, i) => <li key={i}>{text(item)}</li>)}</ul></details>

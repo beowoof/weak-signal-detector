@@ -499,6 +499,7 @@ def run_desk_draft(
     chat_transport: HttpTransport | None = None,
     progress: Callable[[str, int], None] | None = None,
     research_limits: ResearchLimits | None = None,
+    followup: dict | None = None,
     embed=None,
 ) -> dict[str, Any]:
     def report(stage: str, completed: int) -> None:
@@ -512,6 +513,8 @@ def run_desk_draft(
     if not notice.workflow.packet_id:
         raise ValueError("notice has no packet; build the brief first")
     packet_id = notice.workflow.packet_id
+    if followup and followup.get("packet_id") != packet_id:
+        raise ValueError("Watch packet changed; reopen the follow-up plan")
     packet = Packet.model_validate_json(
         packet_path(project_root, scenario_id, packet_id).read_text(encoding="utf-8")
     )
@@ -528,6 +531,7 @@ def run_desk_draft(
         progress=report,
         allow_network=search,
         limits=research_limits,
+        followup=followup,
     )
     bundle = build_bundle(packet, collection, documents=research["documents"])
     bundle_path = save_bundle(directory, bundle)
@@ -622,6 +626,7 @@ def run_desk_draft(
             "limit_reached",
             "requests",
             "collection_outcomes",
+            "followup",
         )
         if k in research
     }

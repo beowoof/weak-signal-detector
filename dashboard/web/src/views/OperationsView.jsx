@@ -85,7 +85,7 @@ export default function OperationsView({
         <p className="eyebrow">Desk</p>
         <h2>Operations</h2>
         <p className="notice-timing">
-          Day-to-day work is buttons. The CLI remains for tests and one-off harvests.
+          Use the backtest runner for corpus collection, quality review and measurement. These controls act on existing results; maintenance and qualification commands remain in the CLI.
         </p>
         <dl>
           <div>
@@ -160,7 +160,7 @@ export default function OperationsView({
       </section>
 
       <section className="notice-card">
-        <h2>Build brief</h2>
+        <h2>Build watch packet</h2>
         <p className="notice-timing">
           Assemble the packet for a notice. Replay uses episode-end cutoff so a later harvest cannot
           leak into a historical alert.
@@ -192,7 +192,7 @@ export default function OperationsView({
               )
             }
           >
-            {replayDefault ? "Build brief (replay)" : "Build brief"}
+            {replayDefault ? "Build watch packet (replay)" : "Build watch packet"}
           </button>
         </p>
       </section>

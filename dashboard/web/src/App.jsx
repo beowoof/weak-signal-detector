@@ -1,3 +1,4 @@
+import BacktestRunner from "./views/BacktestRunner.jsx";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Tooltip from "./components/Tooltip.jsx";
 import EvidenceCharts from "./components/EvidenceCharts.jsx";
@@ -6,7 +7,6 @@ import OperationsView from "./views/OperationsView.jsx";
 import ScenariosView from "./views/ScenariosView.jsx";
 import ReportView from "./views/ReportView.jsx";
 import useWorkspaceRoute from "./lib/useWorkspaceRoute.js";
-import { readDraftStream } from "./lib/draftStream.js";
 
 const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["scenarios", "Scenarios"], ["operations", "Operations"]];
 const POLL_MS = 8000;
@@ -15,6 +15,9 @@ const RESULT_KEY = "wsd-dashboard-result";
 
 export default function App() {
   const [machineProgress, setMachineProgress] = useState(null);
+  const [draftJobId, setDraftJobId] = useState("");
+  const [draftRunning, setDraftRunning] = useState(false);
+  const handledJobs = useRef(new Set());
   const [catalog, setCatalog] = useState(null);
   const [notices, setNotices] = useState([]);
   const [route, navigate] = useWorkspaceRoute();
@@ -54,6 +57,8 @@ export default function App() {
   const [machineSeed, setMachineSeed] = useState(null);
   const [evidenceReview, setEvidenceReview] = useState(null);
   const [actionError, setActionError] = useState("");
+  const [journey, setJourney] = useState(null);
+  const onWorkflowChange = useCallback((noticeId, workflow) => setJourney({ noticeId, workflow }), []);
   const [health, setHealth] = useState(null);
   const [opsBusy, setOpsBusy] = useState(false);
   const [opsLog, setOpsLog] = useState("");
@@ -229,11 +234,13 @@ export default function App() {
   }, [notices, selectedNoticeId]);
 
   function selectNotice(noticeId) {
-    navigate({ notice: noticeId, surface: "notices" });
+    const notice = notices.find(n => n.notice_id === noticeId);
+    navigate({ notice: noticeId, surface: "notices", scenario: notice?.scenario_id || notice?.trigger?.scenario_id, result: notice?.key || route.result });
     localStorage.setItem(NOTICE_KEY, noticeId);
   }
 
   async function runAction(notice, action) {
+    if (action === "request_context") return runCollect(notice, null, true);
     setActionError("");
     const scenario = notice.scenario_id || notice.trigger?.scenario_id;
     try {
@@ -261,37 +268,31 @@ export default function App() {
     }
   }
 
-  async function runCollect(notice, tasks, requestContext = false) {
-    setActionError("");
-    setCollectBusy(true);
-    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
-    const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
-    try {
-      const payload = await postJson("/api/packet/collect", {
-        scenario,
-        notice_id: notice.notice_id,
-        tasks,
-        replay,
-        request_context: requestContext,
-      });
-      if (selectedRef.current === notice.notice_id) setCollection(payload);
-      const data = await loadNotices();
-      setNotices(data.notices || []);
-      if (payload.packet_id) {
-        const packetResponse = await fetch(
-          `/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(payload.packet_id)}`,
-        );
-        if (packetResponse.ok) {
-          const nextPacket = await packetResponse.json();
-          if (selectedRef.current === notice.notice_id) setPacket(nextPacket);
-        }
-      }
-      return payload;
-    } catch (err) {
-      setActionError(err.message);
-    } finally {
-      setCollectBusy(false);
+  async function startNoticeJob(url, body, requestKey) {
+    let requestId;
+    try { requestId = localStorage.getItem(requestKey) || crypto.randomUUID(); localStorage.setItem(requestKey, requestId); }
+    catch { requestId = crypto.randomUUID(); }
+    let payload = await postJson(url, { ...body, request_id: requestId });
+    if (payload.reused && payload.state && payload.state !== "running") {
+      requestId = crypto.randomUUID();
+      try { localStorage.setItem(requestKey, requestId); } catch { /* reconnect uses the new id in this session */ }
+      payload = await postJson(url, { ...body, request_id: requestId });
     }
+    return payload;
+  }
+
+  async function runCollect(notice, tasks, requestContext = false) {
+    setActionError('');
+    try {
+      const payload = await startNoticeJob('/api/packet/collect/job', {
+        scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
+        tasks, replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
+        request_context: requestContext,
+      }, `wsd-collection-request:${notice.notice_id}`);
+      localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
+      setDraftJobId(payload.id); setDraftRunning(true);
+      return { job_id: payload.id };
+    } catch(e) { setActionError(`${e.message} Inspect command history before repeating collection.`); }
   }
 
   async function saveReport(notice, notes) {
@@ -320,49 +321,63 @@ export default function App() {
     navigate({ surface: "notices", tab: "notes" });
   }
 
+  useEffect(() => {
+    try { setDraftJobId(localStorage.getItem(`wsd-machine-job:${selectedNoticeId}`) || ''); }
+    catch { setDraftJobId(''); }
+    setDraftRunning(false);
+  }, [selectedNoticeId]);
+
+  useEffect(() => {
+    if (!draftJobId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const response = await fetch(`/api/operator/job/${draftJobId}`);
+        if (!response.ok) throw Error('Could not reconnect to drafting. Inspect command history before repeating work.');
+        const job = await response.json();
+        if (cancelled || job.inputs?.notice_id !== selectedNoticeId) return;
+        setDraftRunning(job.state === 'running');
+        setMachineProgress({ noticeId: selectedNoticeId, stage: job.progress?.stage || job.state,
+          elapsed_s: Math.max(0, Math.floor((Date.parse(job.finished_at || new Date().toISOString()) - Date.parse(job.started_at)) / 1000)), history: [] });
+        if (job.state === 'completed' && !handledJobs.current.has(job.id)) {
+          if (job.action === 'secondary collection') {
+            handledJobs.current.add(job.id);
+            setCollection(job.result);
+            const data = await loadNotices();
+            if (!cancelled) setNotices(data.notices || []);
+            if (!cancelled) setMachineProgress(p => ({ ...p, stage: 'Collection completed — inspect source outcomes below' }));
+            return;
+          }
+          const latestResponse = await fetch(`/api/packet/draft/review?${new URLSearchParams({ scenario: job.inputs.scenario, notice_id: selectedNoticeId })}`);
+          if (!latestResponse.ok) throw Error('Job completed, but current findings could not be refreshed. Reopen this notice.');
+          const latestDraft = await latestResponse.json();
+          if (cancelled) return;
+          evidenceRevision.current += 1;
+          setEvidenceReview(latestDraft.review || null);
+          handledJobs.current.add(job.id);
+          if (job.result?.leakage?.length) setActionError(`Draft flagged possible leakage: ${job.result.leakage.join(', ')}. Review before using.`);
+          if (JSON.stringify(latestDraft.review) === JSON.stringify(job.result?.review)) setMachineSeed({ noticeId: selectedNoticeId, notes: job.result?.notes || '', at: Date.now() });
+          setMachineProgress(p => ({ ...p, stage: 'Complete — open Notes & assessment to review new findings' }));
+        } else if (job.state === 'failed' || job.state === 'unknown') {
+          setActionError(job.error || 'Drafting stopped; inspect retained outputs before another attempt.');
+        }
+      } catch(e) { if (!cancelled) setActionError(e.message); }
+    };
+    tick(); const timer = setInterval(tick, 2000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [draftJobId, selectedNoticeId]);
+
   async function runMachineDraft(notice, researchLimits) {
-    setActionError("");
-    setCollectBusy(true);
-    setMachineProgress({ noticeId: notice.notice_id, stage: "Starting research", elapsed_s: 0, history: [] });
-    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
-    const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
+    setActionError('');
     try {
-      const body = {
-        scenario,
-        notice_id: notice.notice_id,
-        replay,
-        search: true,
-        apply: false,
-        research_limits: researchLimits,
-      };
-      const response = await fetch("/api/packet/draft/stream", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-      });
-      const payload = await readDraftStream(response, event => setMachineProgress(previous => ({
-        ...event, noticeId: notice.notice_id,
-        history: previous?.stage === event.stage ? previous.history :
-          [...(previous?.history || []), event.stage],
-      })));
-      setMachineProgress(previous => ({ ...previous, stage: "Complete — review the collection result below" }));
-      if (selectedRef.current === notice.notice_id && payload.leakage && payload.leakage.length) {
-        setActionError(`Machine draft flagged leakage: ${payload.leakage.join(", ")}. Edit before saving.`);
-      }
-      setMachineSeed({ noticeId: notice.notice_id, notes: payload.notes || "", at: Date.now() });
-      if (selectedRef.current === notice.notice_id) {
-        evidenceRevision.current += 1;
-        setEvidenceReview(payload.review || null);
-      }
-      if (payload.collection || payload.packet_id) {
-        const data = await loadNotices();
-        setNotices(data.notices || []);
-      }
-      if (selectedRef.current === notice.notice_id) openNotes();
-    } catch (err) {
-      setActionError(err.message);
-      setMachineProgress(previous => ({ ...previous, stage: `Stopped: ${err.message}` }));
-    } finally {
-      setCollectBusy(false);
-    }
+      const payload = await startNoticeJob('/api/packet/draft/job', {
+        scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
+        replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
+        search: true, apply: false, research_limits: researchLimits,
+      }, `wsd-machine-request:${notice.notice_id}`);
+      localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
+      setDraftJobId(payload.id); setDraftRunning(true);
+    } catch(e) { setActionError(`${e.message} Check command history; repeating this request will not start another job.`); }
   }
 
   async function postJson(url, body) {
@@ -382,6 +397,7 @@ export default function App() {
   async function emitNotices(scenario, measurementId) {
     setOpsBusy(true);
     setOpsError("");
+    setOpsLog("");
     try {
       const payload = await postJson("/api/notice/emit", {
         scenario,
@@ -400,6 +416,7 @@ export default function App() {
   async function buildPacket(scenario, noticeId, replay) {
     setOpsBusy(true);
     setOpsError("");
+    setOpsLog("");
     setActionError("");
     try {
       const payload = await postJson("/api/packet/build", {
@@ -465,7 +482,7 @@ export default function App() {
       <span className="desk-brand">WSD <span>INTELLIGENCE DESK</span></span>
       <div className="surface-links">{SURFACES.map(([id, label]) =>
         <button key={id} type="button" aria-current={surface === id ? "page" : undefined}
-          onClick={() => navigate({ surface: id })}>{label}</button>)}</div>
+          onClick={() => navigate({ surface: id, ...(id === "scenarios" ? { scenario: surface === "notices" ? selectedNotice?.scenario_id || selectedNotice?.trigger?.scenario_id : surface === "anomaly" || surface === "operations" ? route.result?.split("/")[0] || route.scenario : route.scenario } : {}) })}>{label}</button>)}</div>
       <div className="refresh-status"><span role="status">{refreshState}</span>
         <button type="button" onClick={refresh} aria-label="Refresh workspace" title="Automatically checks every 8 seconds">↻</button>
       </div>
@@ -492,16 +509,17 @@ export default function App() {
         notices={notices} selectedId={selectedNotice?.notice_id} onSelect={selectNotice}
         onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
         packet={currentPacket} collection={ownResources ? collection : null}
-        collectBusy={collectBusy || opsBusy} onCollect={runCollect}
+        collectBusy={collectBusy || opsBusy || draftRunning} onCollect={runCollect}
         onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
         machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
-        activeTab={route.tab} onTabChange={(tab, step) => navigate({ tab, ...(step ? { step } : {}) })}
+        activeTab={route.tab} activeStep={route.step} journey={journey?.noticeId === selectedNoticeId ? journey.workflow : null}
+        onTabChange={(tab, step) => navigate({ tab, ...(step ? { step } : {}) })}
         loading={loading && !notices.length} drafts={drafts}
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
           scenario={selectedNotice.scenario_id || selectedNotice.trigger?.scenario_id}
-          report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
+          onWorkflowChange={onWorkflowChange} report={currentReport} busy={reportBusy || collectBusy || draftRunning} onDraftChange={onDraftChange}
           machineSeed={machineSeed}
           evidenceReview={ownResources ? evidenceReview : null}
           step={route.step}
@@ -523,13 +541,14 @@ export default function App() {
       </>}
       {surface === "operations" && <>
         <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
+        <BacktestRunner onOpen={navigate} initialScenario={route.scenario || route.result?.split("/")[0]} />
         <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
           resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
           harvest={harvest}
           onEmit={emitNotices} onBuildPacket={buildPacket}
           onSelectResult={(key) => navigate({ result: key })} onSelectNotice={(notice) => navigate({ notice })} />
       </>}
-      {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} />}
+      {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} route={route} onNavigate={navigate} />}
     </main>
     <Tooltip tooltip={tooltip} />
   </div>;

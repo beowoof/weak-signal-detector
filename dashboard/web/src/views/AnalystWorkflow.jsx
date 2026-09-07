@@ -1,3 +1,6 @@
+import ReviewTimeline from "../components/ReviewTimeline.jsx";
+import FollowupCollection from "./FollowupCollection.jsx";
+import { MarkdownPreview, PDFPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useState } from "react";
 import { readDraft, writeDraft, clearDraft } from "../lib/drafts.js";
 import { briefProduct } from "../lib/workspace.js";
@@ -42,8 +45,9 @@ function BriefProgress({ progress }) {
   </div>;
 }
 
-export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset, step, onStepChange, children }) {
+export default function AnalystWorkflow({ scenario, noticeId, report, evidenceReview, dirty, busy, value, onAssemble, onReset, step, onStepChange, onWorkflowChange, children }) {
   const [workflow, setWorkflow] = useState(null);
+  useEffect(() => { onWorkflowChange?.(noticeId, workflow); }, [noticeId, workflow, onWorkflowChange]);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [loadError, setLoadError] = useState("");
@@ -53,6 +57,11 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const [acknowledged, setAcknowledged] = useState(false);
   const [briefText, setBriefText] = useState(null);
   const [editorialBusy, setEditorialBusy] = useState(false);
+  const [selectedVersion, setSelectedVersion] = useState(null);
+  const [compare, setCompare] = useState(false);
+  const [layout, setLayout] = useState(false);
+  const [assessmentLayout, setAssessmentLayout] = useState(false);
+  const [previewAnnex, setPreviewAnnex] = useState(false);
   const [preview, setPreview] = useState(false);
   const [signOffOpen, setSignOffOpen] = useState(false);
   const query = new URLSearchParams({ scenario, notice_id: noticeId }).toString();
@@ -103,6 +112,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
   const total = review ? (review.claims?.length || 0) + (review.hypothesis_updates?.length || 0) + 1 : 0;
   const reviewed = Object.keys(decisions).length;
   const latest = workflow?.briefs.at(-1);
+  const selectedBrief = workflow?.briefs.find(b => b.version === selectedVersion) || latest;
   const signedPrior = workflow?.briefs.slice().reverse().find(item => item.signed_off && item.version !== latest?.version);
   useEffect(() => { setAcknowledged(false); setSignOffOpen(false); }, [latest?.version, latest?.stale, report?.updated_at, workflow?.review_version]);
   const briefDraftKey = `brief:${scenario}:${noticeId}:${latest?.version}`;
@@ -164,7 +174,9 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
     <section hidden={step !== "assessment"}>
       {children}
       {assessmentReady && <div className="brief-toolbar">
+        <button type="button" onClick={() => setAssessmentLayout(!assessmentLayout)}>Preview assessment PDF</button>
         <FormatDownload label="Download assessment" disabled={disabled} onPick={downloadAssessment} />
+        {assessmentLayout && <PDFPreview url={`/api/analyst-workflow/export-assessment?${query}&format=pdf`} title="Saved assessment PDF preview" />}
       </div>}
     </section>
     {workflow && <>
@@ -173,7 +185,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
         <p>{reviewed < total ? `${total - reviewed} proposals still to review. You can preview progress now or finish reviewing first.` : "Review complete. Preview the retained material, then add it to your assessment."}</p>
         <p>Retained findings and hypothesis changes become a cited starting point. Add your judgement, implications and alternative explanations in the Your assessment step. Rejections and unresolved issues remain visible in the annex.</p>
         <button type="button" disabled={disabled || !review || !reviewed} onClick={() => setPreview(!preview)}>Preview reviewed material</button>
-        {preview && <><pre className="workflow-prose">{workflow.assembly}</pre>
+        {preview && <><MarkdownPreview text={workflow.assembly} />
           <button type="button" disabled={disabled} onClick={() => { onAssemble(workflow.assembly); setPreview(false); }}>Merge reviewed material into assessment</button>
           <p>This updates only the marked review section, preserving your writing outside it. Save in Your assessment when ready.</p></>}
       </section>
@@ -226,9 +238,20 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
             </div>
           </div> : briefProduct(latest) ? <BriefDocument text={briefProduct(latest)} /> : <p role="status">This version has no editorial brief.</p>}
           {latest.annex && <details><summary>Evidence annex</summary>
-            <pre className="workflow-prose">{latest.annex}</pre>
+            <MarkdownPreview text={latest.annex} />
             <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "pdf", true)}>Download annex PDF</button>
           </details>}
+          <details><summary>Preview a saved version</summary>
+            <h4>Preview a saved version</h4>
+            <label>Brief version<select value={selectedBrief?.version || ''} onChange={e => { setSelectedVersion(Number(e.target.value)); setLayout(false); }}>{workflow.briefs.map(b => <option key={b.version} value={b.version}>Version {b.version} · {b.stale ? 'Stale' : b.signed_off ? 'Signed off' : 'Draft'}</option>)}</select></label>
+            <p>Previewing version {selectedBrief.version}. Editing and sign-off above apply to the latest version {latest.version}.</p>
+            <button type="button" onClick={() => setLayout(!layout)}>Preview selected PDF layout</button>
+            <button type="button" onClick={() => setPreviewAnnex(!previewAnnex)}>{previewAnnex ? 'Hide selected annex' : 'Preview selected annex'}</button>
+            <FormatDownload label={`Download selected v${selectedBrief.version}`} onPick={format => downloadBrief(selectedBrief.version, format)} />
+            {selectedBrief.version !== latest.version && <><MarkdownPreview text={briefProduct(selectedBrief)} /><button type="button" onClick={() => setCompare(!compare)}>Compare with latest version</button>{compare && <section aria-label="Version comparison"><h4>Selected version {selectedBrief.version}</h4><MarkdownPreview text={briefProduct(selectedBrief)} /><h4>Latest version {latest.version}</h4><MarkdownPreview text={briefProduct(latest)} /></section>}</>}
+            {previewAnnex && <><MarkdownPreview text={selectedBrief.annex || 'No annex recorded.'} /><button type="button" onClick={() => downloadBrief(selectedBrief.version, 'pdf', true)}>Download selected annex PDF</button></>}
+            {layout && <PDFPreview url={`/api/analyst-workflow/export?${query}&version=${selectedBrief.version}&format=pdf&annex=${previewAnnex}`} title={`Version ${selectedBrief.version} PDF preview${previewAnnex ? ' with annex' : ''}`} />}
+          </details>
           {workflow.briefs.length > 1 && <details><summary>All versions ({workflow.briefs.length})</summary>
             {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">
               Version {brief.version}{brief.version === latest.version ? " · open" : ""} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC
@@ -252,7 +275,8 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
           if (window.confirm("Reset this assessment, review decisions and briefs? Unsaved edits in this browser will be discarded. Saved work is archived; research and source proposals are retained.")) act("reset", { acknowledged: true });
         }}>Reset assessment</button>
       </details>
-      <details><summary>Review history ({workflow.events.length})</summary><pre className="workflow-prose">{JSON.stringify(workflow.events, null, 2)}</pre></details>
+      <FollowupCollection scenario={scenario} noticeId={noticeId} reviewVersion={workflow.review_version} onComplete={async () => { const r = await fetch(`/api/analyst-workflow?${query}`); if (r.ok) { setWorkflow(await r.json()); onStepChange("review"); } else setError("Could not reload findings. Reopen this notice to retry."); }} />
+    <ReviewTimeline events={workflow.events} reviewVersion={workflow.review_version} />
     </>}
   </section>;
 }

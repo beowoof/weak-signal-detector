@@ -24,3 +24,7 @@ export function recordSeries(records, field) {
   }
   return [...series].map(([id, rows]) => ({ id, rows: rows.sort((a, b) => a.event_day.localeCompare(b.event_day)) }));
 }
+
+export function artifactTitle(item) {
+  return ({ 'missing.json': 'Collection gaps and repair needs', 'manifest.json': 'Collection coverage and provenance', 'summary.json': 'Measurement summary', 'features.jsonl': 'Measured series records', 'observations.jsonl': 'Collected observations', 'decision.json': 'Corpus review outcome', 'workflow.json': 'Assessment and brief history', 'machine_draft.json': 'Machine proposals and research record', 'evidence.json': 'Watch packet evidence', 'status.json': 'Scenario lifecycle status', 'history.jsonl': 'Scenario activity history' })[item.name] || item.name.replace(/\.(jsonl?|md|txt)$/, '').replaceAll('_', ' ');
+}

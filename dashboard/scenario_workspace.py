@@ -18,7 +18,13 @@ from wsf.scenario import SCENARIO_NAME, ScenarioConfig, require_collection_ready
 
 MAX_BYTES = 1_000_000
 GROUPS = {"corpus", "reviews", "measurement", "interpretation", "reports", "notices"}
-ROOT_FILES = {"status.json", "history.jsonl", "freeze.json", "desk_pin.json", "collect_progress.json"}
+ROOT_FILES = {
+    "status.json",
+    "history.jsonl",
+    "freeze.json",
+    "desk_pin.json",
+    "collect_progress.json",
+}
 SAVE_LOCK = threading.Lock()
 
 
@@ -206,32 +212,42 @@ def scenario_router(root: Path) -> APIRouter:
 
     @router.post("/api/scenario/save")
     def save(body: ContractBody):
-        directory = scenario_dir(root, body.scenario)
-        validation = validate_contract(body.scenario, body.text)
-        with SAVE_LOCK:
-            current = contract_payload(directory)
-            if current["frozen"]:
-                raise HTTPException(
-                    409, "Frozen scenario: create a separate scenario before editing"
-                )
-            if body.revision != current["revision"]:
-                raise HTTPException(
-                    409, "Scenario changed on disk. Reload and reconcile your draft before saving"
-                )
-            path = safe_file(directory, "scenario.json")
-            fd, temp_name = tempfile.mkstemp(prefix=".scenario-", dir=directory)
-            try:
-                with os.fdopen(fd, "w", encoding="utf-8") as stream:
-                    stream.write(body.text if body.text.endswith("\n") else body.text + "\n")
-                    stream.flush()
-                    os.fsync(stream.fileno())
-                os.chmod(temp_name, path.stat().st_mode & 0o777)
-                os.replace(temp_name, path)
-            finally:
-                if os.path.exists(temp_name):
-                    os.unlink(temp_name)
-            saved = contract_payload(directory)
-        return {**saved, **validation}
+        from dashboard.backtest_operator import LOCK
+
+        if not LOCK.acquire(False):
+            raise HTTPException(
+                409, "A backtest is running. Save configuration after it finishes or stops."
+            )
+        try:
+            directory = scenario_dir(root, body.scenario)
+            validation = validate_contract(body.scenario, body.text)
+            with SAVE_LOCK:
+                current = contract_payload(directory)
+                if current["frozen"]:
+                    raise HTTPException(
+                        409, "Frozen scenario: create a separate scenario before editing"
+                    )
+                if body.revision != current["revision"]:
+                    raise HTTPException(
+                        409,
+                        "Scenario changed on disk. Reload and reconcile your draft before saving",
+                    )
+                path = safe_file(directory, "scenario.json")
+                fd, temp_name = tempfile.mkstemp(prefix=".scenario-", dir=directory)
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as stream:
+                        stream.write(body.text if body.text.endswith("\n") else body.text + "\n")
+                        stream.flush()
+                        os.fsync(stream.fileno())
+                    os.chmod(temp_name, path.stat().st_mode & 0o777)
+                    os.replace(temp_name, path)
+                finally:
+                    if os.path.exists(temp_name):
+                        os.unlink(temp_name)
+                saved = contract_payload(directory)
+            return {**saved, **validation}
+        finally:
+            LOCK.release()
 
     @router.get("/api/scenario/artifacts")
     def artifacts(scenario: str):

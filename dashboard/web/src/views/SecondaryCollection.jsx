@@ -22,7 +22,7 @@ export default function SecondaryCollection({ cutoff, busy, onRun, collection })
     setRun({ status: "running", started: Date.now(), sources: [...selected] });
     try {
       const result = await onRun(selected);
-      setRun(previous => ({ ...previous, status: result ? "returned" : "failed", result }));
+      setRun(previous => ({ ...previous, status: result?.job_id ? "queued" : result ? "returned" : "failed", result: result?.job_id ? null : result }));
     } catch {
       setRun(previous => ({ ...previous, status: "failed" }));
     }
@@ -46,7 +46,7 @@ export default function SecondaryCollection({ cutoff, busy, onRun, collection })
         {running ? "Collecting selected sources…" : "Start secondary collection"}
       </button></div>
     </form>
-    {run && <p role="status">{running ? `${elapsed}s elapsed · Waiting for ${run.sources.length} source jobs. Results appear when they return.` : run.status === "failed" ? "Collection did not complete. See the error above; previous results are retained." : "Source jobs returned. Check each status and explanation below; a returned job may contain gaps or failures."}</p>}
+    {run && <p role="status">{running ? `${elapsed}s elapsed · Waiting for ${run.sources.length} source jobs. Results appear when they return.` : run.status === "queued" ? "Collection job recorded. Progress and outcomes reconnect after reload; inspect each source result below." : run.status === "failed" ? "Collection did not complete. See the error above; previous results are retained." : "Source jobs returned. Check each status and explanation below; a returned job may contain gaps or failures."}</p>}
     <h3>2. Review collection results</h3>
     {!results?.tasks?.length ? <p>No source-job results for this notice yet.</p> : <ul>
       {results.tasks.map(task => <li key={task.kind}>
