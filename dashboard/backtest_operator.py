@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import hashlib
 import threading
-import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Literal
@@ -12,6 +11,7 @@ from typing import Literal
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from dashboard.job_history import JobHistory
 from dashboard.scenario_workspace import safe_file, scenario_dir
 from wsf.progress import Progress
 from wsf.scenario import create_scenario, load_scenario, load_status, require_collection_ready
@@ -74,7 +74,7 @@ def plan(root: Path, body: PlanBody) -> dict:
     }
 
 
-def operator_router(root: Path) -> APIRouter:
+def operator_router(root: Path, history: JobHistory) -> APIRouter:
     router = APIRouter()
     jobs: dict[str, dict] = {}
 
@@ -108,10 +108,11 @@ def operator_router(root: Path) -> APIRouter:
                 raise HTTPException(
                     409, "Inputs or options changed. Preview a new plan before running."
                 )
-            job_id = uuid.uuid4().hex
+            receipt = history.start("backtest", body.model_dump())
+            job_id = receipt["id"]
             progress = Progress(enabled=False)
             jobs[job_id] = {
-                "id": job_id,
+                **receipt,
                 "plan": current,
                 "state": "running",
                 "started_at": datetime.now(UTC).isoformat(),
@@ -143,6 +144,7 @@ def operator_router(root: Path) -> APIRouter:
                 job.update(state="failed", error=str(exc))
             finally:
                 job["finished_at"] = datetime.now(UTC).isoformat()
+                history.save({**job, "progress": progress.snapshot()})
                 LOCK.release()
 
         threading.Thread(target=work, daemon=True).start()
@@ -151,11 +153,16 @@ def operator_router(root: Path) -> APIRouter:
     @router.get("/api/operator/job/{job_id}")
     def job(job_id: str):
         if job_id not in jobs:
-            raise HTTPException(
-                404,
-                "Job is unavailable. Do not repeat execution without inspecting retained outputs.",
-            )
+            return history.read(job_id)
         value = jobs[job_id]
-        return {**value, "progress": value["progress"].snapshot()}
+        if value.get("finished_at"):
+            return history.read(job_id)
+        snapshot = {**value, "progress": value["progress"].snapshot()}
+        history.save(snapshot)
+        return snapshot
+
+    @router.get("/api/operator/jobs")
+    def list_jobs():
+        return {"jobs": history.list()}
 
     return router

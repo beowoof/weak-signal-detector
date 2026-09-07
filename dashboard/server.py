@@ -344,10 +344,12 @@ def create_app(
     app.state.scenarios_root = root
     from dashboard.backtest_operator import operator_router
     from dashboard.draft_stream import draft_events
+    from dashboard.job_history import JobHistory
     from dashboard.scenario_workspace import scenario_router
 
     app.include_router(scenario_router(root))
-    app.include_router(operator_router(proj))
+    history = JobHistory(proj)
+    app.include_router(operator_router(proj, history))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -407,41 +409,47 @@ def create_app(
 
     @app.post("/api/notice/emit")
     def api_notice_emit(body: NoticeEmitBody) -> dict:
-        try:
-            notices = emit_notices_for_measurement(
-                app.state.project_root,
-                body.scenario,
-                measurement_id=body.measurement_id,
-            )
-        except (ValueError, OSError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {
-            "scenario": body.scenario,
-            "n_notices": len(notices),
-            "notice_ids": [item.notice_id for item in notices],
-        }
+        def execute():
+            try:
+                notices = emit_notices_for_measurement(
+                    app.state.project_root,
+                    body.scenario,
+                    measurement_id=body.measurement_id,
+                )
+            except (ValueError, OSError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {
+                "scenario": body.scenario,
+                "n_notices": len(notices),
+                "notice_ids": [item.notice_id for item in notices],
+            }
+
+        return history.call("emit notices", body.model_dump(), execute)
 
     @app.post("/api/packet/build")
     def api_packet_build(body: PacketBuildBody) -> dict:
-        try:
-            packet, path = build_and_save(
-                app.state.project_root,
-                body.scenario,
-                body.notice_id,
-                replay=body.replay,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Unknown notice") from exc
-        except (ValueError, OSError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {
-            "scenario": body.scenario,
-            "notice_id": packet.notice_id,
-            "packet_id": packet.packet_id,
-            "mode": packet.clocks.mode,
-            "layers": packet.layers,
-            "path": str(path),
-        }
+        def execute():
+            try:
+                packet, path = build_and_save(
+                    app.state.project_root,
+                    body.scenario,
+                    body.notice_id,
+                    replay=body.replay,
+                )
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Unknown notice") from exc
+            except (ValueError, OSError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {
+                "scenario": body.scenario,
+                "notice_id": packet.notice_id,
+                "packet_id": packet.packet_id,
+                "mode": packet.clocks.mode,
+                "layers": packet.layers,
+                "path": str(path),
+            }
+
+        return history.call("build watch packet", body.model_dump(), execute)
 
     @app.get("/api/packet")
     def api_packet(
@@ -626,13 +634,9 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/analyst-workflow/export-assessment")
-    def api_workflow_export_assessment(
-        scenario: str, notice_id: str, format: str = "md"
-    ):
+    def api_workflow_export_assessment(scenario: str, notice_id: str, format: str = "md"):
         try:
-            content = export_assessment(
-                app.state.project_root, scenario, notice_id, format
-            )
+            content = export_assessment(app.state.project_root, scenario, notice_id, format)
             media_type = (
                 "application/pdf"
                 if format == "pdf"
@@ -642,9 +646,7 @@ def create_app(
                 content,
                 media_type=media_type,
                 headers={
-                    "Content-Disposition": (
-                        f'attachment; filename="working-assessment.{format}"'
-                    )
+                    "Content-Disposition": (f'attachment; filename="working-assessment.{format}"')
                 },
             )
         except (KeyError, ValueError, OSError) as exc:

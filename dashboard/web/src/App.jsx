@@ -385,6 +385,7 @@ export default function App() {
   async function emitNotices(scenario, measurementId) {
     setOpsBusy(true);
     setOpsError("");
+    setOpsLog("");
     try {
       const payload = await postJson("/api/notice/emit", {
         scenario,
@@ -403,6 +404,7 @@ export default function App() {
   async function buildPacket(scenario, noticeId, replay) {
     setOpsBusy(true);
     setOpsError("");
+    setOpsLog("");
     setActionError("");
     try {
       const payload = await postJson("/api/packet/build", {

@@ -53,3 +53,36 @@ def test_stale_plan_cannot_execute_and_invalid_options_rejected(tmp_path):
     assert client.post("/api/operator/create", json={"scenario": "../bad"}).status_code == 422
     assert client.post("/api/operator/create", json={"scenario": "new-case"}).status_code == 200
     assert client.post("/api/operator/create", json={"scenario": "new-case"}).status_code == 422
+
+
+def test_receipts_survive_new_api_and_uncertain_jobs_do_not_retry(tmp_path):
+    from dashboard.job_history import JobHistory
+
+    history = JobHistory(tmp_path)
+    job = history.start("build watch packet", {"scenario": "example"})
+    history.call("emit notices", {"scenario": "example"}, lambda: {"n_notices": 0})
+    client = TestClient(create_app(api_only=True, project_root=tmp_path))
+    receipts = client.get("/api/operator/jobs").json()["jobs"]
+    assert len(receipts) == 2
+    assert {r["state"] for r in receipts} == {"completed", "unknown"}
+    assert client.get(f"/api/operator/job/{job['id']}").json()["state"] == "unknown"
+    assert client.get("/api/operator/job/not-a-job").status_code == 400
+
+
+def test_failed_receipt_does_not_reuse_success_and_late_poll_cannot_regress(tmp_path):
+    import pytest
+
+    from dashboard.job_history import JobHistory
+
+    history = JobHistory(tmp_path)
+    with pytest.raises(ValueError):
+        history.call(
+            "emit notices",
+            {"scenario": "example"},
+            lambda: (_ for _ in ()).throw(ValueError("fixture failure")),
+        )
+    failed = history.list()[0]
+    assert failed["state"] == "failed"
+    assert "result" not in failed
+    history.save({**failed, "state": "running"})
+    assert history.read(failed["id"])["state"] == "failed"

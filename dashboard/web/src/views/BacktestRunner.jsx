@@ -1,3 +1,4 @@
+import JobHistory from "./JobHistory.jsx";
 import { useEffect, useState } from "react";
 import { sourceLabel, humanize } from "../lib/workspace.js";
 const STAGES = ['validate', 'collect', 'review', 'measure', 'emit'];
@@ -14,12 +15,13 @@ export default function BacktestRunner({ onOpen }) {
   const [only, setOnly] = useState(''), [focus, setFocus] = useState('');
   const [mock, setMock] = useState(false), [exploratory, setExploratory] = useState(true);
   const [workers, setWorkers] = useState(4), [plan, setPlan] = useState(null);
-  const [job, setJob] = useState(null), [jobId, setJobId] = useState('');
+  const [job, setJob] = useState(null), [jobId, setJobId] = useState(() => { try { return localStorage.getItem('wsd-backtest-job') || ''; } catch { return ''; } });
   const [error, setError] = useState(''), [pending, setPending] = useState(false), [name, setName] = useState('');
   useEffect(() => { request('/api/scenarios').then(d => { setScenarios(d.scenarios); setScenario(d.scenarios[0]?.scenario_id || ''); }).catch(e => setError(e.message)); }, []);
   useEffect(() => { setPlan(null); }, [scenario, start, through, only, focus, mock, exploratory, workers]);
   useEffect(() => {
     if (!jobId) return;
+    try { localStorage.setItem('wsd-backtest-job', jobId); } catch { /* history remains on server */ }
     let cancelled = false;
     const tick = () => request(`/api/operator/job/${jobId}`).then(d => { if (!cancelled) setJob(d); }).catch(e => { if (!cancelled) setError(e.message); });
     tick(); const id = setInterval(tick, 2000);
@@ -28,7 +30,7 @@ export default function BacktestRunner({ onOpen }) {
   const body = { scenario, start, through, only: only.split(',').map(s => s.trim()).filter(Boolean), focus, mock, exploratory, source_workers: Number(workers) };
   async function action(fn) { setPending(true); setError(''); try { await fn(); } catch(e) { setError(e.message); } finally { setPending(false); } }
   const running = pending || job?.state === 'running';
-  return <section className="notice-card" aria-label="Backtest runner">
+  return <><section className="notice-card" aria-label="Backtest runner">
     <h2>Run a historical backtest</h2><p>Finite historical replay. Continuous realtime watch is not implemented; an agent heartbeat does not mean collection is scheduled.</p>
     <details><summary>Create scenario</summary><label>New scenario name<input value={name} onChange={e => setName(e.target.value)} placeholder="example-case" /></label>
       <button type="button" disabled={running || !name} onClick={() => action(async () => { await request('/api/operator/create', { scenario: name }); onOpen({ surface: 'scenarios', scenario: name }); })}>Create and edit scenario</button></details>
@@ -55,12 +57,12 @@ export default function BacktestRunner({ onOpen }) {
       {job.error && <p role="alert">{job.error}</p>}
       {job.result && <><p>Completed stages: {job.result.stages.map(s => LABELS[s]).join(' → ')}</p>
         {job.result.emit && <p>{job.result.emit.n_notices} notices. Zero notices is a valid outcome.</p>}
-        {job.result.measure && <button type="button" onClick={() => onOpen({ surface: 'anomaly', result: `${scenario}/${job.result.measure.measure_id}` })}>Open measurement results</button>}
-        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: job.plan.scenario })}>Inspect collection and review artefacts</button>
+        {job.result.measure && <button type="button" onClick={() => onOpen({ surface: 'anomaly', result: `${(job.plan?.scenario || job.inputs.scenario)}/${job.result.measure.measure_id}` })}>Open measurement results</button>}
+        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: (job.plan?.scenario || job.inputs.scenario) })}>Inspect collection and review artefacts</button>
         {job.result.emit?.notices.map(n => <button key={n.notice_id} type="button" onClick={() => onOpen({ surface: 'notices', notice: n.notice_id, tab: 'overview' })}>Open notice {n.start}</button>)}
         {job.result.review?.review_id && <button type="button" onClick={() => { setStart('collect'); setFocus(`reviews/${job.result.review.review_id}/missing.json`); setPlan(null); }}>Plan focused gap repair</button>}
       </>}
       <details><summary>Raw command output</summary><pre>{JSON.stringify(job.result || {}, null, 2)}</pre></details>
     </section>}
-  </section>;
+  </section><JobHistory onOpen={onOpen} onSelectJob={setJobId} /></>;
 }

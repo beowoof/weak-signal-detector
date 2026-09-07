@@ -29,3 +29,5 @@ scenarios/.document_index/
 dashboard/web/node_modules/
 dashboard/web/dist/
 /package-lock.json
+
+scenarios/.desk-jobs/
