@@ -241,7 +241,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
             <MarkdownPreview text={latest.annex} />
             <button type="button" disabled={disabled} onClick={() => downloadBrief(latest.version, "pdf", true)}>Download annex PDF</button>
           </details>}
-          <section aria-label="Version preview">
+          <details><summary>Preview a saved version</summary>
             <h4>Preview a saved version</h4>
             <label>Brief version<select value={selectedBrief?.version || ''} onChange={e => { setSelectedVersion(Number(e.target.value)); setLayout(false); }}>{workflow.briefs.map(b => <option key={b.version} value={b.version}>Version {b.version} · {b.stale ? 'Stale' : b.signed_off ? 'Signed off' : 'Draft'}</option>)}</select></label>
             <p>Previewing version {selectedBrief.version}. Editing and sign-off above apply to the latest version {latest.version}.</p>
@@ -251,7 +251,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
             {selectedBrief.version !== latest.version && <><MarkdownPreview text={briefProduct(selectedBrief)} /><button type="button" onClick={() => setCompare(!compare)}>Compare with latest version</button>{compare && <section aria-label="Version comparison"><h4>Selected version {selectedBrief.version}</h4><MarkdownPreview text={briefProduct(selectedBrief)} /><h4>Latest version {latest.version}</h4><MarkdownPreview text={briefProduct(latest)} /></section>}</>}
             {previewAnnex && <><MarkdownPreview text={selectedBrief.annex || 'No annex recorded.'} /><button type="button" onClick={() => downloadBrief(selectedBrief.version, 'pdf', true)}>Download selected annex PDF</button></>}
             {layout && <PDFPreview url={`/api/analyst-workflow/export?${query}&version=${selectedBrief.version}&format=pdf&annex=${previewAnnex}`} title={`Version ${selectedBrief.version} PDF preview${previewAnnex ? ' with annex' : ''}`} />}
-          </section>
+          </details>
           {workflow.briefs.length > 1 && <details><summary>All versions ({workflow.briefs.length})</summary>
             {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">
               Version {brief.version}{brief.version === latest.version ? " · open" : ""} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC

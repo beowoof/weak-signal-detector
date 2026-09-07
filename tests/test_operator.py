@@ -108,7 +108,9 @@ def test_draft_job_request_is_idempotent_and_reconnects_after_restart(tmp_path, 
     try:
         first = client.post("/api/packet/draft/job", json=body).json()
         second = client.post("/api/packet/draft/job", json=body).json()
-        assert first == second
+        assert first["id"] == second["id"]
+        assert second["reused"] is True
+        assert second["state"] == "running"
         assert len(calls) == 1
         assert (
             client.get("/api/operator/job/" + first["id"]).json()["progress"]["stage"]
@@ -121,9 +123,17 @@ def test_draft_job_request_is_idempotent_and_reconnects_after_restart(tmp_path, 
             break
         time.sleep(0.01)
     fresh = TestClient(create_app(api_only=True, project_root=tmp_path))
-    assert fresh.post("/api/packet/draft/job", json=body).json() == first
+    replayed = fresh.post("/api/packet/draft/job", json=body).json()
+    assert replayed["id"] == first["id"]
+    assert replayed["reused"] is True
+    assert replayed["state"] == "completed"
     assert len(calls) == 1
     assert fresh.get("/api/operator/job/" + first["id"]).json()["state"] == "completed"
+    retry = fresh.post(
+        "/api/packet/draft/job", json={**body, "request_id": "new-attempt"}
+    ).json()
+    assert retry["id"] != first["id"]
+    assert retry["reused"] is False
 
 
 def test_backtest_can_stop_at_stage_boundary_with_completed_outputs(tmp_path):

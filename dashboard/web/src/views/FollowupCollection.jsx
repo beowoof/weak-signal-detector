@@ -19,11 +19,20 @@ export default function FollowupCollection({ scenario, noticeId, reviewVersion, 
   async function run() {
     setPending(true); setError('');
     try {
-      const requestKey = `followup-request:${scenario}:${noticeId}`;
-      const requestId = localStorage.getItem(requestKey) || crypto.randomUUID();
+      const requestKey = `followup-request:${scenario}:${noticeId}:${choice}`;
+      const post = async (requestId) => {
+        const r = await fetch('/api/followup/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({scenario, notice_id:noticeId, request_id: requestId, review_version:options.review_version, question_id:choice, source_preference:sources, queries:Number(queries), documents:Number(documents), seconds:Number(seconds)}) });
+        const data = await r.json(); if (!r.ok) throw Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
+        return data;
+      };
+      let requestId = localStorage.getItem(requestKey) || crypto.randomUUID();
       localStorage.setItem(requestKey, requestId);
-      const r = await fetch('/api/followup/run', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({scenario, notice_id:noticeId, request_id: requestId, review_version:options.review_version, question_id:choice, source_preference:sources, queries:Number(queries), documents:Number(documents), seconds:Number(seconds)}) });
-      const d = await r.json(); if (!r.ok) throw Error(typeof d.detail === 'string' ? d.detail : JSON.stringify(d.detail));
+      let d = await post(requestId);
+      if (d.reused && d.state && d.state !== 'running') {
+        requestId = crypto.randomUUID();
+        localStorage.setItem(requestKey, requestId);
+        d = await post(requestId);
+      }
       setJobId(d.id); setJob({state:'running'}); try { localStorage.setItem(`followup:${scenario}:${noticeId}`, d.id); } catch { /* Server retains job */ }
     } catch(e) { setError(e.message); } finally { setPending(false); }
   }
@@ -42,7 +51,7 @@ export default function FollowupCollection({ scenario, noticeId, reviewVersion, 
     </fieldset> : <p>No collection questions or discriminators recorded in this review.</p>}
     {error && <p role="alert">{error}</p>}
     {job && <div role="status"><p>Follow-up {job.state} · {job.progress?.stage}</p>{job.error && <p>{job.error}</p>}
-      {job.state !== 'running' && <button type="button" onClick={() => { localStorage.removeItem(`followup-request:${scenario}:${noticeId}`); setJob(null); setJobId(''); }}>Plan another follow-up after inspecting this outcome</button>}
+      {job.state !== 'running' && <button type="button" onClick={() => { localStorage.removeItem(`followup-request:${scenario}:${noticeId}`); localStorage.removeItem(`followup-request:${scenario}:${noticeId}:${choice}`); setJob(null); setJobId(''); }}>Plan another follow-up after inspecting this outcome</button>}
       {job.state === 'completed' && <><p>New findings are available. Changed proposals require renewed review; previous decisions remain in history.</p><button type="button" onClick={onComplete}>Open updated findings for review</button></>}
     </div>}
   </section>;

@@ -447,7 +447,7 @@ export default function NoticesView({
         </section>
         <section id="panel-evidence" role="tabpanel" aria-labelledby="tab-evidence" hidden={activeTab !== "evidence"}>
           <section className="packet-tools" aria-label="Evidence packet tools">
-            <div><h3>Evidence packet</h3><p className="notice-timing">Rebuild the source packet here. Open Intelligence brief to prepare or preview the finished assessment.</p></div>
+            <div><h3>Evidence packet</h3><p className="notice-timing">Rebuild the source packet here. Prepare the finished intelligence brief in Notes & assessment.</p></div>
             <div className="notice-actions"><button type="button" disabled={collectBusy} onClick={async () => {
               setPacketStatus("Building evidence packet…");
               const result = await onBuildPacket(selected);

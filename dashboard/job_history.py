@@ -94,7 +94,11 @@ class JobHistory:
         with self.lock:
             job = self.start(action, inputs)
             if job.get("_reused"):
-                return {"id": job["id"]}
+                return {
+                    "id": job["id"],
+                    "reused": True,
+                    "state": job.get("state", "unknown"),
+                }
             # Single writer per notice for model/research jobs in this API session.
             active = [
                 j
@@ -126,4 +130,4 @@ class JobHistory:
                 self.save(job)
 
         threading.Thread(target=work, daemon=True).start()
-        return {"id": job["id"]}
+        return {"id": job["id"], "reused": False, "state": "running"}

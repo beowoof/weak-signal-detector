@@ -268,17 +268,27 @@ export default function App() {
     }
   }
 
+  async function startNoticeJob(url, body, requestKey) {
+    let requestId;
+    try { requestId = localStorage.getItem(requestKey) || crypto.randomUUID(); localStorage.setItem(requestKey, requestId); }
+    catch { requestId = crypto.randomUUID(); }
+    let payload = await postJson(url, { ...body, request_id: requestId });
+    if (payload.reused && payload.state && payload.state !== "running") {
+      requestId = crypto.randomUUID();
+      try { localStorage.setItem(requestKey, requestId); } catch { /* reconnect uses the new id in this session */ }
+      payload = await postJson(url, { ...body, request_id: requestId });
+    }
+    return payload;
+  }
+
   async function runCollect(notice, tasks, requestContext = false) {
     setActionError('');
-    const key = `wsd-collection-request:${notice.notice_id}`;
     try {
-      const requestId = localStorage.getItem(key) || crypto.randomUUID();
-      localStorage.setItem(key, requestId);
-      const payload = await postJson('/api/packet/collect/job', {
+      const payload = await startNoticeJob('/api/packet/collect/job', {
         scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
         tasks, replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
-        request_context: requestContext, request_id: requestId,
-      });
+        request_context: requestContext,
+      }, `wsd-collection-request:${notice.notice_id}`);
       localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
       setDraftJobId(payload.id); setDraftRunning(true);
       return { job_id: payload.id };
@@ -359,19 +369,14 @@ export default function App() {
 
   async function runMachineDraft(notice, researchLimits) {
     setActionError('');
-    const requestKey = `wsd-machine-request:${notice.notice_id}`;
-    let requestId;
-    try { requestId = localStorage.getItem(requestKey) || crypto.randomUUID(); localStorage.setItem(requestKey, requestId); }
-    catch { setActionError('Browser storage is unavailable. Use command history to check uncertain attempts.'); requestId = crypto.randomUUID(); }
     try {
-      const payload = await postJson('/api/packet/draft/job', {
+      const payload = await startNoticeJob('/api/packet/draft/job', {
         scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
         replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
-        search: true, apply: false, research_limits: researchLimits, request_id: requestId,
-      });
+        search: true, apply: false, research_limits: researchLimits,
+      }, `wsd-machine-request:${notice.notice_id}`);
       localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
       setDraftJobId(payload.id); setDraftRunning(true);
-      // Reusing this request ID reconnects; a new attempt is always explicit in history.
     } catch(e) { setActionError(`${e.message} Check command history; repeating this request will not start another job.`); }
   }
 
