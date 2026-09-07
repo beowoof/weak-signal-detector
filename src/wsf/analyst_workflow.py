@@ -973,13 +973,15 @@ def _format_export(text, format, *, title, kicker, footer_label):
             "<!doctype html><html lang='en'><meta charset='utf-8'>"
             f"<title>{html.escape(title)}</title>"
             "<style>body{max-width:85ch;margin:3rem auto;padding:0 1.5rem;"
-            "font:16px/1.6 system-ui;color:#182b39}p{overflow-wrap:anywhere}"
+            "font:16px/1.6 system-ui;color:#17211d}p{overflow-wrap:anywhere}"
             "h1,h2,h3,h4{line-height:1.25;break-after:avoid}"
             ".finding{padding-left:1rem;margin:0.25rem 0}"
             ".finding-sub{padding-left:2.5rem;margin:0.2rem 0}"
             "code{font-family:monospace;font-size:0.9em;background:#f0f2f5;"
             "padding:0.1em 0.3em;border-radius:3px}"
             "@media print{body{margin:0;max-width:none}h2{margin-top:2rem}}</style><body>"
+            + "<header style='color:#006b55;border-bottom:1px solid #d4d8d3;"
+            "padding-bottom:0.5rem'>WSD Intelligence Desk</header>"
             + "\n".join(rendered)
             + "</body></html>"
         )
@@ -1014,7 +1016,7 @@ def _render_brief_pdf(
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title=title,
-        author="OSINT Analyst",
+        author="WSD Intelligence Desk",
     )
     base = getSampleStyleSheet()
     ink = colors.HexColor("#17211d")
@@ -1047,7 +1049,7 @@ def _render_brief_pdf(
         canvas.line(18 * mm, height - 12 * mm, width - 18 * mm, height - 12 * mm)
         canvas.setFont("Helvetica", 8)
         canvas.setFillColor(accent)
-        canvas.drawString(18 * mm, height - 10 * mm, kicker)
+        canvas.drawString(18 * mm, height - 10 * mm, f"WSD INTELLIGENCE DESK  |  {kicker}")
         canvas.setFillColor(muted)
         canvas.drawRightString(width - 18 * mm, height - 10 * mm, "OSINT  |  UNCLASSIFIED")
         canvas.setStrokeColor(rule)

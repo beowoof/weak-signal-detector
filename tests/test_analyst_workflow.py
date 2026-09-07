@@ -466,6 +466,7 @@ def test_export_brief_html_formatting_and_no_raw_json(desk):
     action(root, "prepare", title="Human Assessment")
     action(root, "sign_off", version=1, reviewer="Reviewer", acknowledged=True)
     html_out = export_brief(root, "desk-case", "notice-abc", 1, "html")
+    assert "WSD Intelligence Desk" in html_out
     assert "<h1>Human Assessment</h1>" in html_out
     assert "<h2>BLUF</h2>" in html_out
     assert "<h2>Key judgements</h2>" in html_out
@@ -521,6 +522,7 @@ def test_export_brief_pdf_generation_and_api(desk):
     assert "Signed off by Reviewer" in extracted
     assert "Condensed leadership takeaway" in extracted
     assert "INTELLIGENCE BRIEF" in extracted
+    assert "WSD INTELLIGENCE DESK" in extracted
     assert "awaiting sign-off" not in extracted
     assert "[A1]" not in extracted
     assert "Analyst assessment paragraph" not in extracted

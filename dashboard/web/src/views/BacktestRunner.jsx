@@ -9,7 +9,7 @@ async function request(url, body) {
   if (!r.ok) throw Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
   return data;
 }
-export default function BacktestRunner({ onOpen, initialScenario }) {
+export default function BacktestRunner({ onOpen, initialScenario, children }) {
   const [scenarios, setScenarios] = useState([]), [scenario, setScenario] = useState('');
   const [start, setStart] = useState('validate'), [through, setThrough] = useState('emit');
   const [only, setOnly] = useState(''), [focus, setFocus] = useState('');
@@ -30,7 +30,7 @@ export default function BacktestRunner({ onOpen, initialScenario }) {
   const body = { scenario, start, through, only: only.split(',').map(s => s.trim()).filter(Boolean), focus, mock, exploratory, source_workers: Number(workers) };
   async function action(fn) { setPending(true); setError(''); try { await fn(); } catch(e) { setError(e.message); } finally { setPending(false); } }
   const running = pending || job?.state === 'running';
-  return <><section className="notice-card operator-panel" aria-label="Backtest runner">
+  return <div className="operations-workspace"><section className="notice-card operator-panel" aria-label="Backtest runner">
     <h2>Run a historical backtest</h2><p>Finite historical replay. Continuous realtime watch is not implemented; an agent heartbeat does not mean collection is scheduled.</p>
     <details><summary>Create scenario</summary><label>New scenario name<input value={name} onChange={e => setName(e.target.value)} placeholder="example-case" /></label>
       <button type="button" disabled={running || !name} onClick={() => action(async () => { await request('/api/operator/create', { scenario: name }); onOpen({ surface: 'scenarios', scenario: name }); })}>Create and edit scenario</button></details>
@@ -44,14 +44,14 @@ export default function BacktestRunner({ onOpen, initialScenario }) {
       <label>Concurrent sources<input type="number" min="1" max="8" value={workers} onChange={e => setWorkers(e.target.value)} /></label>
       <label><input type="checkbox" checked={mock} onChange={e => setMock(e.target.checked)} />Synthetic rehearsal (stops before measurement)</label>
       <label><input type="checkbox" checked={exploratory} onChange={e => setExploratory(e.target.checked)} />Allow exploratory measurement without a real freeze</label>
-    </details><button type="button" disabled={!scenario} onClick={() => action(async () => setPlan({ ...await request('/api/operator/plan', body), requestId: crypto.randomUUID() }))}>Preview run plan</button></fieldset>
+    </details><button className="primary-action" type="button" disabled={!scenario} onClick={() => action(async () => setPlan({ ...await request('/api/operator/plan', body), requestId: crypto.randomUUID() }))}>Preview run plan</button></fieldset>
     {error && <p role="alert" className="error">{error}</p>}
     {plan && <section aria-label="Run plan"><h3>{plan.mode}</h3><p>{plan.stages.map(s => LABELS[s]).join(' → ')}</p><p>{plan.measurement}</p>
       <p>Sources: {plan.sources.map(sourceLabel).join(', ')}</p>
       <ul>{plan.windows.map(w => <li key={w.id}>{w.id}: {w.start}–{w.end}, lookback {w.lookback_days} days</li>)}</ul>
       <p>Historical evidence uses the scenario windows; notice packet replay uses episode-end cutoff. This action ends at {LABELS[through]}; it does not generate an assessment or finished brief.</p>
       <details><summary>Input identities and options</summary><pre>{JSON.stringify(plan, null, 2)}</pre></details>
-      <button type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision, request_id: plan.requestId }); setJobId(d.id); })}>Run this backtest plan</button>
+      <button className="primary-action" type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision, request_id: plan.requestId }); setJobId(d.id); })}>Run this backtest plan</button>
     </section>}
     {job && <section aria-label="Backtest output"><h3>{humanize(job.state)}</h3><p role="status">{job.progress?.message || 'Starting'} · {job.progress?.elapsed_s ?? 0}s</p>
       {job.error && <p role="alert">{job.error}</p>}
@@ -67,5 +67,5 @@ export default function BacktestRunner({ onOpen, initialScenario }) {
       </>}
       <details><summary>Raw command output</summary><pre>{JSON.stringify(job.result || {}, null, 2)}</pre></details>
     </section>}
-  </section><JobHistory onOpen={onOpen} onSelectJob={setJobId} /></>;
+  </section>{children}<JobHistory onOpen={onOpen} onSelectJob={setJobId} /></div>;
 }

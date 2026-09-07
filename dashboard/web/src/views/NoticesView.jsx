@@ -356,6 +356,7 @@ export default function NoticesView({
   const [researchLimits, setResearchLimits] = useState({ queries: 6, documents: 6, seconds: 180 });
   const [filter, setFilter] = useState("all");
   const [listOpen, setListOpen] = useState(!new URLSearchParams(window.location.search).has("notice"));
+  const [focused, setFocused] = useState(false);
   const scrollBody = useRef(null);
   const heading = useRef(null);
   useEffect(() => { scrollBody.current?.scrollTo(0, 0); }, [selectedId, activeTab]);
@@ -372,8 +373,8 @@ export default function NoticesView({
   const next = investigationNext({ packet, workflow: journey, dirty: drafts[selectedId] });
   const trigger = selected.trigger || {};
   const workflow = selected.workflow || {};
-  return <div className={`alert-layout ${listOpen ? "show-list" : "show-detail"}`}>
-    <aside className="alert-inbox" aria-label="Notice inbox">
+  return <div className={`alert-layout ${listOpen ? "show-list" : "show-detail"}${focused ? " reading-focus" : ""}`}>
+    <aside id="notice-inbox" className="alert-inbox" aria-label="Notice inbox">
       <div className="inbox-heading"><p className="eyebrow">Analyst queue</p><h1>Notices <span>{notices.length}</span></h1></div>
       <label className="inbox-search"><span className="sr-only">Search notices</span>
         <input type="search" placeholder="Search region, date, domain…" value={query} onChange={(e) => setQuery(e.target.value)} /></label>
@@ -393,7 +394,11 @@ export default function NoticesView({
       <header className="notice-header">
         <button type="button" className="mobile-inbox-toggle" onClick={() => setListOpen(true)}>← Notices</button>
         <div className="notice-heading-line"><p className="eyebrow">{noticeTitle(selected)}</p>
-        <div className="notice-management"><span className="workflow-badge">{workflowLabel(workflow.state)}</span>
+        <div className="notice-management"><button type="button" className="reading-toggle" aria-controls="notice-inbox" aria-expanded={!focused} onClick={() => {
+          const position = scrollBody.current?.scrollTop || 0;
+          setFocused(value => !value);
+          requestAnimationFrame(() => scrollBody.current?.scrollTo(0, position));
+        }}>{focused ? "Show inbox" : "Focus reading"}</button><span className="workflow-badge">{workflowLabel(workflow.state)}</span>
           <details className="action-menu" key={selectedId}
             onKeyDown={(event) => {
               if (event.key === "Escape") {

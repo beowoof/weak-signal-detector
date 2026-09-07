@@ -98,6 +98,7 @@ services:
       - ./dashboard/web/src:/app/src
       - ./dashboard/web/index.html:/app/index.html
       - ./dashboard/web/vite.config.js:/app/vite.config.js
+      - ./dashboard/web/public:/app/public
     ports:
       - "5173:5173"
     depends_on:

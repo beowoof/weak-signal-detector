@@ -253,14 +253,14 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
             {layout && <PDFPreview url={`/api/analyst-workflow/export?${query}&version=${selectedBrief.version}&format=pdf&annex=${previewAnnex}`} title={`Version ${selectedBrief.version} PDF preview${previewAnnex ? ' with annex' : ''}`} />}
           </details>
           {workflow.briefs.length > 1 && <details><summary>All versions ({workflow.briefs.length})</summary>
-            {workflow.briefs.slice().reverse().map(brief => <p key={brief.version} className="workflow-version-row">
+            {workflow.briefs.slice().reverse().map(brief => <div key={brief.version} className="workflow-version-row">
               Version {brief.version}{brief.version === latest.version ? " · open" : ""} · {brief.stale ? "Stale" : brief.signed_off ? "Signed off" : "Draft"} · {brief.created_at.slice(0, 19)} UTC
               {" "}<FormatDownload label="Download" disabled={disabled} onPick={(format) => downloadBrief(brief.version, format)} />
               {" "}<button type="button" disabled={disabled} onClick={async () => {
                 if (!window.confirm(`Remove brief version ${brief.version} from this assessment? Its audit record will be kept.`)) return;
                 if (await act("remove_brief", { version: brief.version })) clearDraft(`brief:${scenario}:${noticeId}:${brief.version}`, localStorage);
               }}>Remove version {brief.version}</button>
-            </p>)}
+            </div>)}
           </details>}
           <details>
             <summary>Prepare another draft</summary>
