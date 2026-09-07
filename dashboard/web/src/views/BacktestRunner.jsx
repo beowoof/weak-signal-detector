@@ -9,7 +9,7 @@ async function request(url, body) {
   if (!r.ok) throw Error(typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail));
   return data;
 }
-export default function BacktestRunner({ onOpen }) {
+export default function BacktestRunner({ onOpen, initialScenario }) {
   const [scenarios, setScenarios] = useState([]), [scenario, setScenario] = useState('');
   const [start, setStart] = useState('validate'), [through, setThrough] = useState('emit');
   const [only, setOnly] = useState(''), [focus, setFocus] = useState('');
@@ -17,7 +17,7 @@ export default function BacktestRunner({ onOpen }) {
   const [workers, setWorkers] = useState(4), [plan, setPlan] = useState(null);
   const [job, setJob] = useState(null), [jobId, setJobId] = useState(() => { try { return localStorage.getItem('wsd-backtest-job') || ''; } catch { return ''; } });
   const [error, setError] = useState(''), [pending, setPending] = useState(false), [name, setName] = useState('');
-  useEffect(() => { request('/api/scenarios').then(d => { setScenarios(d.scenarios); setScenario(d.scenarios[0]?.scenario_id || ''); }).catch(e => setError(e.message)); }, []);
+  useEffect(() => { request('/api/scenarios').then(d => { setScenarios(d.scenarios); setScenario(d.scenarios.some(s => s.scenario_id === initialScenario) ? initialScenario : d.scenarios[0]?.scenario_id || ''); }).catch(e => setError(e.message)); }, []);
   useEffect(() => { setPlan(null); }, [scenario, start, through, only, focus, mock, exploratory, workers]);
   useEffect(() => {
     if (!jobId) return;
@@ -58,7 +58,7 @@ export default function BacktestRunner({ onOpen }) {
       {job.result && <><p>Completed stages: {job.result.stages.map(s => LABELS[s]).join(' → ')}</p>
         {job.result.emit && <p>{job.result.emit.n_notices} notices. Zero notices is a valid outcome.</p>}
         {job.result.measure && <button type="button" onClick={() => onOpen({ surface: 'anomaly', result: `${(job.plan?.scenario || job.inputs.scenario)}/${job.result.measure.measure_id}` })}>Open measurement results</button>}
-        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: (job.plan?.scenario || job.inputs.scenario) })}>Inspect collection and review artefacts</button>
+        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: (job.plan?.scenario || job.inputs.scenario), scenarioTab: 'artifacts' })}>Inspect collection and review artefacts</button>
         {job.result.emit?.notices.map(n => <button key={n.notice_id} type="button" onClick={() => onOpen({ surface: 'notices', notice: n.notice_id, tab: 'overview' })}>Open notice {n.start}</button>)}
         {job.result.review?.review_id && <button type="button" onClick={() => { setStart('collect'); setFocus(`reviews/${job.result.review.review_id}/missing.json`); setPlan(null); }}>Plan focused gap repair</button>}
       </>}

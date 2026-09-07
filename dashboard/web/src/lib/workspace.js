@@ -5,6 +5,7 @@ export const SURFACES = ["notices", "anomaly", "operations", "scenarios"];
 export function readRoute(search, storage) {
   const params = new URLSearchParams(search);
   return {
+    ...Object.fromEntries(["scenarioTab", "artifact", "artifactQuery", "artifactGroup", "artifactRun", "artifactOffset", "artifactPages"].filter(k => params.has(k)).map(k => [k, params.get(k)])),
     ...(params.get("scenario") ? { scenario: params.get("scenario") } : {}),
     surface: SURFACES.includes(params.get("view")) ? params.get("view") : "notices",
     tab: NOTICE_TABS.includes(params.get("tab")) ? params.get("tab") : "overview",
@@ -18,6 +19,7 @@ export function routeSearch(route) {
   if (route.notice) params.set("notice", route.notice);
   if (route.result) params.set("result", route.result);
   if (route.scenario) params.set("scenario", route.scenario);
+  for (const key of ["scenarioTab", "artifact", "artifactQuery", "artifactGroup", "artifactRun", "artifactOffset", "artifactPages"]) { if (route[key]) params.set(key, route[key]); }
   if (route.step) params.set("step", route.step);
   return `?${params}`;
 }
@@ -70,4 +72,14 @@ export function readinessSummary(workflow) {
 }
 export function sourceLabel(id) {
   return ({ alfred: "Economic data vintages (ALFRED)", brent: "Brent oil prices", cbr: "Russian central bank", ct: "Certificate transparency", firms: "Thermal detections (FIRMS)", gdelt: "Public reporting (GDELT)", icews: "Coded public events (ICEWS)", moex: "Moscow exchange", navarea: "Maritime warnings", notam: "Aviation notices", official: "Official statements", osm: "OpenStreetMap", ripe: "Network activity (RIPE)", sar: "Radar imagery", viirs: "Night lights (VIIRS)", wiki_edits: "Wikipedia edits", wikipedia: "Wikipedia pageviews", gazette_cadence: "Official publication cadence" })[id] || humanize(id);
+}
+
+export function mergeRoute(current, changes) {
+  const next = { ...current, ...changes };
+  if (changes.scenario && changes.scenario !== current.scenario) {
+    for (const key of ['artifact', 'artifactQuery', 'artifactGroup', 'artifactRun', 'artifactOffset', 'artifactPages']) {
+      if (!(key in changes)) delete next[key];
+    }
+  }
+  return next;
 }

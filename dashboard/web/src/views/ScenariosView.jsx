@@ -107,10 +107,11 @@ function ScenarioEditor({ scenario, snapshot, onSaved }) {
   </section>;
 }
 
-export default function ScenariosView({ scenario, onSelect }) {
+export default function ScenariosView({ scenario, onSelect, route, onNavigate }) {
   const [items, setItems] = useState([]);
   const [snapshot, setSnapshot] = useState(null);
-  const [tab, setTab] = useState("editor");
+  const tab = route.scenarioTab || "editor";
+  const setTab = (scenarioTab) => onNavigate({ scenarioTab });
   const [error, setError] = useState("");
   const [version, setVersion] = useState(0);
   useEffect(() => {
@@ -118,7 +119,7 @@ export default function ScenariosView({ scenario, onSelect }) {
     request("/api/scenarios").then((data) => {
       if (cancelled) return;
       setItems(data.scenarios);
-      if (!data.scenarios.some((item) => item.scenario_id === scenario) && data.scenarios[0]) onSelect(data.scenarios[0].scenario_id, true);
+      if (!scenario && data.scenarios[0]) onSelect(data.scenarios[0].scenario_id, true);
     }).catch((err) => { if (!cancelled) setError(err.message); });
     return () => { cancelled = true; };
   }, [version, scenario, onSelect]);
@@ -139,7 +140,7 @@ export default function ScenariosView({ scenario, onSelect }) {
     {!snapshot && !error && <p>{items.length || scenario ? "Loading scenario…" : "No scenario files found."}</p>}
     {snapshot?.scenario_id === scenario && <>
       <div hidden={tab !== "editor"}><ScenarioEditor key={`${scenario}:${version}`} scenario={scenario} snapshot={snapshot} onSaved={(data) => setSnapshot((current) => current?.scenario_id === data.scenario_id ? data : current)} /></div>
-      <div hidden={tab !== "artifacts"}><ArtifactsView key={`${scenario}:${version}`} scenario={scenario} /></div>
+      <div hidden={tab !== "artifacts"}><ArtifactsView key={`${scenario}:${version}`} scenario={scenario} route={route} onNavigate={onNavigate} /></div>
     </>}
   </div>;
 }

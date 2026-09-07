@@ -75,3 +75,13 @@ test("packet availability never implies reviewed evidence or a signed brief", as
   assert.equal(readinessSummary({ briefs: [], report: { empty: true } }), "No research proposals · No saved assessment · No intelligence brief");
   assert.match(readinessSummary({ review: { claims: [{}] }, active_decisions: { a: {} }, report: { empty: false }, briefs: [{ stale: true, signed_off: {} }] }), /1\/2 proposals reviewed · Assessment saved · Brief stale/);
 });
+
+test('artefact location and paging round-trip; scenario changes clear only old artefact context', async () => {
+  const { mergeRoute } = await import('./workspace.js');
+  const route = { surface: 'scenarios', scenario: 'one', scenarioTab: 'artifacts', tab: 'overview', step: '', notice: 'notice', result: 'one/result', artifact: 'corpus/run/observations.jsonl', artifactQuery: 'obs', artifactOffset: '100', artifactPages: '0' };
+  assert.deepEqual(readRoute(routeSearch(route)), route);
+  const next = mergeRoute(route, { scenario: 'two' });
+  assert.equal(next.artifact, undefined);
+  assert.equal(next.notice, 'notice');
+  assert.equal(mergeRoute(route, { surface: 'notices' }).artifactOffset, '100');
+});

@@ -232,7 +232,8 @@ export default function App() {
   }, [notices, selectedNoticeId]);
 
   function selectNotice(noticeId) {
-    navigate({ notice: noticeId, surface: "notices" });
+    const notice = notices.find(n => n.notice_id === noticeId);
+    navigate({ notice: noticeId, surface: "notices", scenario: notice?.scenario_id || notice?.trigger?.scenario_id, result: notice?.key || route.result });
     localStorage.setItem(NOTICE_KEY, noticeId);
   }
 
@@ -470,7 +471,7 @@ export default function App() {
       <span className="desk-brand">WSD <span>INTELLIGENCE DESK</span></span>
       <div className="surface-links">{SURFACES.map(([id, label]) =>
         <button key={id} type="button" aria-current={surface === id ? "page" : undefined}
-          onClick={() => navigate({ surface: id })}>{label}</button>)}</div>
+          onClick={() => navigate({ surface: id, ...(id === "scenarios" ? { scenario: surface === "notices" ? selectedNotice?.scenario_id || selectedNotice?.trigger?.scenario_id : surface === "anomaly" || surface === "operations" ? route.result?.split("/")[0] || route.scenario : route.scenario } : {}) })}>{label}</button>)}</div>
       <div className="refresh-status"><span role="status">{refreshState}</span>
         <button type="button" onClick={refresh} aria-label="Refresh workspace" title="Automatically checks every 8 seconds">↻</button>
       </div>
@@ -529,14 +530,14 @@ export default function App() {
       </>}
       {surface === "operations" && <>
         <header className="page-heading"><p className="eyebrow">Workspace administration</p><h1>Operations</h1></header>
-        <BacktestRunner onOpen={navigate} />
+        <BacktestRunner onOpen={navigate} initialScenario={route.scenario || route.result?.split("/")[0]} />
         <OperationsView catalog={catalog} notices={notices} selectedNotice={selectedNotice}
           resultKey={route.result} health={health} busy={opsBusy} log={opsLog} error={opsError}
           harvest={harvest}
           onEmit={emitNotices} onBuildPacket={buildPacket}
           onSelectResult={(key) => navigate({ result: key })} onSelectNotice={(notice) => navigate({ notice })} />
       </>}
-      {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} />}
+      {surface === "scenarios" && <ScenariosView scenario={route.scenario || ""} onSelect={selectScenario} route={route} onNavigate={navigate} />}
     </main>
     <Tooltip tooltip={tooltip} />
   </div>;

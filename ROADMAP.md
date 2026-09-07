@@ -538,7 +538,8 @@ Branch: `codex/ux-fixes`. Each item is implemented, tested and committed separat
 | UX-F02 | Done | Atomic command receipts for backtests, notice emission and packet builds; scenario-filtered history, exact result links, reconnect by saved job ID and raw details. Four operator tests include restart, failure isolation and non-regression of terminal state; frontend build passed. Older unrecorded commands remain artefacts, not invented history. Interrupted prior sessions show unknown, never auto-retry. |
 | UX-F03 | Done | Operations now names packet construction correctly; overview routes by actual readiness (N01), and evidence tools link to the direct brief destination. Build and 18 frontend tests passed; browser verified packet-building label. |
 | UX-F04 | Done | Selected-version reading, comparison with latest, annex reading, saved-assessment PDF preview and exact selected-version PDF preview without download. Markdown artefacts/retained findings render an inert readable subset with originals retained. 18 tests/build passed; browser opened retained v7, compared with v8 and loaded v7 PDF preview. PDF rendering requires browser PDF support (separate-tab fallback provided). |
-| UX-F05–F08 | Open | Next: context (F05), follow-up (F06), recovery (F07), evidence presentation (F08). |
+| UX-F05 | Done | Notice/scenario context follows navigation; backtest initial scenario follows current context; scenario artefact tab/path/filter/run/page position are URL-backed and clear on scenario changes. Explicit missing scenarios no longer silently select another. 19 tests/build passed; browser verified Ukraine notice → Ukraine artefacts and filter/path retention after reload. |
+| UX-F06–F08 | Open | Next: follow-up (F06), recovery (F07), evidence presentation (F08). |
 
 ### 1. Functional gaps
 

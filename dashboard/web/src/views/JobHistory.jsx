@@ -24,7 +24,7 @@ export default function JobHistory({ onOpen, onSelectJob }) {
         {(result.n_notices != null || result.emit) && <p>{result.n_notices ?? result.emit.n_notices} notices returned. Existing notices may be included.</p>}
         {measure && <button type="button" onClick={() => onOpen({ surface: 'anomaly', result: `${scenarioId}/${measure}`, scenario: scenarioId })}>Open measurement</button>}
         {notices.map(id => <button key={id} type="button" onClick={() => onOpen({ surface: 'notices', notice: id, tab: 'overview' })}>Open {id}</button>)}
-        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: scenarioId })}>Open scenario outputs</button>
+        <button type="button" onClick={() => onOpen({ surface: 'scenarios', scenario: scenarioId, scenarioTab: 'artifacts' })}>Open scenario outputs</button>
         <details><summary>Inputs and raw receipt</summary><pre className="ops-log">{JSON.stringify(j, null, 2)}</pre></details>
       </details>;
     })}
