@@ -532,6 +532,7 @@ Original delivery merged to main and owner checked successfully. Follow-up N02â€
 
 | Item | Status | Verification / remaining limits |
 |---|---|---|
+| UX-N03 | Done | Focus reading collapses inbox without unmounting filters/selection; toggling preserves body scroll. Brief, annex and prose previews use the notice-body scroll with an 80ch gutter; evidence retains available width. 19 frontend tests/build passed; browser verified saved brief has no internal scroll, focus restoration at scroll 1426.5, and mobile inbox access with no page overflow at 390px. |
 | UX-N02 | Done | Compact service strip; backtest and existing-result actions share a responsive workspace, with history after controls. Consistent panel/page gutters and reduced header spacing. 19 frontend tests and build passed; browser inspected Operations at 1280 Ã— 720 and narrow layout. |
 | UX-N01 | Done | Direct Intelligence brief destination, state-aware overview journey and prerequisite guidance. 17 frontend tests and production build passed; browser verified empty assessment guidance and direct brief navigation. First-time owner walkthrough remains to qualify ease of use. |
 | UX-N05 | Done | Watch packet availability no longer implies review readiness; overview separately shows proposal review, assessment and brief states, including stale precedence. Cue interpretation and source/purpose labels clarified. 18 frontend tests and build passed; browser verified packet-only notice has no proposals/assessment/brief. |

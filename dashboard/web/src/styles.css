@@ -930,8 +930,8 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
   font-size: .8rem;
   margin: .15rem .25rem;
 }
-.workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; max-height: 38rem; overflow-y: auto; padding: 1rem; border: 1px solid #87949c; }
-.intelligence-brief { max-height: 38rem; overflow-y: auto; padding: 1.2rem 1.35rem; border: 1px solid #87949c; line-height: 1.65; }
+.workflow-prose { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.6; padding: 1rem; border: 1px solid #87949c; }
+.intelligence-brief { padding: 1.2rem 1.35rem; border: 1px solid #87949c; line-height: 1.65; }
 .intelligence-brief h3 { margin: 0 0 .6rem; font-size: 1.15rem; }
 .intelligence-brief h4 { margin: 1.1rem 0 .35rem; font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; color: #006d59; }
 .intelligence-brief h4:first-child { margin-top: 0; }
@@ -1066,3 +1066,18 @@ main.standalone-main { padding: var(--space-page); }
 .operations-workspace .ops-grid .notice-card { padding: .9rem 1rem; }
 .operations-workspace .notice-actions { margin: .5rem 0 0; }
 .operations-workspace .ops-fields { gap: .65rem; }
+
+/* N03: keep document reading in the notice body, with optional inbox focus. */
+.reading-focus { grid-template-columns: minmax(0, 1fr); }
+.reading-focus .alert-inbox { display: none; }
+.reading-toggle { border: 1px solid var(--border); border-radius: .35rem; padding: .4rem .65rem; background: var(--surface); color: var(--ink); font: inherit; font-size: .8rem; cursor: pointer; }
+.notice-body { padding-inline: var(--space-page); }
+.assessment-panel { max-width: 100%; }
+.assessment-panel .report-read, .workflow-prose, .intelligence-brief, .document-preview { width: 100%; max-width: 80ch; margin-inline: auto; }
+.workflow-prose, .intelligence-brief { max-height: none; overflow-y: visible; }
+.assessment-panel textarea { max-width: 80ch; }
+@media (max-width: 700px) {
+  .reading-toggle { display: none; }
+  .reading-focus.show-list .alert-inbox { display: flex; }
+}
+.reading-focus .brief-toolbar-head { position: static; }
