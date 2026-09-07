@@ -499,6 +499,15 @@ def test_export_brief_pdf_generation_and_api(desk):
     action(root, "review", proposal_id="decision", status="accepted")
     save_report(root, "desk-case", "notice-abc", notes="Analyst assessment paragraph.")
     action(root, "prepare", title="Human Assessment")
+    client = TestClient(create_app(project_root=root))
+    query = {"scenario": "desk-case", "notice_id": "notice-abc", "version": 1, "format": "pdf"}
+    draft = client.get("/api/analyst-workflow/export", params=query)
+    assert draft.headers["content-disposition"] == 'attachment; filename="draft-brief-v1.pdf"'
+    draft_text = "\n".join(
+        p.extract_text() or "" for p in PdfReader(io.BytesIO(draft.content)).pages
+    )
+    assert "DRAFT" in draft_text
+    assert "Signed off by Reviewer" not in draft_text
     action(root, "sign_off", version=1, reviewer="Reviewer", acknowledged=True)
 
     pdf_bytes = export_brief(root, "desk-case", "notice-abc", 1, "pdf")
@@ -512,11 +521,10 @@ def test_export_brief_pdf_generation_and_api(desk):
     assert "Signed off by Reviewer" in extracted
     assert "Condensed leadership takeaway" in extracted
     assert "INTELLIGENCE BRIEF" in extracted
+    assert "awaiting sign-off" not in extracted
     assert "[A1]" not in extracted
     assert "Analyst assessment paragraph" not in extracted
 
-    client = TestClient(create_app(project_root=root))
-    query = {"scenario": "desk-case", "notice_id": "notice-abc", "version": 1, "format": "pdf"}
     res = client.get("/api/analyst-workflow/export", params=query)
     assert res.status_code == 200
     assert res.headers["content-type"] == "application/pdf"

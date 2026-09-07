@@ -23,6 +23,8 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Fixed
 
+- **Brief step actions:** Sign off sits in the top bar and expands in place. Download is one control (PDF by default; Markdown/HTML on hover). Preparing another draft is a secondary disclosure, not a competing primary action.
+- **Draft vs signed brief:** preparing always creates a new unsigned draft; sign-off stamps that version only and does not overwrite it. Downloads are labelled draft or signed (`draft-brief-vN` / `brief-vN`). A later draft does not hide a previously signed version.
 - **Two export products:** the Intelligence brief (PDF/Markdown/HTML) is the condensed senior-leadership product. The working assessment is a separate PDF/Markdown/HTML download for intelligence colleagues, with the evidence/review annex. Editorial `[A1]` input codes are stripped from the leadership brief; they remain in structured audit data and the annex. Existing signed-off versions keep their stored editorial body.
 
 ### Changed

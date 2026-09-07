@@ -36,6 +36,8 @@ const { chromium } = require('playwright');
     await page.getByRole('button', { name: /4\s*Intelligence brief/ }).click();
     assert.ok(await page.locator('#prepare-brief').isVisible());
     assert.equal(await page.locator('#review-proposals').isVisible(), false);
+    const another = page.getByText('Prepare another draft', { exact: true });
+    if (await another.count()) await another.click();
     const prepare = page.getByRole('button', { name: 'Prepare new brief version', exact: true });
     await prepare.click();
     await page.getByRole('heading', { name: 'Preparing intelligence brief', exact: true }).waitFor();

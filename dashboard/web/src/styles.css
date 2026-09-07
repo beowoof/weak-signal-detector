@@ -938,7 +938,64 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .intelligence-brief p { margin: 0 0 .85rem; overflow-wrap: anywhere; }
 .intelligence-brief .brief-judgement { padding-left: .15rem; }
 .review-controls { border-top: 1px solid #87949c; margin-top: 1rem; }
-.brief-signoff { margin: 1rem 0; padding: 1rem; border: 1px solid #87949c; }
+.brief-signoff { margin: 0 0 1rem; padding: 1rem; border: 1px solid var(--border); border-radius: .4rem; background: var(--surface); }
+.brief-toolbar-head {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: .75rem 1rem;
+  margin: 0 0 .85rem;
+  padding: .35rem 0 .55rem;
+  background: var(--bg);
+}
+.brief-toolbar-head h4 { margin: .15rem 0 0; }
+.brief-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .45rem;
+}
+.brief-toolbar .format-download,
+.brief-toolbar > button { margin: 0; }
+.format-download { position: relative; display: inline-flex; align-items: stretch; }
+.format-download > button { margin: 0; }
+.format-download > button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.format-download-toggle {
+  min-width: 2rem;
+  padding-left: .45rem;
+  padding-right: .45rem;
+  border-left: 0;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.format-download-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% - 1px);
+  left: 0;
+  z-index: 6;
+  min-width: max(100%, 8rem);
+  padding: .25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: .4rem;
+  box-shadow: 0 8px 25px #0002;
+}
+.format-download:hover .format-download-menu,
+.format-download:focus-within .format-download-menu { display: grid; }
+.format-download-menu button {
+  display: block;
+  width: 100%;
+  margin: 0;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.format-download-menu button:hover:not(:disabled) { background: var(--surface-2); }
 
 .workflow-steps { display:flex; flex-wrap:wrap; gap:.7rem; padding:1rem 0; }
 .workflow-steps a, .workflow-next { display:inline-block; padding:.6rem .8rem; background:#e4f0ed; border-radius:4px; color:#006d59; }
