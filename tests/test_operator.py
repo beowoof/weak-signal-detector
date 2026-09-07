@@ -142,3 +142,25 @@ def test_backtest_can_stop_at_stage_boundary_with_completed_outputs(tmp_path):
     assert result["stages"] == ["validate"]
     assert not list((tmp_path / "scenarios/ukraine2022/corpus").iterdir())
     assert checkpoints[-1] == ["validate"]
+
+
+def test_scenario_save_cannot_change_a_running_backtest_input(tmp_path):
+    from dashboard.backtest_operator import LOCK
+
+    _complete_scenario(tmp_path)
+    client = TestClient(create_app(api_only=True, project_root=tmp_path))
+    original = client.get("/api/scenario", params={"scenario": "ukraine2022"}).json()
+    assert LOCK.acquire(False)
+    try:
+        response = client.post(
+            "/api/scenario/save",
+            json={
+                "scenario": "ukraine2022",
+                "text": original["text"],
+                "revision": original["revision"],
+            },
+        )
+        assert response.status_code == 409
+        assert "backtest is running" in response.json()["detail"]
+    finally:
+        LOCK.release()

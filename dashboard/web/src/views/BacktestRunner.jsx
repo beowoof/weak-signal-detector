@@ -30,7 +30,7 @@ export default function BacktestRunner({ onOpen, initialScenario }) {
   const body = { scenario, start, through, only: only.split(',').map(s => s.trim()).filter(Boolean), focus, mock, exploratory, source_workers: Number(workers) };
   async function action(fn) { setPending(true); setError(''); try { await fn(); } catch(e) { setError(e.message); } finally { setPending(false); } }
   const running = pending || job?.state === 'running';
-  return <><section className="notice-card" aria-label="Backtest runner">
+  return <><section className="notice-card operator-panel" aria-label="Backtest runner">
     <h2>Run a historical backtest</h2><p>Finite historical replay. Continuous realtime watch is not implemented; an agent heartbeat does not mean collection is scheduled.</p>
     <details><summary>Create scenario</summary><label>New scenario name<input value={name} onChange={e => setName(e.target.value)} placeholder="example-case" /></label>
       <button type="button" disabled={running || !name} onClick={() => action(async () => { await request('/api/operator/create', { scenario: name }); onOpen({ surface: 'scenarios', scenario: name }); })}>Create and edit scenario</button></details>

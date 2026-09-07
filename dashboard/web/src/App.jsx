@@ -325,23 +325,28 @@ export default function App() {
         const response = await fetch(`/api/operator/job/${draftJobId}`);
         if (!response.ok) throw Error('Could not reconnect to drafting. Inspect command history before repeating work.');
         const job = await response.json();
-        if (cancelled) return;
+        if (cancelled || job.inputs?.notice_id !== selectedNoticeId) return;
         setDraftRunning(job.state === 'running');
         setMachineProgress({ noticeId: selectedNoticeId, stage: job.progress?.stage || job.state,
           elapsed_s: Math.max(0, Math.floor((Date.parse(job.finished_at || new Date().toISOString()) - Date.parse(job.started_at)) / 1000)), history: [] });
         if (job.state === 'completed' && !handledJobs.current.has(job.id)) {
-          handledJobs.current.add(job.id);
           if (job.action === 'secondary collection') {
+            handledJobs.current.add(job.id);
             setCollection(job.result);
             const data = await loadNotices();
             if (!cancelled) setNotices(data.notices || []);
-            setMachineProgress(p => ({ ...p, stage: 'Collection completed — inspect source outcomes below' }));
+            if (!cancelled) setMachineProgress(p => ({ ...p, stage: 'Collection completed — inspect source outcomes below' }));
             return;
           }
+          const latestResponse = await fetch(`/api/packet/draft/review?${new URLSearchParams({ scenario: job.inputs.scenario, notice_id: selectedNoticeId })}`);
+          if (!latestResponse.ok) throw Error('Job completed, but current findings could not be refreshed. Reopen this notice.');
+          const latestDraft = await latestResponse.json();
+          if (cancelled) return;
           evidenceRevision.current += 1;
-          setEvidenceReview(job.result?.review || null);
+          setEvidenceReview(latestDraft.review || null);
+          handledJobs.current.add(job.id);
           if (job.result?.leakage?.length) setActionError(`Draft flagged possible leakage: ${job.result.leakage.join(', ')}. Review before using.`);
-          setMachineSeed({ noticeId: selectedNoticeId, notes: job.result?.notes || '', at: Date.now() });
+          if (JSON.stringify(latestDraft.review) === JSON.stringify(job.result?.review)) setMachineSeed({ noticeId: selectedNoticeId, notes: job.result?.notes || '', at: Date.now() });
           setMachineProgress(p => ({ ...p, stage: 'Complete — open Notes & assessment to review new findings' }));
         } else if (job.state === 'failed' || job.state === 'unknown') {
           setActionError(job.error || 'Drafting stopped; inspect retained outputs before another attempt.');

@@ -27,7 +27,7 @@ export default function FollowupCollection({ scenario, noticeId, reviewVersion, 
       setJobId(d.id); setJob({state:'running'}); try { localStorage.setItem(`followup:${scenario}:${noticeId}`, d.id); } catch { /* Server retains job */ }
     } catch(e) { setError(e.message); } finally { setPending(false); }
   }
-  return <section aria-label="Requirement-specific follow-up"><h4>Plan follow-up collection</h4>
+  return <section className="followup-panel" aria-label="Requirement-specific follow-up"><h4>Plan follow-up collection</h4>
     <p>Select an unresolved collection question or hypothesis discriminator. Running this plan searches public sources and prepares new findings for review; your saved assessment is preserved.</p>
     {options?.questions.length ? <fieldset disabled={pending || job?.state === 'running'}>
       <label>Collection question<select value={choice} onChange={e => setChoice(e.target.value)}>{options.questions.map(q => <option key={q.id} value={q.id}>{q.question}</option>)}</select></label>

@@ -8,7 +8,7 @@ export default function JobHistory({ onOpen, onSelectJob }) {
     const tick = () => fetch('/api/operator/jobs').then(async r => { if (!r.ok) throw Error('Command history could not be refreshed'); return r.json(); }).then(d => { if (!gone) { setJobs(d.jobs); setError(''); } }).catch(e => { if (!gone) setError(e.message); });
     tick(); const id = setInterval(tick, 3000); return () => { gone = true; clearInterval(id); };
   }, []);
-  return <section className="notice-card" aria-label="Command history"><h2>Command history</h2><p>Latest 100 commands, retained across reloads. Outcomes describe execution, not analytical truth.</p>
+  return <section className="notice-card operator-panel" aria-label="Command history"><h2>Command history</h2><p>Latest 100 commands, retained across reloads. Outcomes describe execution, not analytical truth.</p>
     {error && <p role="alert">{error}</p>}
     <label>History scenario<select value={scenario} onChange={e => setScenario(e.target.value)}><option value="">All scenarios</option>{[...new Set(jobs.map(j => j.inputs.scenario))].map(s => <option key={s}>{s}</option>)}</select></label>
     {!jobs.length && <p>No command receipts yet. Historical artefacts remain available in Scenarios.</p>}

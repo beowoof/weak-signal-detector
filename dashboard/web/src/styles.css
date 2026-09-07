@@ -1030,3 +1030,15 @@ button.primary-action { background: var(--accent); border-color: var(--accent); 
 .brief-method { margin: .75rem 0; color: var(--muted); }
 .brief-method summary { cursor: pointer; }
 @media (max-width: 700px) { .notice-management .workflow-badge { display: none; } }
+
+/* Execution forms use the same readable controls as the scenario workspace. */
+.operator-panel { margin: 0 0 1rem; padding: 1.25rem; border: 1px solid var(--border); border-radius: .5rem; background: var(--surface); }
+.operator-panel fieldset, .followup-panel fieldset { min-width: 0; margin: .75rem 0; padding: 0; border: 0; }
+.operator-panel label, .followup-panel label { display: block; margin-bottom: .75rem; }
+.operator-panel input:not([type=checkbox]), .followup-panel input:not([type=checkbox]) { box-sizing: border-box; width: 100%; padding: .6rem .75rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--ink); font: inherit; }
+.operator-panel button, .followup-panel button, .investigation-journey button { padding: .55rem .75rem; border: 1px solid var(--border); border-radius: .35rem; background: var(--surface); color: var(--ink); font: inherit; margin: .25rem .4rem .25rem 0; cursor: pointer; }
+.operator-panel button:disabled, .followup-panel button:disabled { opacity: .5; cursor: default; }
+.operator-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; max-height: 30rem; overflow-y: auto; }
+.operator-panel summary, .followup-panel summary { cursor: pointer; padding: .5rem 0; }
+.followup-panel, .investigation-journey { margin: 1rem 0; }
+.document-preview { overflow-wrap: anywhere; line-height: 1.65; }
