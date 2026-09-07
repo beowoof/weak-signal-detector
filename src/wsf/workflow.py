@@ -36,6 +36,8 @@ def run_desk_workflow(
     only: list[str] | None = None,
     source_workers: int = 4,
     progress: Progress | None = None,
+    checkpoint=None,
+    should_stop=None,
 ) -> dict[str, Any]:
     """Run the sitting-desk pipeline. Does not freeze, prune, call Ollama, or build packets."""
     start = _stage_index(from_stage, "--from")
@@ -57,8 +59,18 @@ def run_desk_workflow(
     }
     log.line(f"workflow {scenario_id} from={from_stage} through={through}")
 
+    def continuing():
+        if checkpoint:
+            checkpoint(summary)
+        if should_stop and should_stop():
+            summary["status"] = "stopped_by_user"
+            return False
+        return True
+
     try:
         _validate(project_root, scenario_id, summary)
+        if not continuing():
+            return summary
         if _wanted("collect", start, end):
             _collect(
                 project_root,
@@ -70,26 +82,27 @@ def run_desk_workflow(
                 source_workers=source_workers,
                 progress=log,
             )
+        if not continuing():
+            return summary
         if _wanted("review", start, end):
             decision = _review(project_root, scenario_id, summary, mock=mock, progress=log)
             if decision == "no_go":
                 missing = Path(summary["review"]["missing"])
                 summary["status"] = "stopped_no_go"
-                summary["next"] = (
-                    f"wsd run workflow --scenario {scenario_id} --focus {missing}"
-                )
+                summary["next"] = f"wsd run workflow --scenario {scenario_id} --focus {missing}"
                 log.line(
                     f"workflow {scenario_id} stopped: review is no_go. "
                     f"Fix and re-run with --focus {missing}"
                 )
                 return summary
+        if not continuing():
+            return summary
         if _wanted("measure", start, end):
             if mock:
                 summary["status"] = "stopped_mock"
                 summary["next"] = None
                 log.line(
-                    f"workflow {scenario_id} stopped after review: "
-                    "mock harvests cannot be measured"
+                    f"workflow {scenario_id} stopped after review: mock harvests cannot be measured"
                 )
                 return summary
             decision = _active_review_decision(project_root, scenario_id)
@@ -103,9 +116,7 @@ def run_desk_workflow(
                     / "missing.json"
                 )
                 summary["status"] = "stopped_no_go"
-                summary["next"] = (
-                    f"wsd run workflow --scenario {scenario_id} --focus {missing}"
-                )
+                summary["next"] = f"wsd run workflow --scenario {scenario_id} --focus {missing}"
                 log.line(
                     f"workflow {scenario_id} stopped: active review is no_go. "
                     f"Re-run with --focus {missing}"
@@ -118,6 +129,8 @@ def run_desk_workflow(
                 exploratory=exploratory,
                 progress=log,
             )
+        if not continuing():
+            return summary
         if _wanted("emit", start, end):
             _emit(project_root, scenario_id, summary)
         summary["status"] = "completed"
@@ -126,6 +139,8 @@ def run_desk_workflow(
         return summary
     finally:
         summary["finished_at"] = datetime.now(UTC).isoformat()
+        if checkpoint:
+            checkpoint(summary)
 
 
 def _stage_index(name: str, flag: str) -> int:
@@ -275,12 +290,7 @@ def _active_review_decision(project_root: Path, scenario_id: str) -> str | None:
     review_id = status.get("active_review_id")
     if not review_id:
         return None
-    path = (
-        scenario_directory(project_root, scenario_id)
-        / "reviews"
-        / review_id
-        / "decision.json"
-    )
+    path = scenario_directory(project_root, scenario_id) / "reviews" / review_id / "decision.json"
     if not path.is_file():
         return None
     return json.loads(path.read_text(encoding="utf-8")).get("decision")

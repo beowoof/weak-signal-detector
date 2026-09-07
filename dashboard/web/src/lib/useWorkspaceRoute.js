@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { readRoute, routeSearch } from "./workspace.js";
+import { readRoute, routeSearch, mergeRoute } from "./workspace.js";
 
 export default function useWorkspaceRoute() {
   const [route, setRoute] = useState(() => readRoute(window.location.search, localStorage));
   const latest = useRef(route);
   const navigate = useCallback((changes, replace = false) => {
-    const next = { ...latest.current, ...changes };
+    const next = mergeRoute(latest.current, changes);
     if (routeSearch(next) === window.location.search) return;
     latest.current = next;
     window.history[replace ? "replaceState" : "pushState"](null, "", routeSearch(next));

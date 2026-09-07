@@ -268,6 +268,7 @@ class NoticeActionBody(BaseModel):
 
 
 class PacketCollectBody(BaseModel):
+    request_id: str = Field(default="", max_length=80)
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
     tasks: list[str] | None = None
@@ -293,6 +294,7 @@ class ResearchLimitsBody(BaseModel):
 
 
 class PacketDraftBody(BaseModel):
+    request_id: str = Field(default="", max_length=80)
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
     replay: bool = False
@@ -342,10 +344,16 @@ def create_app(
     app = FastAPI(title="WSD collection cueing desk", default_response_class=StrictJSONResponse)
     app.state.project_root = proj
     app.state.scenarios_root = root
+    from dashboard.backtest_operator import operator_router
     from dashboard.draft_stream import draft_events
+    from dashboard.followup_collection import followup_router
+    from dashboard.job_history import JobHistory
     from dashboard.scenario_workspace import scenario_router
 
     app.include_router(scenario_router(root))
+    history = JobHistory(proj)
+    app.include_router(operator_router(proj, history))
+    app.include_router(followup_router(proj, history))
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
@@ -405,41 +413,47 @@ def create_app(
 
     @app.post("/api/notice/emit")
     def api_notice_emit(body: NoticeEmitBody) -> dict:
-        try:
-            notices = emit_notices_for_measurement(
-                app.state.project_root,
-                body.scenario,
-                measurement_id=body.measurement_id,
-            )
-        except (ValueError, OSError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {
-            "scenario": body.scenario,
-            "n_notices": len(notices),
-            "notice_ids": [item.notice_id for item in notices],
-        }
+        def execute():
+            try:
+                notices = emit_notices_for_measurement(
+                    app.state.project_root,
+                    body.scenario,
+                    measurement_id=body.measurement_id,
+                )
+            except (ValueError, OSError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {
+                "scenario": body.scenario,
+                "n_notices": len(notices),
+                "notice_ids": [item.notice_id for item in notices],
+            }
+
+        return history.call("emit notices", body.model_dump(), execute)
 
     @app.post("/api/packet/build")
     def api_packet_build(body: PacketBuildBody) -> dict:
-        try:
-            packet, path = build_and_save(
-                app.state.project_root,
-                body.scenario,
-                body.notice_id,
-                replay=body.replay,
-            )
-        except KeyError as exc:
-            raise HTTPException(status_code=404, detail="Unknown notice") from exc
-        except (ValueError, OSError, FileNotFoundError) as exc:
-            raise HTTPException(status_code=400, detail=str(exc)) from exc
-        return {
-            "scenario": body.scenario,
-            "notice_id": packet.notice_id,
-            "packet_id": packet.packet_id,
-            "mode": packet.clocks.mode,
-            "layers": packet.layers,
-            "path": str(path),
-        }
+        def execute():
+            try:
+                packet, path = build_and_save(
+                    app.state.project_root,
+                    body.scenario,
+                    body.notice_id,
+                    replay=body.replay,
+                )
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Unknown notice") from exc
+            except (ValueError, OSError, FileNotFoundError) as exc:
+                raise HTTPException(status_code=400, detail=str(exc)) from exc
+            return {
+                "scenario": body.scenario,
+                "notice_id": packet.notice_id,
+                "packet_id": packet.packet_id,
+                "mode": packet.clocks.mode,
+                "layers": packet.layers,
+                "path": str(path),
+            }
+
+        return history.call("build watch packet", body.model_dump(), execute)
 
     @app.get("/api/packet")
     def api_packet(
@@ -496,6 +510,22 @@ def create_app(
         except (ValueError, OSError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/packet/draft/job")
+    def api_packet_draft_job(body: PacketDraftBody):
+        def run(*, progress):
+            return run_desk_draft(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                replay=body.replay,
+                search=body.search,
+                apply=False,
+                progress=progress,
+                research_limits=ResearchLimits(**body.research_limits.model_dump()),
+            )
+
+        return history.launch("research and draft", body.model_dump(), run)
+
     @app.get("/api/packet/draft/review")
     def api_draft_review(scenario: str, notice_id: str) -> dict:
         try:
@@ -547,6 +577,21 @@ def create_app(
         except (ValueError, OSError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/packet/collect/job")
+    def api_packet_collect_job(body: PacketCollectBody):
+        def run(*, progress):
+            progress("Collecting selected context sources", 0)
+            return run_collection(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                kinds=body.tasks,
+                replay=body.replay,
+                request_context=body.request_context,
+            )
+
+        return history.launch("secondary collection", body.model_dump(), run)
+
     @app.get("/api/report")
     def api_report_get(
         scenario: str = Query(..., min_length=1),
@@ -584,6 +629,12 @@ def create_app(
     @app.post("/api/analyst-workflow")
     def api_workflow_update(body: WorkflowBody) -> dict:
         try:
+            if body.action == "prepare":
+                return history.call(
+                    "prepare intelligence brief",
+                    body.model_dump(),
+                    lambda: update_workflow(app.state.project_root, **body.model_dump()),
+                )
             return update_workflow(app.state.project_root, **body.model_dump())
         except (KeyError, ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
@@ -624,13 +675,9 @@ def create_app(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     @app.get("/api/analyst-workflow/export-assessment")
-    def api_workflow_export_assessment(
-        scenario: str, notice_id: str, format: str = "md"
-    ):
+    def api_workflow_export_assessment(scenario: str, notice_id: str, format: str = "md"):
         try:
-            content = export_assessment(
-                app.state.project_root, scenario, notice_id, format
-            )
+            content = export_assessment(app.state.project_root, scenario, notice_id, format)
             media_type = (
                 "application/pdf"
                 if format == "pdf"
@@ -640,9 +687,7 @@ def create_app(
                 content,
                 media_type=media_type,
                 headers={
-                    "Content-Disposition": (
-                        f'attachment; filename="working-assessment.{format}"'
-                    )
+                    "Content-Disposition": (f'attachment; filename="working-assessment.{format}"')
                 },
             )
         except (KeyError, ValueError, OSError) as exc:

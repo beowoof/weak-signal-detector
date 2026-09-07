@@ -1,6 +1,7 @@
+import { MarkdownPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useMemo, useState } from "react";
 import LineChart from "../components/LineChart.jsx";
-import { gapRows, manifestRows, recordSeries } from "../lib/artifacts.js";
+import { gapRows, manifestRows, recordSeries, artifactTitle } from "../lib/artifacts.js";
 import { humanize } from "../lib/workspace.js";
 
 const printable = (value) => value == null ? "—" : typeof value === "object" ? JSON.stringify(value) : String(value);
@@ -78,14 +79,15 @@ function RecordPlot({ records }) {
   </section>;
 }
 
-export default function ArtifactsView({ scenario }) {
+export default function ArtifactsView({ scenario, route, onNavigate }) {
   const [items, setItems] = useState([]);
-  const [path, setPath] = useState("");
-  const [query, setQuery] = useState("");
-  const [group, setGroup] = useState("");
-  const [run, setRun] = useState("");
-  const [offset, setOffset] = useState(0);
-  const [pages, setPages] = useState([]);
+  const path = route.artifact || '', query = route.artifactQuery || '', group = route.artifactGroup || '', run = route.artifactRun || '';
+  const offset = Math.max(0, Number(route.artifactOffset) || 0);
+  const pages = (route.artifactPages || '').split(',').filter(Boolean).map(Number).filter(Number.isFinite);
+  const setPath = value => onNavigate({ artifact: typeof value === 'function' ? value(path) : value });
+  const setQuery = artifactQuery => onNavigate({ artifactQuery }, true);
+  const setGroup = artifactGroup => onNavigate({ artifactGroup }, true);
+  const setRun = artifactRun => onNavigate({ artifactRun }, true);
   const [payload, setPayload] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
@@ -97,7 +99,7 @@ export default function ArtifactsView({ scenario }) {
       .then(async (response) => { const data = await response.json(); if (!response.ok) throw Error(data.detail); return data; })
       .then((data) => {
         setItems(data.artifacts);
-        setPath((current) => data.artifacts.some((item) => item.path === current) ? current :
+        setPath((current) => current ||
           [...data.artifacts].reverse().find((item) => item.name === "missing.json")?.path || data.artifacts[0]?.path || "");
       }).catch((err) => { if (!abort.signal.aborted) setError(err.message); })
       .finally(() => { if (!abort.signal.aborted) setLoading(false); });
@@ -112,7 +114,7 @@ export default function ArtifactsView({ scenario }) {
       .then(setPayload).catch((err) => { if (!abort.signal.aborted) setError(err.message); });
     return () => abort.abort();
   }, [scenario, path, offset, refresh]);
-  function open(next) { setPath(next); setOffset(0); setPages([]); }
+  function open(next) { onNavigate({ artifact: next, artifactOffset: "", artifactPages: "" }); }
   const filtered = items.filter((item) => (!group || item.group === group) && (!run || item.run === run) && item.path.toLowerCase().includes(query.toLowerCase()));
   const gaps = gapRows(payload?.data);
   const coverage = manifestRows(payload?.data);
@@ -127,12 +129,14 @@ export default function ArtifactsView({ scenario }) {
       </select></label>
       <div className="section-heading"><small>{filtered.length} files</small><button type="button" onClick={() => setRefresh((v) => v + 1)}>Refresh files</button></div>
       <div className="artifact-file-list">{filtered.map((item) => <button key={item.path} type="button" aria-current={path === item.path ? "true" : undefined} onClick={() => open(item.path)}>
-        <strong>{item.name}</strong><small>{item.path}</small><small>{Math.ceil(item.size / 1024)} KB</small>
+        <strong>{artifactTitle(item)}</strong><small>{item.path}</small><small>{Math.ceil(item.size / 1024)} KB</small>
       </button>)}</div>
       {!loading && !filtered.length && <p>No matching artefacts.</p>}
     </aside>
     <section className="artifact-detail" aria-label="Artefact preview">
-      <div className="section-heading"><h3>{path || "Collection artefacts"}</h3>{path && <a href={`/api/scenario/artifact/download?${new URLSearchParams({ scenario, path })}`}>Download original</a>}</div>
+      <div className="section-heading"><h3>{path ? artifactTitle({name:path.split("/").at(-1)}) : "Collection artefacts"}</h3>{path && <a href={`/api/scenario/artifact/download?${new URLSearchParams({ scenario, path })}`}>Download original</a>}</div>
+      {path && <p className="notice-timing">{path}</p>}
+      {payload?.data?.decision && <p>Recorded outcome: {humanize(payload.data.decision)}. Inspect reasons and gaps below.</p>}
       {error && <p role="alert" className="error">{error}</p>}
       {!payload && !error && <p>{loading || path ? "Loading artefact…" : "No collection artefacts yet."}</p>}
       {payload && <>
@@ -147,13 +151,14 @@ export default function ArtifactsView({ scenario }) {
         }} />}
         {payload.records && <><p>Records {payload.records.length ? offset + 1 : 0}–{offset + payload.records.length}{payload.next_offset != null ? " · more available" : " · end of file"}</p>
           <RecordPlot key={path} records={payload.records} /><RecordsTable rows={payload.records} />
-          <div className="notice-actions"><button type="button" disabled={!pages.length} onClick={() => { setOffset(pages[pages.length - 1]); setPages(pages.slice(0, -1)); }}>Previous page</button>
-            <button type="button" disabled={payload.next_offset == null} onClick={() => { setPages([...pages, offset]); setOffset(payload.next_offset); }}>Next page</button></div>
+          <div className="notice-actions"><button type="button" disabled={!pages.length} onClick={() => { onNavigate({ artifactOffset: String(pages[pages.length - 1]), artifactPages: pages.slice(0, -1).join(",") }); }}>Previous page</button>
+            <button type="button" disabled={payload.next_offset == null} onClick={() => { onNavigate({ artifactOffset: String(payload.next_offset), artifactPages: [...pages, offset].join(",") }); }}>Next page</button></div>
         </>}
         {!gaps && !coverage && payload.data && <>{Array.isArray(payload.data) ? <RecordsTable rows={payload.data.slice(0, 100)} /> :
           <dl className="artifact-properties">{Object.entries(payload.data).map(([key, value]) => <div key={key}><dt>{humanize(key)}</dt><dd>{typeof value === "object" && value !== null ? <details><summary>Inspect {Array.isArray(value) ? `${value.length} entries` : "fields"}</summary><pre>{JSON.stringify(value, null, 2)}</pre></details> : printable(value)}</dd></div>)}</dl>}
           {Array.isArray(payload.data) && payload.data.length > 100 && <p>Table shows the first 100 entries; the raw preview below contains the full array.</p>}</>}
-        <details className="artifact-raw" open={payload.format === "md" || Boolean(payload.parse_error) || (!payload.data && !payload.records)}><summary>Raw {payload.format.toUpperCase()}{payload.records ? " · current page" : ""}</summary><pre>{payload.text}</pre></details>
+        {payload.format === "md" && <MarkdownPreview text={payload.text} />}
+        <details className="artifact-raw" open={Boolean(payload.parse_error) || (!payload.data && !payload.records)}><summary>Raw {payload.format.toUpperCase()}{payload.records ? " · current page" : ""}</summary><pre>{payload.text}</pre></details>
       </>}
     </section>
   </div>;

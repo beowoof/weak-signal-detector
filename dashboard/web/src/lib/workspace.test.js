@@ -21,7 +21,7 @@ test("explicit links take precedence over remembered choices", () => {
   assert.equal(readRoute("?notice=linked", storage).step, "");
 });
 test("triage labels expose readable workflow without changing its value", () => {
-  assert.equal(workflowLabel("in_packet"), "Evidence ready");
+  assert.equal(workflowLabel("in_packet"), "Watch packet available");
   assert.equal(workflowLabel("context_requested"), "Context requested");
   assert.equal(noticeTitle({ scenario_id: "ukraine2022" }), "ukraine · 2022");
 });
@@ -54,4 +54,34 @@ test("brief preview strips editorial input codes that are not in the document", 
   assert.equal(briefProduct({
     body: "## BLUF\n\n- Takeaway [A3, A20]\n\n## Key judgements\n\n- Detail [A5, P1, R3].",
   }), "## BLUF\n\n- Takeaway\n\n## Key judgements\n\n- Detail.");
+});
+
+test("investigation journey names the actual next step and does not assume readiness", async () => {
+  const { investigationNext: next } = await import("./workspace.js");
+  assert.equal(next({}).tab, "evidence");
+  assert.match(next({ packet: {} }).detail, /unavailable or loading/);
+  assert.equal(next({ packet: {}, workflow: { briefs: [] } }).tab, "collection");
+  assert.equal(next({ packet: {}, workflow: { review: {}, briefs: [] } }).step, "review");
+  const workflow = { report: { empty: false }, briefs: [{ version: 1, signed_off: {} }] };
+  assert.equal(next({ packet: {}, workflow }).label, "Open intelligence brief");
+  assert.equal(next({ packet: {}, workflow, dirty: true }).step, "assessment");
+  workflow.briefs[0].stale = true;
+  assert.equal(next({ packet: {}, workflow }).label, "Prepare intelligence brief");
+});
+
+test("packet availability never implies reviewed evidence or a signed brief", async () => {
+  const { readinessSummary } = await import("./workspace.js");
+  assert.match(readinessSummary(null), /unavailable/);
+  assert.equal(readinessSummary({ briefs: [], report: { empty: true } }), "No research proposals · No saved assessment · No intelligence brief");
+  assert.match(readinessSummary({ review: { claims: [{}] }, active_decisions: { a: {} }, report: { empty: false }, briefs: [{ stale: true, signed_off: {} }] }), /1\/2 proposals reviewed · Assessment saved · Brief stale/);
+});
+
+test('artefact location and paging round-trip; scenario changes clear only old artefact context', async () => {
+  const { mergeRoute } = await import('./workspace.js');
+  const route = { surface: 'scenarios', scenario: 'one', scenarioTab: 'artifacts', tab: 'overview', step: '', notice: 'notice', result: 'one/result', artifact: 'corpus/run/observations.jsonl', artifactQuery: 'obs', artifactOffset: '100', artifactPages: '0' };
+  assert.deepEqual(readRoute(routeSearch(route)), route);
+  const next = mergeRoute(route, { scenario: 'two' });
+  assert.equal(next.artifact, undefined);
+  assert.equal(next.notice, 'notice');
+  assert.equal(mergeRoute(route, { surface: 'notices' }).artifactOffset, '100');
 });
