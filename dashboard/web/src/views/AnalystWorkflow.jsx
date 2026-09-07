@@ -1,3 +1,4 @@
+import ReviewTimeline from "../components/ReviewTimeline.jsx";
 import FollowupCollection from "./FollowupCollection.jsx";
 import { MarkdownPreview, PDFPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useState } from "react";
@@ -275,7 +276,7 @@ export default function AnalystWorkflow({ scenario, noticeId, report, evidenceRe
         }}>Reset assessment</button>
       </details>
       <FollowupCollection scenario={scenario} noticeId={noticeId} reviewVersion={workflow.review_version} onComplete={async () => { const r = await fetch(`/api/analyst-workflow?${query}`); if (r.ok) { setWorkflow(await r.json()); onStepChange("review"); } else setError("Could not reload findings. Reopen this notice to retry."); }} />
-    <details><summary>Review history ({workflow.events.length})</summary><pre className="workflow-prose">{JSON.stringify(workflow.events, null, 2)}</pre></details>
+    <ReviewTimeline events={workflow.events} reviewVersion={workflow.review_version} />
     </>}
   </section>;
 }

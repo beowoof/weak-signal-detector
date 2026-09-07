@@ -1,7 +1,7 @@
 import { MarkdownPreview } from "../components/DocumentPreview.jsx";
 import { useEffect, useMemo, useState } from "react";
 import LineChart from "../components/LineChart.jsx";
-import { gapRows, manifestRows, recordSeries } from "../lib/artifacts.js";
+import { gapRows, manifestRows, recordSeries, artifactTitle } from "../lib/artifacts.js";
 import { humanize } from "../lib/workspace.js";
 
 const printable = (value) => value == null ? "—" : typeof value === "object" ? JSON.stringify(value) : String(value);
@@ -129,12 +129,14 @@ export default function ArtifactsView({ scenario, route, onNavigate }) {
       </select></label>
       <div className="section-heading"><small>{filtered.length} files</small><button type="button" onClick={() => setRefresh((v) => v + 1)}>Refresh files</button></div>
       <div className="artifact-file-list">{filtered.map((item) => <button key={item.path} type="button" aria-current={path === item.path ? "true" : undefined} onClick={() => open(item.path)}>
-        <strong>{item.name}</strong><small>{item.path}</small><small>{Math.ceil(item.size / 1024)} KB</small>
+        <strong>{artifactTitle(item)}</strong><small>{item.path}</small><small>{Math.ceil(item.size / 1024)} KB</small>
       </button>)}</div>
       {!loading && !filtered.length && <p>No matching artefacts.</p>}
     </aside>
     <section className="artifact-detail" aria-label="Artefact preview">
-      <div className="section-heading"><h3>{path || "Collection artefacts"}</h3>{path && <a href={`/api/scenario/artifact/download?${new URLSearchParams({ scenario, path })}`}>Download original</a>}</div>
+      <div className="section-heading"><h3>{path ? artifactTitle({name:path.split("/").at(-1)}) : "Collection artefacts"}</h3>{path && <a href={`/api/scenario/artifact/download?${new URLSearchParams({ scenario, path })}`}>Download original</a>}</div>
+      {path && <p className="notice-timing">{path}</p>}
+      {payload?.data?.decision && <p>Recorded outcome: {humanize(payload.data.decision)}. Inspect reasons and gaps below.</p>}
       {error && <p role="alert" className="error">{error}</p>}
       {!payload && !error && <p>{loading || path ? "Loading artefact…" : "No collection artefacts yet."}</p>}
       {payload && <>
