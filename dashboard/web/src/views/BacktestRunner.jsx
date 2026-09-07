@@ -44,17 +44,20 @@ export default function BacktestRunner({ onOpen, initialScenario }) {
       <label>Concurrent sources<input type="number" min="1" max="8" value={workers} onChange={e => setWorkers(e.target.value)} /></label>
       <label><input type="checkbox" checked={mock} onChange={e => setMock(e.target.checked)} />Synthetic rehearsal (stops before measurement)</label>
       <label><input type="checkbox" checked={exploratory} onChange={e => setExploratory(e.target.checked)} />Allow exploratory measurement without a real freeze</label>
-    </details><button type="button" disabled={!scenario} onClick={() => action(async () => setPlan(await request('/api/operator/plan', body)))}>Preview run plan</button></fieldset>
+    </details><button type="button" disabled={!scenario} onClick={() => action(async () => setPlan({ ...await request('/api/operator/plan', body), requestId: crypto.randomUUID() }))}>Preview run plan</button></fieldset>
     {error && <p role="alert" className="error">{error}</p>}
     {plan && <section aria-label="Run plan"><h3>{plan.mode}</h3><p>{plan.stages.map(s => LABELS[s]).join(' → ')}</p><p>{plan.measurement}</p>
       <p>Sources: {plan.sources.map(sourceLabel).join(', ')}</p>
       <ul>{plan.windows.map(w => <li key={w.id}>{w.id}: {w.start}–{w.end}, lookback {w.lookback_days} days</li>)}</ul>
       <p>Historical evidence uses the scenario windows; notice packet replay uses episode-end cutoff. This action ends at {LABELS[through]}; it does not generate an assessment or finished brief.</p>
       <details><summary>Input identities and options</summary><pre>{JSON.stringify(plan, null, 2)}</pre></details>
-      <button type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision }); setJobId(d.id); })}>Run this backtest plan</button>
+      <button type="button" disabled={running} onClick={() => action(async () => { setJob(null); const d = await request('/api/operator/run', { ...body, revision: plan.revision, request_id: plan.requestId }); setJobId(d.id); })}>Run this backtest plan</button>
     </section>}
     {job && <section aria-label="Backtest output"><h3>{humanize(job.state)}</h3><p role="status">{job.progress?.message || 'Starting'} · {job.progress?.elapsed_s ?? 0}s</p>
       {job.error && <p role="alert">{job.error}</p>}
+      {job.state === 'running' && <button type="button" onClick={() => action(async () => { const d = await request(`/api/operator/job/${job.id}/stop`, {}); setError(d.status); })}>Stop after current stage</button>}
+      {job.state !== 'running' && <><p>Another attempt is a new plan against current inputs. Review completed stages and partial outputs before choosing the first stage; no work is automatically repeated.</p><button type="button" onClick={() => { const saved = job.plan?.options || job.inputs; setScenario(saved.scenario); setStart(saved.start || 'review'); setThrough(saved.through || 'emit'); setOnly((saved.only || []).join(',')); setFocus(saved.focus || ''); setMock(Boolean(saved.mock)); setExploratory(saved.exploratory !== false); setPlan(null); }}>Copy options to a new plan</button></>}
+
       {job.result && <><p>Completed stages: {job.result.stages.map(s => LABELS[s]).join(' → ')}</p>
         {job.result.emit && <p>{job.result.emit.n_notices} notices. Zero notices is a valid outcome.</p>}
         {job.result.measure && <button type="button" onClick={() => onOpen({ surface: 'anomaly', result: `${(job.plan?.scenario || job.inputs.scenario)}/${job.result.measure.measure_id}` })}>Open measurement results</button>}

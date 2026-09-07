@@ -30,6 +30,7 @@ class PlanBody(BaseModel):
     exploratory: bool = True
     source_workers: int = Field(default=4, ge=1, le=8)
     revision: str = ""
+    request_id: str = Field(default="", max_length=80)
 
 
 def plan(root: Path, body: PlanBody) -> dict:
@@ -57,7 +58,7 @@ def plan(root: Path, body: PlanBody) -> dict:
     for path in files:
         fingerprint.update(str(path.relative_to(root)).encode())
         fingerprint.update(path.read_bytes() if path.exists() else b"absent")
-    fingerprint.update(body.model_dump_json(exclude={"revision"}).encode())
+    fingerprint.update(body.model_dump_json(exclude={"revision", "request_id"}).encode())
     return {
         "revision": fingerprint.hexdigest(),
         "scenario": body.scenario,
@@ -70,13 +71,14 @@ def plan(root: Path, body: PlanBody) -> dict:
         "measurement": "Exploratory unless matching real freeze exists"
         if body.exploratory
         else "Matching real freeze required",
-        "options": body.model_dump(exclude={"revision"}),
+        "options": body.model_dump(exclude={"revision", "request_id"}),
     }
 
 
 def operator_router(root: Path, history: JobHistory) -> APIRouter:
     router = APIRouter()
     jobs: dict[str, dict] = {}
+    stops = set()
 
     @router.post("/api/operator/plan")
     def preview(body: PlanBody):
@@ -110,6 +112,9 @@ def operator_router(root: Path, history: JobHistory) -> APIRouter:
                 )
             receipt = history.start("backtest", body.model_dump())
             job_id = receipt["id"]
+            if receipt.get("_reused"):
+                LOCK.release()
+                return {"id": job_id}
             progress = Progress(enabled=False)
             jobs[job_id] = {
                 **receipt,
@@ -124,6 +129,11 @@ def operator_router(root: Path, history: JobHistory) -> APIRouter:
 
         def work():
             job = jobs[job_id]
+
+            def checkpoint(summary):
+                job["result"] = dict(summary)
+                history.save({**job, "progress": progress.snapshot()})
+
             try:
                 result = run_desk_workflow(
                     root,
@@ -138,6 +148,8 @@ def operator_router(root: Path, history: JobHistory) -> APIRouter:
                     exploratory=body.exploratory,
                     source_workers=body.source_workers,
                     progress=progress,
+                    checkpoint=checkpoint,
+                    should_stop=lambda: job_id in stops,
                 )
                 job.update(state=result["status"], result=result)
             except Exception as exc:
@@ -160,6 +172,15 @@ def operator_router(root: Path, history: JobHistory) -> APIRouter:
         snapshot = {**value, "progress": value["progress"].snapshot()}
         history.save(snapshot)
         return snapshot
+
+    @router.post("/api/operator/job/{job_id}/stop")
+    def stop_job(job_id: str):
+        if job_id not in jobs or jobs[job_id]["state"] != "running":
+            raise HTTPException(
+                409, "Only a running backtest in this API session can stop at a stage boundary"
+            )
+        stops.add(job_id)
+        return {"id": job_id, "status": "Stop requested; the current stage will finish first"}
 
     @router.get("/api/operator/jobs")
     def list_jobs():

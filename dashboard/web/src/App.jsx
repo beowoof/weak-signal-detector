@@ -7,7 +7,6 @@ import OperationsView from "./views/OperationsView.jsx";
 import ScenariosView from "./views/ScenariosView.jsx";
 import ReportView from "./views/ReportView.jsx";
 import useWorkspaceRoute from "./lib/useWorkspaceRoute.js";
-import { readDraftStream } from "./lib/draftStream.js";
 
 const SURFACES = [["notices", "Desk"], ["anomaly", "Explorer"], ["scenarios", "Scenarios"], ["operations", "Operations"]];
 const POLL_MS = 8000;
@@ -16,6 +15,9 @@ const RESULT_KEY = "wsd-dashboard-result";
 
 export default function App() {
   const [machineProgress, setMachineProgress] = useState(null);
+  const [draftJobId, setDraftJobId] = useState("");
+  const [draftRunning, setDraftRunning] = useState(false);
+  const handledJobs = useRef(new Set());
   const [catalog, setCatalog] = useState(null);
   const [notices, setNotices] = useState([]);
   const [route, navigate] = useWorkspaceRoute();
@@ -238,6 +240,7 @@ export default function App() {
   }
 
   async function runAction(notice, action) {
+    if (action === "request_context") return runCollect(notice, null, true);
     setActionError("");
     const scenario = notice.scenario_id || notice.trigger?.scenario_id;
     try {
@@ -266,36 +269,20 @@ export default function App() {
   }
 
   async function runCollect(notice, tasks, requestContext = false) {
-    setActionError("");
-    setCollectBusy(true);
-    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
-    const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
+    setActionError('');
+    const key = `wsd-collection-request:${notice.notice_id}`;
     try {
-      const payload = await postJson("/api/packet/collect", {
-        scenario,
-        notice_id: notice.notice_id,
-        tasks,
-        replay,
-        request_context: requestContext,
+      const requestId = localStorage.getItem(key) || crypto.randomUUID();
+      localStorage.setItem(key, requestId);
+      const payload = await postJson('/api/packet/collect/job', {
+        scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
+        tasks, replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
+        request_context: requestContext, request_id: requestId,
       });
-      if (selectedRef.current === notice.notice_id) setCollection(payload);
-      const data = await loadNotices();
-      setNotices(data.notices || []);
-      if (payload.packet_id) {
-        const packetResponse = await fetch(
-          `/api/packet?scenario=${encodeURIComponent(scenario)}&packet_id=${encodeURIComponent(payload.packet_id)}`,
-        );
-        if (packetResponse.ok) {
-          const nextPacket = await packetResponse.json();
-          if (selectedRef.current === notice.notice_id) setPacket(nextPacket);
-        }
-      }
-      return payload;
-    } catch (err) {
-      setActionError(err.message);
-    } finally {
-      setCollectBusy(false);
-    }
+      localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
+      setDraftJobId(payload.id); setDraftRunning(true);
+      return { job_id: payload.id };
+    } catch(e) { setActionError(`${e.message} Inspect command history before repeating collection.`); }
   }
 
   async function saveReport(notice, notes) {
@@ -324,49 +311,63 @@ export default function App() {
     navigate({ surface: "notices", tab: "notes" });
   }
 
+  useEffect(() => {
+    try { setDraftJobId(localStorage.getItem(`wsd-machine-job:${selectedNoticeId}`) || ''); }
+    catch { setDraftJobId(''); }
+    setDraftRunning(false);
+  }, [selectedNoticeId]);
+
+  useEffect(() => {
+    if (!draftJobId) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const response = await fetch(`/api/operator/job/${draftJobId}`);
+        if (!response.ok) throw Error('Could not reconnect to drafting. Inspect command history before repeating work.');
+        const job = await response.json();
+        if (cancelled) return;
+        setDraftRunning(job.state === 'running');
+        setMachineProgress({ noticeId: selectedNoticeId, stage: job.progress?.stage || job.state,
+          elapsed_s: Math.max(0, Math.floor((Date.parse(job.finished_at || new Date().toISOString()) - Date.parse(job.started_at)) / 1000)), history: [] });
+        if (job.state === 'completed' && !handledJobs.current.has(job.id)) {
+          handledJobs.current.add(job.id);
+          if (job.action === 'secondary collection') {
+            setCollection(job.result);
+            const data = await loadNotices();
+            if (!cancelled) setNotices(data.notices || []);
+            setMachineProgress(p => ({ ...p, stage: 'Collection completed — inspect source outcomes below' }));
+            return;
+          }
+          evidenceRevision.current += 1;
+          setEvidenceReview(job.result?.review || null);
+          if (job.result?.leakage?.length) setActionError(`Draft flagged possible leakage: ${job.result.leakage.join(', ')}. Review before using.`);
+          setMachineSeed({ noticeId: selectedNoticeId, notes: job.result?.notes || '', at: Date.now() });
+          setMachineProgress(p => ({ ...p, stage: 'Complete — open Notes & assessment to review new findings' }));
+        } else if (job.state === 'failed' || job.state === 'unknown') {
+          setActionError(job.error || 'Drafting stopped; inspect retained outputs before another attempt.');
+        }
+      } catch(e) { if (!cancelled) setActionError(e.message); }
+    };
+    tick(); const timer = setInterval(tick, 2000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [draftJobId, selectedNoticeId]);
+
   async function runMachineDraft(notice, researchLimits) {
-    setActionError("");
-    setCollectBusy(true);
-    setMachineProgress({ noticeId: notice.notice_id, stage: "Starting research", elapsed_s: 0, history: [] });
-    const scenario = notice.scenario_id || notice.trigger?.scenario_id;
-    const replay = Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024);
+    setActionError('');
+    const requestKey = `wsd-machine-request:${notice.notice_id}`;
+    let requestId;
+    try { requestId = localStorage.getItem(requestKey) || crypto.randomUUID(); localStorage.setItem(requestKey, requestId); }
+    catch { setActionError('Browser storage is unavailable. Use command history to check uncertain attempts.'); requestId = crypto.randomUUID(); }
     try {
-      const body = {
-        scenario,
-        notice_id: notice.notice_id,
-        replay,
-        search: true,
-        apply: false,
-        research_limits: researchLimits,
-      };
-      const response = await fetch("/api/packet/draft/stream", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
+      const payload = await postJson('/api/packet/draft/job', {
+        scenario: notice.scenario_id || notice.trigger?.scenario_id, notice_id: notice.notice_id,
+        replay: Boolean(notice.trigger?.end && new Date(notice.trigger.end).getFullYear() < 2024),
+        search: true, apply: false, research_limits: researchLimits, request_id: requestId,
       });
-      const payload = await readDraftStream(response, event => setMachineProgress(previous => ({
-        ...event, noticeId: notice.notice_id,
-        history: previous?.stage === event.stage ? previous.history :
-          [...(previous?.history || []), event.stage],
-      })));
-      setMachineProgress(previous => ({ ...previous, stage: "Complete — review the collection result below" }));
-      if (selectedRef.current === notice.notice_id && payload.leakage && payload.leakage.length) {
-        setActionError(`Machine draft flagged leakage: ${payload.leakage.join(", ")}. Edit before saving.`);
-      }
-      setMachineSeed({ noticeId: notice.notice_id, notes: payload.notes || "", at: Date.now() });
-      if (selectedRef.current === notice.notice_id) {
-        evidenceRevision.current += 1;
-        setEvidenceReview(payload.review || null);
-      }
-      if (payload.collection || payload.packet_id) {
-        const data = await loadNotices();
-        setNotices(data.notices || []);
-      }
-      if (selectedRef.current === notice.notice_id) openNotes();
-    } catch (err) {
-      setActionError(err.message);
-      setMachineProgress(previous => ({ ...previous, stage: `Stopped: ${err.message}` }));
-    } finally {
-      setCollectBusy(false);
-    }
+      localStorage.setItem(`wsd-machine-job:${notice.notice_id}`, payload.id);
+      setDraftJobId(payload.id); setDraftRunning(true);
+      // Reusing this request ID reconnects; a new attempt is always explicit in history.
+    } catch(e) { setActionError(`${e.message} Check command history; repeating this request will not start another job.`); }
   }
 
   async function postJson(url, body) {
@@ -498,7 +499,7 @@ export default function App() {
         notices={notices} selectedId={selectedNotice?.notice_id} onSelect={selectNotice}
         onOpenAnomaly={openAnomaly} onBuildPacket={buildPacketFromNotice}
         packet={currentPacket} collection={ownResources ? collection : null}
-        collectBusy={collectBusy || opsBusy} onCollect={runCollect}
+        collectBusy={collectBusy || opsBusy || draftRunning} onCollect={runCollect}
         onMachineDraft={limits => selectedNotice && runMachineDraft(selectedNotice, limits)}
         machineProgress={machineProgress}
         onAction={runAction} actionError={[actionError, ownResources ? resourceError : ""].filter(Boolean).join(" ")}
@@ -508,7 +509,7 @@ export default function App() {
         evidence={evidence}
         notes={selectedNotice && <ReportView key={selectedNoticeId} noticeId={selectedNoticeId}
           scenario={selectedNotice.scenario_id || selectedNotice.trigger?.scenario_id}
-          onWorkflowChange={onWorkflowChange} report={currentReport} busy={reportBusy || collectBusy} onDraftChange={onDraftChange}
+          onWorkflowChange={onWorkflowChange} report={currentReport} busy={reportBusy || collectBusy || draftRunning} onDraftChange={onDraftChange}
           machineSeed={machineSeed}
           evidenceReview={ownResources ? evidenceReview : null}
           step={route.step}

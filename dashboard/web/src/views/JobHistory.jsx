@@ -19,6 +19,10 @@ export default function JobHistory({ onOpen, onSelectJob }) {
       return <details key={j.id}><summary>{j.action} · {scenarioId} · {humanize(j.state)} · {j.started_at}</summary>
         <p>Started {j.started_at}{j.finished_at ? ` · Finished ${j.finished_at}` : ''}</p>
         {j.error && <p role="alert">{j.error}</p>}
+        {j.inputs.notice_id && <button type="button" onClick={() => onOpen({ surface: 'notices', notice: j.inputs.notice_id, tab: 'notes', step: 'review' })}>Open notice review and current findings</button>}
+        {j.state !== 'running' && ['research and draft', 'secondary collection'].includes(j.action) && <button type="button" onClick={() => { try { localStorage.removeItem(`wsd-machine-request:${j.inputs.notice_id}`); localStorage.removeItem(`wsd-collection-request:${j.inputs.notice_id}`); localStorage.removeItem(`wsd-machine-job:${j.inputs.notice_id}`); } catch { /* no browser receipt */ } onOpen({ surface: 'notices', notice: j.inputs.notice_id, tab: 'collection' }); }}>Plan a new research attempt after inspecting outputs</button>}
+        {j.state === 'running' && j.action !== 'backtest' && <p>This request may continue if the browser disconnects. Reopen this receipt to observe it; cancelling an in-flight research/model request is not supported.</p>}
+
         {j.action === 'backtest' && <button type="button" onClick={() => onSelectJob(j.id)}>Open run progress and outputs</button>}
         {result.stages && <p>Completed stages: {result.stages.join(' → ')}</p>}
         {(result.n_notices != null || result.emit) && <p>{result.n_notices ?? result.emit.n_notices} notices returned. Existing notices may be included.</p>}

@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import threading
-from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import APIRouter, HTTPException
@@ -16,8 +14,6 @@ from wsf.draft import run_desk_draft
 from wsf.notice import load_notice
 from wsf.packet import packet_path
 from wsf.research import ResearchLimits
-
-LOCK = threading.Lock()
 
 
 def options(root, scenario, notice_id):
@@ -61,6 +57,7 @@ def options(root, scenario, notice_id):
 
 
 class FollowupBody(BaseModel):
+    request_id: str = Field(default="", max_length=80)
     scenario: str
     notice_id: str
     review_version: str
@@ -83,59 +80,37 @@ def followup_router(root: Path, history: JobHistory):
 
     @router.post("/api/followup/run")
     def run(body: FollowupBody):
-        if not LOCK.acquire(False):
-            raise HTTPException(409, "A follow-up job is running; reconnect in command history")
-        try:
-            current = get_options(body.scenario, body.notice_id)
-            if current["review_version"] != body.review_version:
-                raise HTTPException(
-                    409, "Review changed. Reopen the question and review its scope."
-                )
-            question = next((q for q in current["questions"] if q["id"] == body.question_id), None)
-            if question is None:
-                raise HTTPException(422, "Choose a question from the current review")
-            followup = {
-                **question,
-                "review_version": body.review_version,
-                "source_preference": body.source_preference,
-                "clocks": current["clocks"],
-                "packet_id": current["packet_id"],
-            }
-            job = history.start(
-                "follow-up research", {**body.model_dump(), "requirement": followup}
+        current = get_options(body.scenario, body.notice_id)
+        if current["review_version"] != body.review_version:
+            raise HTTPException(409, "Review changed. Reopen the question and review its scope.")
+        question = next((q for q in current["questions"] if q["id"] == body.question_id), None)
+        if question is None:
+            raise HTTPException(422, "Choose a question from the current review")
+        followup = {
+            **question,
+            "review_version": body.review_version,
+            "source_preference": body.source_preference,
+            "clocks": current["clocks"],
+            "packet_id": current["packet_id"],
+        }
+
+        def work(*, progress):
+            return run_desk_draft(
+                root,
+                body.scenario,
+                body.notice_id,
+                replay=current["clocks"]["mode"] == "replay",
+                search=True,
+                apply=False,
+                followup=followup,
+                progress=progress,
+                research_limits=ResearchLimits(
+                    queries=body.queries, documents=body.documents, seconds=body.seconds
+                ),
             )
-        except BaseException:
-            LOCK.release()
-            raise
 
-        def work():
-            def progress(stage, completed):
-                job["progress"] = {"stage": stage, "completed": completed}
-                history.save(job)
-
-            try:
-                job["result"] = run_desk_draft(
-                    root,
-                    body.scenario,
-                    body.notice_id,
-                    replay=current["clocks"]["mode"] == "replay",
-                    search=True,
-                    apply=False,
-                    followup=followup,
-                    progress=progress,
-                    research_limits=ResearchLimits(
-                        queries=body.queries, documents=body.documents, seconds=body.seconds
-                    ),
-                )
-                job["state"] = "completed"
-            except Exception as exc:
-                job.update(state="failed", error=str(exc))
-            finally:
-                job["finished_at"] = datetime.now(UTC).isoformat()
-                history.save(job)
-                LOCK.release()
-
-        threading.Thread(target=work, daemon=True).start()
-        return {"id": job["id"]}
+        return history.launch(
+            "follow-up research", {**body.model_dump(), "requirement": followup}, work
+        )
 
     return router

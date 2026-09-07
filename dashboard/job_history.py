@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -17,7 +18,7 @@ class JobHistory:
     def __init__(self, root: Path):
         self.directory = root / "scenarios" / ".desk-jobs"
         self.owner = f"{os.getpid()}:{uuid.uuid4().hex}"
-        self.lock = threading.Lock()
+        self.lock = threading.RLock()
 
     def save(self, job: dict):
         self.directory.mkdir(parents=True, exist_ok=True)
@@ -32,8 +33,19 @@ class JobHistory:
             temporary.replace(path)
 
     def start(self, action: str, inputs: dict) -> dict:
+        request_id = inputs.get("request_id")
+        ident = (
+            hashlib.sha256(str(request_id).encode()).hexdigest()[:32]
+            if request_id
+            else uuid.uuid4().hex
+        )
+        if (self.directory / f"{ident}.json").exists():
+            prior = self.read(ident)
+            if prior["action"] != action or prior["inputs"] != inputs:
+                raise HTTPException(409, "This request ID belongs to different inputs")
+            return {**prior, "_reused": True}
         job = {
-            "id": uuid.uuid4().hex,
+            "id": ident,
             "action": action,
             "inputs": inputs,
             "owner": self.owner,
@@ -77,3 +89,41 @@ class JobHistory:
         finally:
             job["finished_at"] = datetime.now(UTC).isoformat()
             self.save(job)
+
+    def launch(self, action, inputs, function):
+        with self.lock:
+            job = self.start(action, inputs)
+            if job.get("_reused"):
+                return {"id": job["id"]}
+            # Single writer per notice for model/research jobs in this API session.
+            active = [
+                j
+                for j in self.list()
+                if j["id"] != job["id"]
+                and j["state"] == "running"
+                and j["inputs"].get("scenario") == inputs.get("scenario")
+                and j["inputs"].get("notice_id") == inputs.get("notice_id")
+            ]
+            if active:
+                job.update(
+                    state="failed",
+                    error="Another job is running for this notice. Reconnect in command history.",
+                )
+                self.save(job)
+                raise HTTPException(409, job["error"])
+
+        def work():
+            def progress(stage, completed):
+                job["progress"] = {"stage": stage, "completed": completed}
+                self.save(job)
+
+            try:
+                job.update(result=function(progress=progress), state="completed")
+            except Exception as exc:
+                job.update(state="failed", error=str(exc))
+            finally:
+                job["finished_at"] = datetime.now(UTC).isoformat()
+                self.save(job)
+
+        threading.Thread(target=work, daemon=True).start()
+        return {"id": job["id"]}

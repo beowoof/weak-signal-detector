@@ -86,3 +86,59 @@ def test_failed_receipt_does_not_reuse_success_and_late_poll_cannot_regress(tmp_
     assert "result" not in failed
     history.save({**failed, "state": "running"})
     assert history.read(failed["id"])["state"] == "failed"
+
+
+def test_draft_job_request_is_idempotent_and_reconnects_after_restart(tmp_path, monkeypatch):
+    import threading
+
+    from dashboard import server
+
+    release = threading.Event()
+    calls = []
+
+    def generate(*args, **kwargs):
+        calls.append(kwargs)
+        kwargs["progress"]("Fixture generating", 2)
+        assert release.wait(3)
+        return {"notes": "completed fixture"}
+
+    monkeypatch.setattr(server, "run_desk_draft", generate)
+    client = TestClient(create_app(api_only=True, project_root=tmp_path))
+    body = {"scenario": "case", "notice_id": "notice", "request_id": "same-attempt"}
+    try:
+        first = client.post("/api/packet/draft/job", json=body).json()
+        second = client.post("/api/packet/draft/job", json=body).json()
+        assert first == second
+        assert len(calls) == 1
+        assert (
+            client.get("/api/operator/job/" + first["id"]).json()["progress"]["stage"]
+            == "Fixture generating"
+        )
+    finally:
+        release.set()
+    for _ in range(100):
+        if client.get("/api/operator/job/" + first["id"]).json()["state"] == "completed":
+            break
+        time.sleep(0.01)
+    fresh = TestClient(create_app(api_only=True, project_root=tmp_path))
+    assert fresh.post("/api/packet/draft/job", json=body).json() == first
+    assert len(calls) == 1
+    assert fresh.get("/api/operator/job/" + first["id"]).json()["state"] == "completed"
+
+
+def test_backtest_can_stop_at_stage_boundary_with_completed_outputs(tmp_path):
+    from wsf.workflow import run_desk_workflow
+
+    _complete_scenario(tmp_path)
+    checkpoints = []
+    result = run_desk_workflow(
+        tmp_path,
+        "ukraine2022",
+        mock=True,
+        checkpoint=lambda s: checkpoints.append(list(s["stages"])),
+        should_stop=lambda: True,
+    )
+    assert result["status"] == "stopped_by_user"
+    assert result["stages"] == ["validate"]
+    assert not list((tmp_path / "scenarios/ukraine2022/corpus").iterdir())
+    assert checkpoints[-1] == ["validate"]

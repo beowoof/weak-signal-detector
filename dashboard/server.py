@@ -268,6 +268,7 @@ class NoticeActionBody(BaseModel):
 
 
 class PacketCollectBody(BaseModel):
+    request_id: str = Field(default="", max_length=80)
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
     tasks: list[str] | None = None
@@ -293,6 +294,7 @@ class ResearchLimitsBody(BaseModel):
 
 
 class PacketDraftBody(BaseModel):
+    request_id: str = Field(default="", max_length=80)
     scenario: str = Field(min_length=1)
     notice_id: str = Field(min_length=1)
     replay: bool = False
@@ -508,6 +510,22 @@ def create_app(
         except (ValueError, OSError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/packet/draft/job")
+    def api_packet_draft_job(body: PacketDraftBody):
+        def run(*, progress):
+            return run_desk_draft(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                replay=body.replay,
+                search=body.search,
+                apply=False,
+                progress=progress,
+                research_limits=ResearchLimits(**body.research_limits.model_dump()),
+            )
+
+        return history.launch("research and draft", body.model_dump(), run)
+
     @app.get("/api/packet/draft/review")
     def api_draft_review(scenario: str, notice_id: str) -> dict:
         try:
@@ -559,6 +577,21 @@ def create_app(
         except (ValueError, OSError, FileNotFoundError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
+    @app.post("/api/packet/collect/job")
+    def api_packet_collect_job(body: PacketCollectBody):
+        def run(*, progress):
+            progress("Collecting selected context sources", 0)
+            return run_collection(
+                app.state.project_root,
+                body.scenario,
+                body.notice_id,
+                kinds=body.tasks,
+                replay=body.replay,
+                request_context=body.request_context,
+            )
+
+        return history.launch("secondary collection", body.model_dump(), run)
+
     @app.get("/api/report")
     def api_report_get(
         scenario: str = Query(..., min_length=1),
@@ -596,6 +629,12 @@ def create_app(
     @app.post("/api/analyst-workflow")
     def api_workflow_update(body: WorkflowBody) -> dict:
         try:
+            if body.action == "prepare":
+                return history.call(
+                    "prepare intelligence brief",
+                    body.model_dump(),
+                    lambda: update_workflow(app.state.project_root, **body.model_dump()),
+                )
             return update_workflow(app.state.project_root, **body.model_dump())
         except (KeyError, ValueError, OSError) as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
