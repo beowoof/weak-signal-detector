@@ -10,6 +10,7 @@ artifacts
 data
 .env
 .env.*
+!.env.example
 dashboard/web/node_modules
 dashboard/web/dist
 scenarios/*/corpus
@@ -17,4 +18,11 @@ scenarios/*/measurement
 scenarios/*/reviews
 scenarios/*/interpretation
 scenarios/*/reports
+scenarios/*/notices
+scenarios/*/status.json
+scenarios/*/history.jsonl
+scenarios/*/collect_progress.json
+scenarios/*/desk_pin.json
+scenarios/*/freeze.json
+**/.DS_Store
 node_modules

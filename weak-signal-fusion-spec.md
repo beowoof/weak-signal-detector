@@ -1398,9 +1398,7 @@ The remaining questions are empirical gates, not discretionary substitutions. St
 
 ## References
 
-- This workspace’s failed instrument: ``signal-detector` README (prior closed instrument, not in this repository)`
-- ``signal-detector` V2_PLAN.md` §§1–4, §§19–23
-- ``signal-detector` experiments/results/mvp_jprs_best_effort_fast_001.md`
+- Prior closed instrument (not in this repository): `signal-detector` README; `V2_PLAN.md` §§1–4 and §§19–23; `experiments/results/mvp_jprs_best_effort_fast_001.md`
 - GDELT Events 2.0 files and official BigQuery tables, 2015-02-19+; [Event Codebook](https://data.gdeltproject.org/documentation/GDELT-Event_Codebook-V2.0.pdf); [GDELT 2.0 streams and BigQuery access](https://blog.gdeltproject.org/gdelt-2-0-our-global-world-in-realtime/)
 - Wikimedia pageviews REST, 2015-07-01+
 - NASA Black Marble VNP46A2 ([LAADS](https://ladsweb.modaps.eosdis.nasa.gov/missions-and-measurements/products/VNP46A2))

@@ -1,11 +1,21 @@
+# Secrets and local credentials. `.env.example` is the tracked template.
 .env
 .env.*
 !.env.example
+*.pem
+credentials.json
+*-service-account.json
+
+# Python / tooling
 .venv/
 __pycache__/
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
 *.py[cod]
+*.log
 artifacts/
 data/raw/
 
@@ -23,11 +33,18 @@ scenarios/*/desk_pin.json
 scenarios/*/collect_progress.json
 scenarios/.osint_search_index/
 scenarios/.document_index/
-**/.DS_Store
+scenarios/.desk-jobs/
 
 # Dashboard frontend
 dashboard/web/node_modules/
 dashboard/web/dist/
+dashboard/web/playwright-report/
+dashboard/web/test-results/
 /package-lock.json
 
-scenarios/.desk-jobs/
+# OS / editor
+.DS_Store
+**/.DS_Store
+Thumbs.db
+.idea/
+.grok/

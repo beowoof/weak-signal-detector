@@ -23,6 +23,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Fixed
 
+- **Repo hygiene:** stop tracking Finder `.DS_Store` files; ignore editor/cache/secret patterns; keep Docker build context free of notices and harvest sidecars. Replace local `file://` and home-directory paths in docs with in-repo links.
 - **Desk branding in Docker:** the Vite image and compose mount now include `public/`, so the favicon from this layout PR is served.
 - **Finished research/collection clicks:** a second Collection or follow-up click after a finished job starts a new attempt instead of silently reconnecting to the previous receipt. Reloads while a job is still running still reconnect.
 - **Brief step actions:** Sign off sits in the top bar and expands in place. Download is one control (PDF by default; Markdown/HTML on hover). Preparing another draft is a secondary disclosure, not a competing primary action.
