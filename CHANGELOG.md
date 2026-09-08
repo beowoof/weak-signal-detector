@@ -40,6 +40,7 @@ All notable enhancements to this project are recorded here. The project follows 
 
 ### Documentation
 
+- **README is a landing page.** What the desk is, how to start it, the human path, tests, constraints and a doc index. Operator procedure, credential catalogue, harvests and CLI remain in HOWTO; detector panel, basket and the closed scientific investment gate in FINDINGS; delivery sequence in ROADMAP. Dated 2026-09-05 review stamps are no longer the first thing a reader sees.
 - Clarify README regeneration examples: packet builds rewrite evidence and watch-summary exports under a stable ID; PDF rendering, machine assessment drafting and final editorial synthesis are separate actions. Document UI refresh, API restart and assessment reset.
 
 ### Changed

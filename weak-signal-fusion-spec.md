@@ -1,6 +1,6 @@
 # Weak-signal fusion: a cutoff-safe panel test of correlated public indicators
 
-**Reviewed 2026-09-05.** Initial design record; its original date and proposed architecture are retained. Current implementation is documented in [README](README.md) and [HOWTO](HOWTO.md), including the implemented Ollama analyst desk without a Chroma dependency.
+Initial design record; original date and proposed architecture are retained. Current landing page is [README.md](README.md); operator path is [HOWTO.md](HOWTO.md). The desk uses local Ollama and has no Chroma dependency.
 
 | Field | Value |
 |---|---|
@@ -11,7 +11,7 @@
 | **Proposed repo name** | `weak-signal-fusion` |
 | **Audience** | Senior engineers implementing the first version; later readers auditing whether the test was fair |
 
-This document is the initial design record. **Operational truth is [`README.md`](README.md) and [`HOWTO.md`](HOWTO.md).** Those files describe the current causal-domain panel, NOAA-20 FIRMS, ICEWS zip ingest, disabled Sentinel-1, and `wsd measure`. This spec still describes the v0 measurement/interpretation freeze and must not be treated as the live connector list.
+This document is the initial design record. **Operational truth is [`README.md`](README.md) (what the desk is and how to start it) and [`HOWTO.md`](HOWTO.md) (harvests, CLI, assessment, brief).** Detector results are in [`FINDINGS.md`](FINDINGS.md). This spec still describes the v0 measurement/interpretation freeze and must not be treated as the live connector list.
 
 ---
 

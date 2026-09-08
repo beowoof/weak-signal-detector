@@ -1,5 +1,7 @@
 # Documentation checkpoint — 2026-09-05
 
+Session note from the 2026-09-05 documentation pass. Current landing page is [README.md](README.md); operator path is [HOWTO.md](HOWTO.md). Do not treat this file as the product README.
+
 ## Current operator path
 
 1. Open a notice in **Desk**, then click **Secondary collection**.
@@ -32,7 +34,7 @@ The deterministic packet compiler no longer raises explanatory confidence merely
 
 | File/group | Disposition |
 |---|---|
-| README.md | Current implementation, entry points and regeneration boundaries reconciled |
+| README.md | Landing page (what it is, quick start, desk path, doc index). Operator and scientific detail live in HOWTO / FINDINGS / ROADMAP |
 | HOWTO.md | Current source collection, research limits, streaming and assessment workflow reconciled |
 | dashboard/web/README.md | Secondary-collection sequence and current UI verification documented |
 | ROADMAP.md | Implemented local path separated from outstanding qualification and live orchestration |

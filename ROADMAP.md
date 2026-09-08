@@ -1,6 +1,6 @@
 # Analyst-desk roadmap
 
-**Reviewed 2026-09-05.** Current delivery plan. The local collection/review/brief path is implemented; retrospective product qualification and continuous live orchestration remain outstanding.
+Delivery plan. The local collection/review/brief path is implemented; retrospective product qualification and continuous live orchestration remain outstanding. Landing page: [README.md](README.md).
 
 ## Implementation checkpoint — 2026-09-05
 

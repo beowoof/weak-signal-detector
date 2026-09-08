@@ -1,6 +1,6 @@
 # Findings
 
-**Reviewed 2026-09-05.** Historical detector findings, preserved without rerunning measurements. Statements about an unbuilt interpretation layer describe that experiment; the local analyst desk is now implemented. See [README](README.md).
+Historical detector findings, preserved without rerunning measurements. The local analyst desk is a separate product; see [README.md](README.md).
 
 **Verdict:** speculative success, execution failure.
 
@@ -25,6 +25,18 @@ The operating rule (`coincidence_v1`) was frozen before the last Ukraine re-meas
 - permutation: independent circular shifts within each series’ available days; amber statistic = max run length.
 
 Ukraine 2022 is a **development showcase**, not a hold-out. Thresholds were not retuned after seeing February.
+
+Panel windows (investment-decision set, not a population sample; cannot establish a general false-alert rate or intent-classification accuracy):
+
+| Window | Scenario | Split | Role |
+|---|---|---|---|
+| `DEU-2018-quiet` | `deu2018quiet` | Development | Long quiet baseline |
+| `USA-CHN-2018-trade` | `usachn2018trade` | Development | High-tension hard negative |
+| `RUS-2021-apr` | `rus2021apr` | Development | Reversed mobilisation positive |
+| `GRC-TUR-2020` | — | Held out | High-tension hard negative; never harvested |
+| `RUS-2022` | `ukraine2022` | Development showcase | Overt-action positive; used during development, no longer held out |
+
+v1 coincidence required three distinct **causal domains** and three source systems, plus one costly series. GDELT and ICEWS cannot double-vote (same information substrate). VIIRS, Sentinel-1 and FIRMS cannot triple-vote (same physical activity). Basket: VIIRS NTL, FIRMS NOAA-20, GDELT, ICEWS (robustness), Wikipedia pageviews, MOEX FX, RIPEstat prefixes. Sentinel-1 is registered but off on `ukraine2022`. Out of basket or unbuilt: OpenSky, OSM edits, wiki-edits, Brent, Certificate Transparency as a dated series, Internet Archive official-host cadence as a bureaucratic vote.
 
 ---
 
@@ -180,3 +192,9 @@ VIIRS is `ok` on **21/21** scored nights (median 6 of 7 AOIs). SAR has 12/21 day
 Frozen `coincidence_v1`: no red episode. One basket day (23 Feb: wiki + GDELT + MOEX + FIRMS) without 3-day persistence. The old 21–23 Feb amber disappears because VIIRS is present and normal. 15 Feb is cheap talk with VIIRS quiet (z ≈ 0.3).
 
 Desk heuristic (z ≥ 1.5, K ≥ 3): two episodes, **10–12 Feb** and **21–23 Feb**. The first is the preparatory shape (CBR flags; talk climbing). The second is information-saturated (recognition of the “republics”; Wikipedia z ≈ 11 on the 22nd). Evaluating the product on whether red fired the day before the invasion is a methodological error, not a data error. `notice_v0` should be scored on whether the preparatory window opens a cue, with the eve-of-event spike labelled late.
+
+## Closed scientific investment gate
+
+Further detector corpus expansion was gated on all of: real-source measurement qualification; incremental value of the basket over VIIRS alone; fewer development false-alert episodes; a useful held-out direction without post-hoc changes; and interpretation that is grounded and adds value over prior-only packets. That gate was not passed. The v1 detector claim is closed. Analyst-desk product work does not wait on it; see [ROADMAP.md](ROADMAP.md).
+
+Cutoff rule used throughout: each observation has `event_time` (what it describes), `available_at` (when that version was knowable under the declared regime), and `retrieved_at` (when this project obtained it). At cutoff `D` the expected event date is derived from declared latency; if that observation is absent, the feature is missing. An older spike must not be reused as a fresh daily flag. VIIRS Collection 2 is retrospectively reconstructed (assumed three-day availability); it is not a strictly contemporaneous historical feed.

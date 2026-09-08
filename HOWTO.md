@@ -1,6 +1,6 @@
-# Operator HOWTO: Scenario to Frozen Corpus
+# Operator HOWTO
 
-**Reviewed 2026-09-05.** Current operator guide. Secondary collection and assessment research are separate actions; see the session update below.
+Setup, harvests, CLI, assessment and brief. The landing page is [README.md](README.md).
 
 ## Secondary collection and assessment — current UI
 
@@ -85,6 +85,16 @@ Operator action:
 - Do not configure Google Cloud. GDELT uses the bulk file path, not BigQuery.
 
 Expected result: `wsd` exists, the scientific YAML configuration validates offline, and connector credential flags are visible without printing secrets.
+
+`.env.example` is the full credential catalogue (FRED, Earthdata, FIRMS, Copernicus, OpenSky, ICEWS path, Tavily, Ollama, desk API). Fill only the sources you will use. Live source calls and model calls are never part of default tests.
+
+To pin an immutable scientific run identity after the YAML is stable:
+
+```bash
+uv run wsf init-run --run-id rehearsal-001
+```
+
+The manifest hashes the indicator register, period panel, protocol, facilities, queries, baselines, milestones, priors and interpretation protocol. Reusing a run ID after any scientific value changes is an error. YAML comments and formatting do not change the hash.
 
 ## 1. Create the scenario
 
@@ -330,7 +340,14 @@ From the repository root, start the desk as one Compose app:
 docker compose up --build
 ```
 
-Open <http://127.0.0.1:5173>. Left nav: **Notices**, **Anomaly**, **Operations**. Emit notices and build briefs from Operations (or **Build brief** on an alert). The CLI remains for tests and harvests (`docker compose exec agent wsd measure …`). The API is at <http://127.0.0.1:8000/docs>.
+Open <http://127.0.0.1:5173>. Day-to-day work is Desk, Scenarios and Operations. The CLI remains for tests and harvests (`docker compose exec agent wsd measure …`). The API is at <http://127.0.0.1:8000/docs>. After Python changes, `docker compose restart api`. The UI bind-mount reloads on its own.
+
+| Service | Port | Role |
+|---|---|---|
+| `web` | 5173 | Vite UI; proxies `/api` |
+| `api` | 8000 | FastAPI |
+| `db` | 5432 | Postgres (`wsd` / `wsd` / `wsd`) |
+| `agent` | — | Heartbeats; CLI jobs via `docker compose exec` |
 
 Host-only fallback (two terminals):
 
